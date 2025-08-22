@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "987885549442",
+    "project_id": "qasid-fd80d",
+    "storage_bucket": "qasid-fd80d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:987885549442:android:51979e371a13b1f262019b",
+        "android_client_info": {
+          "package_name": "com.abusafiia.qasid.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "987885549442-etquv3pv8krln4fpb8rqujug0mlc9abd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.abusafiia.qasid.dev",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "987885549442-9ue4mpgabm5aah6mh1jh5mf8la4kvecn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoHa7ebPI579owoa7Fr9ZWvCsW_1cHwVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "987885549442-9ue4mpgabm5aah6mh1jh5mf8la4kvecn.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "987885549442-tfdnpnsmo7f87ohi95ifl2615aja8l5u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.abusafiia.qasid.dev"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
