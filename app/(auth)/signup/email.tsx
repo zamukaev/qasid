@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 
-import auth from "@react-native-firebase/auth";
-import { FirebaseError } from "firebase/app";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  FirebaseAuthTypes,
+} from "@react-native-firebase/auth";
+import { Stack } from "expo-router";
 
 export default function EmailSignUpScreen() {
   const [email, setEmail] = useState("");
@@ -12,9 +16,10 @@ export default function EmailSignUpScreen() {
   const handleSignUp = async () => {
     setLoading(true);
     try {
-      const user = await auth().createUserWithEmailAndPassword(email, password);
+      const auth = getAuth();
+      const user = await createUserWithEmailAndPassword(auth, email, password);
     } catch (e: any) {
-      const err = e as FirebaseError;
+      const err = e as FirebaseAuthTypes.NativeFirebaseAuthError;
       setEmail("");
       setPassword("");
       alert(err.message);
@@ -25,6 +30,7 @@ export default function EmailSignUpScreen() {
 
   return (
     <View className=" flex-1 bg-qasid-black justify-center px-5">
+      <Stack.Screen options={{ headerTitle: "Create account" }} />
       <Text className="text-qasid-gold text-2xl mb-5">Create Account</Text>
 
       <TextInput

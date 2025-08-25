@@ -1,16 +1,34 @@
 // app/(tabs)/_layout.tsx
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  FirebaseAuthTypes,
+  getAuth,
+  onAuthStateChanged,
+} from "@react-native-firebase/auth";
 
 export default function TabsLayout() {
   const [auth, setAuth] = useState(true);
+  const router = useRouter();
 
-  if (!auth) {
-    return <Redirect href={"login"} />;
-  }
+  const handleAuthStateChanged = (user: FirebaseAuthTypes.User | null) => {
+    if (!user) {
+      router.replace("/");
+    }
+  };
+
+  useEffect(() => {
+    const subscribe = onAuthStateChanged(getAuth(), handleAuthStateChanged);
+    return subscribe;
+  });
+
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
       <Tabs.Screen
         name="home/index"
         options={{
@@ -38,39 +56,13 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="favorites/index"
-        options={{
-          title: "Избранное",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="star-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile/index"
-        options={{
-          title: "Профиль",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" color={color} size={size} />
-          ),
-        }}
-      />
+
       <Tabs.Screen
         name="settings/index"
         options={{
           title: "Настройки",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="player/index"
-        options={{
-          title: "Player",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="play-outline" color={color} size={size} />
           ),
         }}
       />

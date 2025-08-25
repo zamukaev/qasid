@@ -1,22 +1,26 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 
-import auth from "@react-native-firebase/auth";
-import { FirebaseError } from "firebase/app";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  FirebaseAuthTypes,
+} from "@react-native-firebase/auth";
+import { Stack } from "expo-router";
 
 export default function EmailSignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const auth = getAuth();
 
   const handleSignIn = async () => {
     setLoading(true);
     try {
-      const user = await auth().signInWithEmailAndPassword(email, password);
+      const user = await signInWithEmailAndPassword(auth, email, password);
     } catch (e: any) {
-      const err = e as FirebaseError;
-      setEmail("");
-      setPassword("");
+      const err = e as FirebaseAuthTypes.NativeFirebaseAuthError;
+
       alert(err.message);
     } finally {
       setLoading(false);
@@ -25,6 +29,7 @@ export default function EmailSignInScreen() {
 
   return (
     <View className=" flex-1 bg-qasid-black justify-center px-5">
+      <Stack.Screen options={{ headerTitle: "Sign in" }} />
       <Text className="text-qasid-gold text-2xl mb-5">Sign in</Text>
 
       <TextInput
