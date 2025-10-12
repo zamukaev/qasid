@@ -27,6 +27,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+
+        tabBarStyle: {
+          backgroundColor: "#1c1c1c",
+        },
       }}
     >
       <Tabs.Screen
@@ -36,6 +40,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" color={color} size={size} />
           ),
+          tabBarActiveTintColor: "#E7C11C",
         }}
       />
       <Tabs.Screen
@@ -45,6 +50,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="book-outline" color={color} size={size} />
           ),
+          tabBarActiveTintColor: "#E7C11C",
         }}
       />
       <Tabs.Screen
@@ -54,6 +60,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="musical-notes-outline" color={color} size={size} />
           ),
+          tabBarActiveTintColor: "#E7C11C",
         }}
       />
 
@@ -64,6 +71,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" color={color} size={size} />
           ),
+          tabBarActiveTintColor: "#E7C11C",
         }}
       />
     </Tabs>

@@ -13,9 +13,9 @@ interface ScreenLayoutProps {
 export default function ScreenLayout({
   children,
   style,
-  className = "flex-1 bg-qasid-black",
+  className = "flex-1 bg-qasid-black h-full",
   safeArea = true,
-  safeAreaClassName = "flex-1",
+  safeAreaClassName = "flex-1 h-full",
 }: ScreenLayoutProps) {
   const content = (
     <View className={className} style={style}>
