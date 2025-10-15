@@ -1,14 +1,8 @@
-import {
-  SafeAreaView,
-  View,
-  Text,
-  Pressable,
-  Image,
-  Alert,
-} from "react-native";
+import { SafeAreaView, View, Text, Pressable, Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { AntDesign } from "@expo/vector-icons";
 import { Link, Stack } from "expo-router";
+import { useState } from "react";
 import {
   getAuth,
   GoogleAuthProvider,
@@ -16,12 +10,18 @@ import {
 } from "@react-native-firebase/auth";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
+import { ErrorAlert } from "../../../components";
+import { getFirebaseErrorMessage } from "../../../utils/firebaseErrors";
+
 GoogleSignin.configure({
   webClientId:
     "987885549442-9ue4mpgabm5aah6mh1jh5mf8la4kvecn.apps.googleusercontent.com",
 });
 
 export default function SignIn() {
+  const [error, setError] = useState("");
+  const [showError, setShowError] = useState(false);
+
   const singInWithGoogle = async () => {
     try {
       await GoogleSignin.hasPlayServices({
@@ -35,7 +35,11 @@ export default function SignIn() {
       const credential = GoogleAuthProvider.credential(idToken);
       await signInWithCredential(auth, credential);
     } catch (e: any) {
-      Alert.alert("Google Login", e.message);
+      const errorMessage = e.code
+        ? getFirebaseErrorMessage(e.code)
+        : "Google sign-in failed. Please try again";
+      setError(errorMessage);
+      setShowError(true);
     }
   };
 
@@ -133,6 +137,13 @@ export default function SignIn() {
           </Link>
         </View>
       </View>
+
+      <ErrorAlert
+        visible={showError}
+        message={error}
+        type="error"
+        onClose={() => setShowError(false)}
+      />
     </SafeAreaView>
   );
 }
