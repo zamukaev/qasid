@@ -34,7 +34,9 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "tailwindcss": "^3.4.17",
-    "zustand": "^5.0.7"
+    "zustand": "^5.0.7",
+    "expo-av": "~15.1.7",
+    "@react-native-community/slider": "4.5.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
