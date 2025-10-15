@@ -8,30 +8,33 @@ import {
   FirebaseAuthTypes,
   onAuthStateChanged,
 } from "@react-native-firebase/auth";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { SafeAreaView, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSegments } from "expo-router";
+import { useUserStore } from "../stores/userStore";
 
 export default function Welcome() {
-  const [inizializing, setInitializing] = useState(true);
-  const [user, setUser] = useState<FirebaseAuthTypes.User | null>();
+  const { user, isLoading, isAuthenticated, setUser, setLoading } =
+    useUserStore();
 
   const router = useRouter();
   const segments = useSegments();
 
-  const handleAuthStateChanged = (user: FirebaseAuthTypes.User | null) => {
-    setUser(user);
-    if (inizializing) setInitializing(false);
+  const handleAuthStateChanged = (
+    firebaseUser: FirebaseAuthTypes.User | null
+  ) => {
+    setUser(firebaseUser);
   };
 
   useEffect(() => {
+    setLoading(true);
     const subscribe = onAuthStateChanged(getAuth(), handleAuthStateChanged);
     return subscribe;
-  });
+  }, []);
 
   useEffect(() => {
-    if (inizializing) return;
+    if (isLoading) return;
     const isAuthGroup = segments[0] === "(tabs)";
     console.log(
       "User auth state:",
@@ -42,9 +45,9 @@ export default function Welcome() {
     } else if (!user && isAuthGroup) {
       router.replace("/");
     }
-  }, [user, inizializing]);
+  }, [user, isLoading]);
 
-  if (inizializing) {
+  if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-qasid-black">
         <ActivityIndicator size="large" className="text-qasid-gold" />
