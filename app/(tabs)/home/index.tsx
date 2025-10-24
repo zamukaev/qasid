@@ -1,62 +1,69 @@
-import { Pressable, Text, View, Image } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { getAuth, signOut } from "@react-native-firebase/auth";
-import { ScreenLayout } from "../../../components";
+import { ScreenLayout, AudioCard } from "../../../components";
 import { useAudioPlayer } from "../../../context/AudioPlayerContext";
 import { Link } from "expo-router";
 
 export default function Home() {
   const auth = getAuth();
-  const { playTrack, setQueue } = useAudioPlayer();
+  const { playTrack, setQueue, currentTrack, isPlaying, togglePlayPause } =
+    useAudioPlayer();
 
-  const startPlay = async () => {
-    const track = {
-      id: "calm-1",
-      title: "Calm music — Zeon",
-      artist: "Qasid",
-      artworkUri: undefined,
-      uri: require("../../../assets/Calm_music_-_Zeon_73851765.mp3"),
-    };
-    setQueue([track]);
-    await playTrack(track);
+  const track1 = {
+    id: "calm-1",
+    title: "Calm music — Zeon",
+    artist: "Qasid",
+    artworkUri: undefined,
+    uri: require("../../../assets/Calm_music_-_Zeon_73851765.mp3"),
+  };
+
+  const track2 = {
+    id: "nxily-fast",
+    title: "Nxily Fast",
+    artist: "Qasid",
+    artworkUri: undefined,
+    uri: require("../../../assets/nxily-fast.mp3"),
+  };
+
+  const handleCardPress = async (track: any) => {
+    if (currentTrack?.id === track.id) {
+      await togglePlayPause();
+    } else {
+      setQueue([track]);
+      await playTrack(track);
+    }
   };
 
   return (
     <ScreenLayout className="bg-qasid-black h-full px-4">
       <View className="pt-6 pb-3 flex-row items-center justify-between">
-        <Text className="text-qasid-gold text-2xl font-extrabold">Qasid</Text>
-        <Pressable onPress={async () => await signOut(auth)}>
-          <Text className="text-qasid-gold/80">Выйти</Text>
+        <Text className="text-white text-2xl font-bold">Qasid</Text>
+        <Pressable
+          onPress={async () => await signOut(auth)}
+          className="px-3 py-2 rounded-lg bg-white/10"
+        >
+          <Text className="text-gray-300 text-sm font-medium">Выйти</Text>
         </Pressable>
       </View>
 
-      <Pressable
-        onPress={startPlay}
-        className="mt-4 rounded-2xl bg-qasid-gold/10 border border-qasid-gold/20 overflow-hidden"
-        style={{ padding: 14 }}
-      >
-        <View className="flex-row items-center">
-          <View className="w-14 h-14 rounded-lg bg-qasid-gold/20 items-center justify-center mr-3">
-            <Text className="text-qasid-gold font-semibold">♪</Text>
-          </View>
-          <View className="flex-1">
-            <Text
-              className="text-qasid-gold text-base font-semibold"
-              numberOfLines={1}
-            >
-              Calm music — Zeon
-            </Text>
-            <Text className="text-qasid-gold/70 text-xs" numberOfLines={1}>
-              Тапните, чтобы начать воспроизведение
-            </Text>
-          </View>
-        </View>
-      </Pressable>
-
-      <Link href="/(tabs)/player" asChild>
-        <Pressable className="mt-6 items-center">
-          <Text className="text-qasid-gold/70">Открыть плеер</Text>
-        </Pressable>
-      </Link>
+      <View className="flex gap-4">
+        <AudioCard
+          title="Calm music — Zeon"
+          artist="Qasid"
+          onPress={() => handleCardPress(track1)}
+          isActive={currentTrack?.id === "calm-1"}
+          isPlaying={isPlaying && currentTrack?.id === "calm-1"}
+          className="mt-4"
+        />
+        <AudioCard
+          title="Nxily Fast"
+          artist="Qasid"
+          onPress={() => handleCardPress(track2)}
+          isActive={currentTrack?.id === "nxily-fast"}
+          isPlaying={isPlaying && currentTrack?.id === "nxily-fast"}
+          className="mt-4"
+        />
+      </View>
     </ScreenLayout>
   );
 }
