@@ -2,13 +2,13 @@ import axios from "axios";
 import { encode as btoa } from "base-64";
 
 export const axiosInstance = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_CONTENT_API,
+  baseURL: process.env.EXPO_PUBLIC_CONTENT_API_DEV,
 });
 
 axiosInstance.interceptors.request.use(async (config) => {
   const accessToken = await getAccessToken();
   config.headers["x-auth-token"] = accessToken;
-  config.headers["x-client-id"] = process.env.EXPO_PUBLIC_CLIENT_ID;
+  config.headers["x-client-id"] = process.env.EXPO_PUBLIC_CLIENT_ID_DEV;
   return config;
 });
 
@@ -26,7 +26,7 @@ axiosInstance.interceptors.response.use(
       if (newToken) {
         originalRequest.headers["x-auth-token"] = newToken;
         originalRequest.headers["x-client-id"] =
-          process.env.EXPO_PUBLIC_CLIENT_ID;
+          process.env.EXPO_PUBLIC_CLIENT_ID_DEV;
         return axiosInstance(originalRequest);
       }
     }
@@ -60,15 +60,15 @@ async function getAccessToken(
 }
 
 async function fetchNewAccessToken(): Promise<string | null> {
-  const clientId = process.env.EXPO_PUBLIC_CLIENT_ID;
-  const clientSecret = process.env.EXPO_PUBLIC_CLIENT_SECRET;
+  const clientId = process.env.EXPO_PUBLIC_CLIENT_ID_DEV;
+  const clientSecret = process.env.EXPO_PUBLIC_CLIENT_SECRET_DEV;
 
   const auth = btoa(`${clientId}:${clientSecret}`);
 
   try {
     const response = await axios({
       method: "post",
-      url: process.env.EXPO_PUBLIC_OAUTH_URL,
+      url: process.env.EXPO_PUBLIC_OAUTH_URL_DEV,
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/x-www-form-urlencoded",
