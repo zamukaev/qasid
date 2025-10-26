@@ -3,20 +3,22 @@ import { Pressable, Text, View, Image } from "react-native";
 
 import MisharyForo from "../assets/reciters/mishary-rashid.jpg";
 import { Reciter } from "../types/quran";
+import { useRouter } from "expo-router";
 
 interface ReciterCardProps {
   reciter: Reciter;
-  onPress?: (reciter: Reciter) => void;
+  href: number;
   style?: any;
 }
 
 export default function ReciterCard({
   reciter,
-  onPress,
+  href,
   style,
 }: ReciterCardProps) {
+  const router = useRouter();
   const handlePress = () => {
-    onPress?.(reciter);
+    router.navigate(`/`);
   };
 
   return (
@@ -53,7 +55,7 @@ export default function ReciterCard({
           {reciter.name}
         </Text>
         <Text className="text-qasid-gold font-light text-base opacity-[0.8]">
-          {reciter.arabic_name}
+          {reciter.moshaf[0].name}
         </Text>
       </View>
     </Pressable>

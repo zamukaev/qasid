@@ -17,9 +17,20 @@ export interface ChaptersResponse {
   };
 }
 
-export interface Reciter {
+interface Moshaf {
   id: number;
   name: string;
-  arabic_name: string;
-  photo_url: string;
+  server: string;
+  surah_total: number;
+  moshaf_type: number;
+  surah_list: string;
+}
+export interface Reciter {
+  id: number;
+  data: string;
+  name: string;
+  letter: string;
+  arabic_name?: string;
+  photo_url?: string;
+  moshaf: Moshaf[];
 }
