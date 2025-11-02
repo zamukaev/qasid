@@ -15,6 +15,7 @@ module.exports = {
           black: "#090A07", // фон
           white: "#ffff",
           title: "#E7C11C", // заголовок QASID
+          red: "#FF4444", // ссылки и акценты
         },
       },
       fontFamily: {

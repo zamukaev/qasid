@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, Text, View } from "react-native";
+import { SafeAreaView, ScrollView, Text, View, Pressable } from "react-native";
 import { axiosInstance } from "../../../services/api-service";
 import { Chapter, Reciter } from "../../../types/quran";
-import { ReciterCard } from "../../../components";
+import { ReciterCard, CompactReciterCard } from "../../../components";
+import { useRouter } from "expo-router";
 
 export default function Quran() {
+  const router = useRouter();
   const [reciters, setReciters] = useState<Reciter[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -71,13 +73,55 @@ export default function Quran() {
     );
   }
 
+  // Calculate the total width needed for all cards
+  const totalColumns = Math.ceil(reciters.length / 2);
+  const cardWidth = 100;
+  const cardGap = 0;
+  const containerWidth = totalColumns * (cardWidth + cardGap);
+
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
       <ScrollView>
-        <View className="flex-1 gap-3">
-          {reciters.map((reciter) => (
-            <ReciterCard key={reciter.id} reciter={reciter} href={reciter.id} />
-          ))}
+        {/* All Reciters Section */}
+        <View className="px-4 py-6">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-qasid-white text-2xl font-bold">
+              All Reciters
+            </Text>
+            <Pressable onPress={() => router.push("quran/all-reciters")}>
+              <Text className="text-qasid-red text-base font-semibold underline">
+                See All
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Scrollable two-row grid */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingRight: 20,
+            }}
+          >
+            <View style={{ width: containerWidth, height: 300 }}>
+              {reciters.map((reciter, index) => {
+                const row = index % 2;
+                const column = Math.floor(index / 2);
+                return (
+                  <View
+                    key={reciter.id}
+                    style={{
+                      position: "absolute",
+                      left: column * (cardWidth + cardGap),
+                      top: row * 140,
+                    }}
+                  >
+                    <CompactReciterCard reciter={reciter} />
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
         </View>
       </ScrollView>
     </SafeAreaView>
