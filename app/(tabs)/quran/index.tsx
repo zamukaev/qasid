@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, Text, View } from "react-native";
+import {
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
+  FlatList,
+  Dimensions,
+} from "react-native";
 import { axiosInstance } from "../../../services/api-service";
 import { Chapter, Reciter } from "../../../types/quran";
 import { ReciterCard } from "../../../components";
-
+import FeaturedCard from "../../../components/FeaturedCard";
 export default function Quran() {
   const [reciters, setReciters] = useState<Reciter[]>([]);
 
@@ -71,10 +78,33 @@ export default function Quran() {
     );
   }
 
+  const featuredItems = [1, 2, 3, 4, 5];
+
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
-      <ScrollView>
-        <View className="flex-1 gap-3">
+      <ScrollView className="flex-1" nestedScrollEnabled>
+        <View className="flex-1">
+          <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
+          <FlatList
+            data={featuredItems}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.toString()}
+            renderItem={({ item }) => (
+              <FeaturedCard
+                title="Ghassan Al Shorbagy"
+                subtitle="Editor's Pick"
+                imageUrl={require("../../../assets/reciters/mishary-rashid.jpg")}
+                onPress={() => console.log("FeaturedCard pressed")}
+                onPlayPress={() => {}}
+                playing={false}
+                className="mb-4 mr-4"
+              />
+            )}
+          />
+        </View>
+
+        <View className="gap-3 mt-4">
           {reciters.map((reciter) => (
             <ReciterCard key={reciter.id} reciter={reciter} href={reciter.id} />
           ))}

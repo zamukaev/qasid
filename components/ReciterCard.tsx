@@ -37,7 +37,7 @@ export default function ReciterCard({
           elevation: 8,
         }}
       >
-        {reciter.photo_url ? (
+        {true ? (
           <Image
             className="h-16 w-16 rounded-full  border border-qasid-gold/25 "
             source={MisharyForo}

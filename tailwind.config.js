@@ -15,7 +15,15 @@ module.exports = {
           black: "#090A07", // фон
           white: "#ffff",
           title: "#E7C11C", // заголовок QASID
+          "qasid-bg": "#0B0B0C",
+          "qasid-bg-2": "#141416",
+          "qasid-gold": "#E7C11C",
+          "qasid-gold-20": "rgba(231,193,28,0.20)",
+          "qasid-card": "rgba(20,20,22,0.85)",
         },
+      },
+      borderRadius: {
+        "3xl": "28px",
       },
       fontFamily: {
         // подключите любую сериф/санс; временно системные
