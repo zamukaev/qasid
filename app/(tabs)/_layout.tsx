@@ -41,19 +41,9 @@ export default function TabsLayout() {
         }}
       >
         <Tabs.Screen
-          name="home/index"
+          name="quran"
           options={{
-            title: "Home",
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" color={color} size={size} />
-            ),
-            tabBarActiveTintColor: "#E7C11C",
-          }}
-        />
-        <Tabs.Screen
-          name="quran/index"
-          options={{
-            title: "Коран",
+            title: "Quran",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="book-outline" color={color} size={size} />
             ),
@@ -74,7 +64,6 @@ export default function TabsLayout() {
             tabBarActiveTintColor: "#E7C11C",
           }}
         />
-
         <Tabs.Screen
           name="settings/index"
           options={{
@@ -83,6 +72,23 @@ export default function TabsLayout() {
               <Ionicons name="settings-outline" color={color} size={size} />
             ),
             tabBarActiveTintColor: "#E7C11C",
+          }}
+        />
+        <Tabs.Screen
+          name="home/index"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home-outline" color={color} size={size} />
+            ),
+            tabBarActiveTintColor: "#E7C11C",
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="quran/all-reciters"
+          options={{
+            href: null,
           }}
         />
       </Tabs>

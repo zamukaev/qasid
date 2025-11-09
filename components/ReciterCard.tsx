@@ -61,3 +61,32 @@ export default function ReciterCard({
     </Pressable>
   );
 }
+
+interface CompactReciterCardProps {
+  reciter: Reciter;
+}
+
+export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
+  return (
+    <View className="items-center" style={{ width: 100 }}>
+      <View
+        className="rounded-full mb-2"
+        style={{
+          shadowColor: "#E7C11C",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <Image
+          className="h-20 w-20 rounded-full border-2 border-qasid-gold/25"
+          source={MisharyForo}
+        />
+      </View>
+      <Text className="text-qasid-white text-center text-sm">
+        {reciter.name}
+      </Text>
+    </View>
+  );
+}
