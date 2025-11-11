@@ -20,6 +20,7 @@ module.exports = {
           "qasid-gold": "#E7C11C",
           "qasid-gold-20": "rgba(231,193,28,0.20)",
           "qasid-card": "rgba(20,20,22,0.85)",
+          red: "#FF4444", // ссылки и акценты
         },
       },
       borderRadius: {
