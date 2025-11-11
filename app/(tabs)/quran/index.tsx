@@ -6,11 +6,11 @@ import {
   View,
   FlatList,
   Dimensions,
-  Pressable
+  Pressable,
 } from "react-native";
 import { axiosInstance } from "../../../services/api-service";
 import { Chapter, Reciter } from "../../../types/quran";
-import { ReciterCard ,CompactReciterCard} from "../../../components";
+import { ReciterCard, CompactReciterCard } from "../../../components";
 import { useRouter } from "expo-router";
 import FeaturedCard from "../../../components/FeaturedCard";
 
@@ -91,7 +91,8 @@ export default function Quran() {
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
       <ScrollView>
-         <View className="flex-1">
+        {/* Featured Section */}
+        <View className="flex-1 px-4 py-6">
           <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
           <FlatList
             data={featuredItems}
@@ -119,7 +120,7 @@ export default function Quran() {
               All Reciters
             </Text>
             <Pressable onPress={() => router.push("quran/all-reciters")}>
-              <Text className="text-qasid-red text-base font-semibold underline">
+              <Text className="text-qasid-title text-base font-semibold underline">
                 See All
               </Text>
             </Pressable>
