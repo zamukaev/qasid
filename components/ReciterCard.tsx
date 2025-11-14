@@ -18,7 +18,10 @@ export default function ReciterCard({
 }: ReciterCardProps) {
   const router = useRouter();
   const handlePress = () => {
-    router.navigate(`/`);
+    router.push({
+      pathname: "/(tabs)/quran/reciter/[id]",
+      params: { id: reciter.id.toString() },
+    });
   };
 
   return (
@@ -67,8 +70,20 @@ interface CompactReciterCardProps {
 }
 
 export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
+  const router = useRouter();
+  const handlePress = () => {
+    router.push({
+      pathname: "/(tabs)/quran/reciter/[id]",
+      params: { id: reciter.id.toString() },
+    });
+  };
+
   return (
-    <View className="items-center" style={{ width: 100 }}>
+    <Pressable
+      onPress={handlePress}
+      className="items-center"
+      style={{ width: 100 }}
+    >
       <View
         className="rounded-full mb-2"
         style={{
@@ -87,6 +102,6 @@ export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
       <Text className="text-qasid-white text-center text-sm">
         {reciter.name}
       </Text>
-    </View>
+    </Pressable>
   );
 }

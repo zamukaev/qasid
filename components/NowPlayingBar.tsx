@@ -37,10 +37,7 @@ export default function NowPlayingBar() {
   if (!currentTrack) return null;
 
   return (
-    <Pressable
-      onPress={() => {
-        setViewMode("full");
-      }}
+    <View
       style={{
         backgroundColor: "rgba(41, 41, 41, 0.98)",
         position: "absolute",
@@ -61,7 +58,10 @@ export default function NowPlayingBar() {
         borderTopLeftRadius: 10,
       }}
     >
-      <View
+      <Pressable
+        onPress={() => {
+          setViewMode("full");
+        }}
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -99,7 +99,8 @@ export default function NowPlayingBar() {
           }}
         >
           <Pressable
-            onPress={() => {
+            onPress={(event) => {
+              event.stopPropagation();
               setIsFavorite(!isFavorite);
               console.log(
                 isFavorite ? "Удалить из избранного:" : "Добавить в избранное:",
@@ -114,7 +115,13 @@ export default function NowPlayingBar() {
               color={isFavorite ? "#ff6b6b" : "#E7C11C"}
             />
           </Pressable>
-          <Pressable onPress={togglePlayPause} style={{ padding: 8 }}>
+          <Pressable
+            onPress={async (event) => {
+              event.stopPropagation();
+              await togglePlayPause();
+            }}
+            style={{ padding: 8 }}
+          >
             <Ionicons
               name={isPlaying ? "pause" : "play"}
               size={24}
@@ -122,7 +129,7 @@ export default function NowPlayingBar() {
             />
           </Pressable>
         </View>
-      </View>
+      </Pressable>
 
       {/* Ползунок прогресса внизу */}
       <View style={{ marginTop: 8 }}>
@@ -152,6 +159,6 @@ export default function NowPlayingBar() {
           />
         </TouchableOpacity>
       </View>
-    </Pressable>
+    </View>
   );
 }
