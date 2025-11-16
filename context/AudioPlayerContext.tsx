@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
 
@@ -19,6 +20,13 @@ type Track = {
   uri: any;
 };
 
+type TrackProgressEntry = {
+  positionMillis: number;
+  durationMillis: number;
+};
+
+type TrackProgressMap = Record<string, TrackProgressEntry>;
+
 type AudioPlayerContextValue = {
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -26,7 +34,7 @@ type AudioPlayerContextValue = {
   durationMillis: number;
   viewMode: PlayerViewMode;
   queue: Track[];
-  playTrack: (track: Track) => Promise<void>;
+  playTrack: (track: Track, startPositionMillis?: number) => Promise<void>;
   togglePlayPause: () => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
@@ -35,6 +43,8 @@ type AudioPlayerContextValue = {
   setQueue: (tracks: Track[]) => void;
   next: () => Promise<void>;
   prev: () => Promise<void>;
+  progressMap: TrackProgressMap;
+  clearProgress: (trackId: string) => Promise<void>;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | undefined>(
@@ -53,6 +63,10 @@ export function AudioPlayerProvider({
   const [durationMillis, setDurationMillis] = useState(0);
   const [viewMode, setViewMode] = useState<PlayerViewMode>("hidden");
   const [queue, setQueue] = useState<Track[]>([]);
+  const [progressMap, setProgressMap] = useState<TrackProgressMap>({});
+  const lastPersistRef = useRef(0);
+
+  const PROGRESS_STORAGE_KEY = "@qasid-reciter-progress";
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -84,12 +98,102 @@ export function AudioPlayerProvider({
     }
   }, []);
 
+  useEffect(() => {
+    const loadProgress = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(PROGRESS_STORAGE_KEY);
+        if (stored) {
+          setProgressMap(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.warn("Failed to load progress map", error);
+      }
+    };
+    loadProgress();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progressMap)).catch(
+      (error) => console.warn("Failed to persist progress map", error)
+    );
+  }, [progressMap]);
+
+  useEffect(() => {
+    if (!currentTrack) return;
+    if (!durationMillis) return;
+    const progressRatio = durationMillis
+      ? positionMillis / durationMillis
+      : 0;
+    const trackId = currentTrack.id;
+    const now = Date.now();
+
+    if (progressRatio >= 0.98) {
+      setProgressMap((prev) => {
+        if (!prev[trackId]) return prev;
+        const updated = { ...prev };
+        delete updated[trackId];
+        return updated;
+      });
+      lastPersistRef.current = now;
+      return;
+    }
+
+    if (
+      positionMillis > 0 &&
+      durationMillis > 0 &&
+      now - lastPersistRef.current > 2500
+    ) {
+      setProgressMap((prev) => ({
+        ...prev,
+        [trackId]: {
+          positionMillis,
+          durationMillis,
+        },
+      }));
+      lastPersistRef.current = now;
+    }
+  }, [currentTrack, positionMillis, durationMillis, isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      unload();
+    };
+  }, [unload]);
+
+  const clearProgress = useCallback(async (trackId: string) => {
+    setProgressMap((prev) => {
+      if (!prev[trackId]) return prev;
+      const updated = { ...prev };
+      delete updated[trackId];
+      return updated;
+    });
+    try {
+      const stored = await AsyncStorage.getItem(PROGRESS_STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) : {};
+      if (parsed[trackId]) {
+        delete parsed[trackId];
+        await AsyncStorage.setItem(
+          PROGRESS_STORAGE_KEY,
+          JSON.stringify(parsed)
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to clear progress entry", error);
+    }
+  }, []);
+
   const playTrack = useCallback(
-    async (track: Track) => {
+    async (track: Track, startPositionMillis?: number) => {
       await unload();
+      const initialStatus: any = {
+        shouldPlay: true,
+      };
+      if (startPositionMillis && startPositionMillis > 0) {
+        initialStatus.positionMillis = startPositionMillis;
+      }
       const { sound } = await Audio.Sound.createAsync(
         track.uri,
-        { shouldPlay: true },
+        initialStatus,
         onStatusUpdate
       );
       soundRef.current = sound;
@@ -143,12 +247,6 @@ export function AudioPlayerProvider({
     await playTrack(queue[prevIdx]);
   }, [currentTrack, queue, playTrack]);
 
-  useEffect(() => {
-    return () => {
-      unload();
-    };
-  }, [unload]);
-
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
       currentTrack,
@@ -166,6 +264,8 @@ export function AudioPlayerProvider({
       setQueue,
       next,
       prev,
+      progressMap,
+      clearProgress,
     }),
     [
       currentTrack,
@@ -183,6 +283,8 @@ export function AudioPlayerProvider({
       setQueue,
       next,
       prev,
+      progressMap,
+      clearProgress,
     ]
   );
 
