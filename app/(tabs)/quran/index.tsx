@@ -5,18 +5,20 @@ import {
   Text,
   View,
   FlatList,
-  Dimensions,
   Pressable,
 } from "react-native";
 import { axiosInstance } from "../../../services/api-service";
-import { Chapter, Reciter } from "../../../types/quran";
-import { ReciterCard, CompactReciterCard } from "../../../components";
+import { Reciter } from "../../../types/quran";
+import { CompactReciterCard } from "../../../components";
 import { useRouter } from "expo-router";
 import FeaturedCard from "../../../components/FeaturedCard";
+
+const FEATURED_LIST = [92, 123, 221, 107];
 
 export default function Quran() {
   const router = useRouter();
   const [reciters, setReciters] = useState<Reciter[]>([]);
+  const [featuredItems, setFeaturedItems] = useState<Reciter[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,11 @@ export default function Quran() {
     try {
       setLoading(true);
       const response = await axiosInstance.get("/reciters?language=eng");
-
+      setFeaturedItems(() =>
+        response.data.reciters.filter((reciter: Reciter) =>
+          FEATURED_LIST.includes(reciter.id)
+        )
+      );
       setReciters(
         response.data.reciters
           .sort((a: Reciter, b: Reciter) => {
@@ -87,7 +93,7 @@ export default function Quran() {
   const cardWidth = 100;
   const cardGap = 0;
   const containerWidth = totalColumns * (cardWidth + cardGap);
-  const featuredItems = [1, 2, 3, 4, 5];
+
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
       <ScrollView>
@@ -98,16 +104,21 @@ export default function Quran() {
             data={featuredItems}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.toString()}
+            keyExtractor={(reciter) => reciter.id.toString()}
             renderItem={({ item }) => (
               <FeaturedCard
-                title="Ghassan Al Shorbagy"
+                title={item.name}
                 subtitle="Editor's Pick"
-                imageUrl={require("../../../assets/reciters/mishary-rashid.jpg")}
-                onPress={() => console.log("FeaturedCard pressed")}
-                onPlayPress={() => {}}
+                imageUrl={require(`../../../assets/reciters/99.jpg`)}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/quran/reciter/[id]",
+                    params: { id: item.id.toString() },
+                  })
+                }
                 playing={false}
                 className="mb-4 mr-4"
+                key={item.id}
               />
             )}
           />
