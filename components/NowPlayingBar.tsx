@@ -15,7 +15,6 @@ export default function NowPlayingBar() {
   } = useAudioPlayer();
 
   const [sliderValue, setSliderValue] = useState(0);
-  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     if (durationMillis > 0) {
@@ -92,43 +91,19 @@ export default function NowPlayingBar() {
             </Text>
           ) : null}
         </View>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
+        <Pressable
+          onPress={async (event) => {
+            event.stopPropagation();
+            await togglePlayPause();
           }}
+          style={{ padding: 8 }}
         >
-          <Pressable
-            onPress={(event) => {
-              event.stopPropagation();
-              setIsFavorite(!isFavorite);
-              console.log(
-                isFavorite ? "Удалить из избранного:" : "Добавить в избранное:",
-                currentTrack.title
-              );
-            }}
-            style={{ padding: 8, marginRight: 15 }}
-          >
-            <Ionicons
-              name={isFavorite ? "heart" : "heart-outline"}
-              size={24}
-              color={isFavorite ? "#ff6b6b" : "#E7C11C"}
-            />
-          </Pressable>
-          <Pressable
-            onPress={async (event) => {
-              event.stopPropagation();
-              await togglePlayPause();
-            }}
-            style={{ padding: 8 }}
-          >
-            <Ionicons
-              name={isPlaying ? "pause" : "play"}
-              size={24}
-              color="#E7C11C"
-            />
-          </Pressable>
-        </View>
+          <Ionicons
+            name={isPlaying ? "pause" : "play"}
+            size={24}
+            color="#E7C11C"
+          />
+        </Pressable>
       </Pressable>
 
       {/* Ползунок прогресса внизу */}

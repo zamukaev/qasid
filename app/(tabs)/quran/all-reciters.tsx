@@ -132,7 +132,11 @@ export default function AllReciters() {
         </View>
       </View>
 
-      <ScrollView>
+      <ScrollView
+        contentContainerStyle={{
+          paddingBottom: 120, // Отступ для мини-плеера
+        }}
+      >
         {/* Searching indicator */}
         {isSearching && (
           <View className="px-4 py-2 items-center">

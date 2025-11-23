@@ -41,7 +41,7 @@ export default function Welcome() {
       user ? "authenticated" : "not authenticated"
     );
     if (user && !isAuthGroup) {
-      router.replace("(tabs)/home");
+      router.replace("(tabs)/quran");
     } else if (!user && isAuthGroup) {
       router.replace("/");
     }

@@ -57,6 +57,9 @@ export default function ReciterDetailsScreen() {
     isPlaying,
     viewMode,
     progressMap,
+    repeatMode,
+    setRepeatMode,
+    next,
   } = useAudioPlayer();
 
   useEffect(() => {
@@ -163,7 +166,6 @@ export default function ReciterDetailsScreen() {
   const handlePlaySurah = async (surah: SurahListItem) => {
     if (!reciter || !surah.audioUrl) return;
     const trackId = `${reciter.id}-${surah.id}`;
-    setPendingTrackId(trackId);
     const savedProgress = progressMap[trackId];
     const hasSavedPosition =
       savedProgress &&
@@ -174,21 +176,22 @@ export default function ReciterDetailsScreen() {
     const resumePosition = hasSavedPosition
       ? savedProgress.positionMillis
       : undefined;
+    
+    // Если трек уже активен, просто ставим на паузу/возобновляем без лоадера
     if (currentTrack?.id === trackId) {
-      try {
-        if (isPlaying) {
-          await pause();
-        } else {
-          if (resumePosition) {
-            await seekTo(resumePosition);
-          }
-          await resume();
+      if (isPlaying) {
+        await pause();
+      } else {
+        if (resumePosition) {
+          await seekTo(resumePosition);
         }
-      } finally {
-        setPendingTrackId(null);
+        await resume();
       }
       return;
     }
+    
+    // Только для нового трека показываем лоадер
+    setPendingTrackId(trackId);
     const track = {
       id: trackId,
       title: surah.englishName,
@@ -204,18 +207,74 @@ export default function ReciterDetailsScreen() {
 
   const handlePlayAll = async () => {
     if (filteredSurahItems.length === 0 || !reciter) return;
+    
+    // Всегда запускаем первый трек с начала
     const first = filteredSurahItems.find((item) => item.audioUrl);
     if (!first) return;
     await handlePlaySurah(first);
   };
 
-  const handleShuffle = async () => {
-    if (filteredSurahItems.length === 0 || !reciter) return;
-    const playable = filteredSurahItems.filter((item) => item.audioUrl);
-    if (playable.length === 0) return;
-    const random = playable[Math.floor(Math.random() * playable.length)];
-    await handlePlaySurah(random);
+  const handleRepeatModeChange = async (mode: "sequential" | "shuffle" | "repeat-one") => {
+    const wasPlaying = isPlaying;
+    const previousMode = repeatMode;
+    
+    // Если нажали на уже активный режим repeat-one, отключаем его (возвращаемся к sequential)
+    if (mode === "repeat-one" && previousMode === "repeat-one") {
+      setRepeatMode("sequential");
+      return;
+    }
+    
+    setRepeatMode(mode);
+    
+    // Если трек не играет, запускаем трек только для shuffle и repeat-one
+    if (!currentTrack || !isPlaying) {
+      if (filteredSurahItems.length === 0 || !reciter) return;
+      
+      if (mode === "shuffle") {
+        // Для shuffle запускаем случайный трек
+        const playable = filteredSurahItems.filter((item) => item.audioUrl);
+        if (playable.length > 0) {
+          const random = playable[Math.floor(Math.random() * playable.length)];
+          await handlePlaySurah(random);
+        }
+      } else if (mode === "repeat-one") {
+        // Для repeat-one запускаем первый трек
+        const first = filteredSurahItems.find((item) => item.audioUrl);
+        if (first) {
+          await handlePlaySurah(first);
+        }
+      }
+      // Для sequential не запускаем трек, только меняем режим
+      return;
+    }
+    
+    // Если трек уже играет и режим изменился, переключаем трек только для shuffle
+    if (currentTrack && wasPlaying && previousMode !== mode) {
+      // Проверяем, что текущий трек принадлежит этому чтецу
+      const currentTrackReciterId = currentTrack.id.split("-")[0];
+      if (currentTrackReciterId === reciter.id.toString()) {
+        // Для sequential и repeat-one не переключаем трек, просто меняем режим
+        if (mode === "sequential" || mode === "repeat-one") {
+          return;
+        }
+        
+        // Для shuffle переключаем на случайный трек
+        if (mode === "shuffle") {
+          const playable = filteredSurahItems.filter((item) => item.audioUrl);
+          if (playable.length > 0) {
+            const availableTracks = playable.filter(
+              (item) => `${reciter.id}-${item.id}` !== currentTrack.id
+            );
+            if (availableTracks.length > 0) {
+              const random = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+              await handlePlaySurah(random);
+            }
+          }
+        }
+      }
+    }
   };
+
 
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
@@ -319,29 +378,135 @@ export default function ReciterDetailsScreen() {
             </Text>
           </View>
 
-          <View className="flex-row mt-6">
+          <View className="mt-6">
             <Pressable
-              className="flex-1 bg-qasid-gold rounded-2xl py-3 mr-3 items-center justify-center"
+              className="w-full bg-qasid-gold rounded-2xl py-3 items-center justify-center mb-4"
               onPress={handlePlayAll}
             >
               <Text className="text-qasid-black font-semibold text-base">
                 Play
               </Text>
             </Pressable>
-            <Pressable
-              className="flex-1 border border-qasid-gold/60 rounded-2xl py-3 items-center justify-center flex-row"
-              onPress={handleShuffle}
-            >
-              <Ionicons
-                name="shuffle-outline"
-                size={18}
-                color="#E7C11C"
-                style={{ marginRight: 6 }}
-              />
-              <Text className="text-qasid-white font-semibold text-base">
-                Shuffle
-              </Text>
-            </Pressable>
+            
+            {/* Repeat Mode Controls */}
+            <View className="flex-row items-center justify-between">
+              <Pressable
+                onPress={() => handleRepeatModeChange("sequential")}
+                style={{
+                  flex: 1,
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 8,
+                  backgroundColor:
+                    repeatMode === "sequential"
+                      ? "rgba(231, 193, 28, 0.15)"
+                      : "rgba(255, 255, 255, 0.05)",
+                  borderWidth: 1,
+                  borderColor:
+                    repeatMode === "sequential"
+                      ? "rgba(231, 193, 28, 0.4)"
+                      : "rgba(255, 255, 255, 0.1)",
+                }}
+              >
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name="list-outline"
+                    size={16}
+                    color={repeatMode === "sequential" ? "#E7C11C" : "rgba(255, 255, 255, 0.6)"}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "500",
+                      color: repeatMode === "sequential" ? "#E7C11C" : "rgba(255, 255, 255, 0.7)",
+                    }}
+                  >
+                    Sequential
+                  </Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={() => handleRepeatModeChange("shuffle")}
+                style={{
+                  flex: 1,
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginHorizontal: 4,
+                  backgroundColor:
+                    repeatMode === "shuffle"
+                      ? "rgba(231, 193, 28, 0.15)"
+                      : "rgba(255, 255, 255, 0.05)",
+                  borderWidth: 1,
+                  borderColor:
+                    repeatMode === "shuffle"
+                      ? "rgba(231, 193, 28, 0.4)"
+                      : "rgba(255, 255, 255, 0.1)",
+                }}
+              >
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name="shuffle-outline"
+                    size={16}
+                    color={repeatMode === "shuffle" ? "#E7C11C" : "rgba(255, 255, 255, 0.6)"}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "500",
+                      color: repeatMode === "shuffle" ? "#E7C11C" : "rgba(255, 255, 255, 0.7)",
+                    }}
+                  >
+                    Shuffle
+                  </Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={() => handleRepeatModeChange("repeat-one")}
+                style={{
+                  flex: 1,
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginLeft: 8,
+                  backgroundColor:
+                    repeatMode === "repeat-one"
+                      ? "rgba(231, 193, 28, 0.15)"
+                      : "rgba(255, 255, 255, 0.05)",
+                  borderWidth: 1,
+                  borderColor:
+                    repeatMode === "repeat-one"
+                      ? "rgba(231, 193, 28, 0.4)"
+                      : "rgba(255, 255, 255, 0.1)",
+                }}
+              >
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name="repeat-outline"
+                    size={16}
+                    color={repeatMode === "repeat-one" ? "#E7C11C" : "rgba(255, 255, 255, 0.6)"}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "500",
+                      color: repeatMode === "repeat-one" ? "#E7C11C" : "rgba(255, 255, 255, 0.7)",
+                    }}
+                  >
+                    Repeat
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
           </View>
         </View>
 

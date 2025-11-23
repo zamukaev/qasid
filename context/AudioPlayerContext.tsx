@@ -11,6 +11,7 @@ import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
+type RepeatMode = "sequential" | "shuffle" | "repeat-one";
 
 type Track = {
   id: string;
@@ -34,6 +35,7 @@ type AudioPlayerContextValue = {
   durationMillis: number;
   viewMode: PlayerViewMode;
   queue: Track[];
+  repeatMode: RepeatMode;
   playTrack: (track: Track, startPositionMillis?: number) => Promise<void>;
   togglePlayPause: () => Promise<void>;
   pause: () => Promise<void>;
@@ -41,6 +43,7 @@ type AudioPlayerContextValue = {
   seekTo: (millis: number) => Promise<void>;
   setViewMode: (mode: PlayerViewMode) => void;
   setQueue: (tracks: Track[]) => void;
+  setRepeatMode: (mode: RepeatMode) => void;
   next: () => Promise<void>;
   prev: () => Promise<void>;
   progressMap: TrackProgressMap;
@@ -58,13 +61,18 @@ export function AudioPlayerProvider({
 }) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const currentTrackRef = useRef<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
   const [durationMillis, setDurationMillis] = useState(0);
   const [viewMode, setViewMode] = useState<PlayerViewMode>("hidden");
   const [queue, setQueue] = useState<Track[]>([]);
+  const queueRef = useRef<Track[]>([]);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("sequential");
+  const repeatModeRef = useRef<RepeatMode>("sequential");
   const [progressMap, setProgressMap] = useState<TrackProgressMap>({});
   const lastPersistRef = useRef(0);
+  const hasFinishedRef = useRef(false);
 
   const PROGRESS_STORAGE_KEY = "@qasid-reciter-progress";
 
@@ -89,14 +97,56 @@ export function AudioPlayerProvider({
     }
   }, []);
 
-  const onStatusUpdate = useCallback((status: any) => {
-    if (!status) return;
-    if (status.isLoaded) {
-      setIsPlaying(Boolean(status.isPlaying));
-      setPositionMillis(status.positionMillis ?? 0);
-      setDurationMillis(status.durationMillis ?? 0);
-    }
-  }, []);
+  const onStatusUpdate = useCallback(
+    async (status: any) => {
+      if (!status) return;
+      if (status.isLoaded) {
+        setIsPlaying(Boolean(status.isPlaying));
+        setPositionMillis(status.positionMillis ?? 0);
+        setDurationMillis(status.durationMillis ?? 0);
+
+        // Обработка окончания трека
+        if (status.didJustFinish && !hasFinishedRef.current) {
+          hasFinishedRef.current = true;
+          
+          // Небольшая задержка перед переходом на следующий трек
+          setTimeout(async () => {
+            // Используем актуальные значения из ref, чтобы гарантировать правильные данные
+            const finishedTrack = currentTrackRef.current;
+            const currentRepeatMode = repeatModeRef.current;
+            const currentQueue = queueRef.current;
+            
+            if (currentRepeatMode === "repeat-one") {
+              // Повторяем трек, который только что закончился
+              if (finishedTrack) {
+                await playTrack(finishedTrack);
+              }
+            } else if (currentRepeatMode === "shuffle") {
+              // Случайный трек
+              if (finishedTrack && currentQueue.length > 0) {
+                const availableTracks = currentQueue.filter((t) => t.id !== finishedTrack.id);
+                if (availableTracks.length > 0) {
+                  const randomTrack =
+                    availableTracks[
+                      Math.floor(Math.random() * availableTracks.length)
+                    ];
+                  await playTrack(randomTrack);
+                } else {
+                  // Если остался только один трек, повторяем его
+                  await playTrack(finishedTrack);
+                }
+              }
+            } else {
+              // Sequential - следующий трек по порядку
+              await next();
+            }
+            hasFinishedRef.current = false;
+          }, 100);
+        }
+      }
+    },
+    [currentTrack, queue, playTrack, next]
+  );
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -160,6 +210,21 @@ export function AudioPlayerProvider({
     };
   }, [unload]);
 
+  // Синхронизируем repeatMode с ref
+  useEffect(() => {
+    repeatModeRef.current = repeatMode;
+  }, [repeatMode]);
+
+  // Синхронизируем currentTrack с ref
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
+  // Синхронизируем queue с ref
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
   const clearProgress = useCallback(async (trackId: string) => {
     setProgressMap((prev) => {
       if (!prev[trackId]) return prev;
@@ -185,6 +250,7 @@ export function AudioPlayerProvider({
   const playTrack = useCallback(
     async (track: Track, startPositionMillis?: number) => {
       await unload();
+      hasFinishedRef.current = false;
       const initialStatus: any = {
         shouldPlay: true,
       };
@@ -198,22 +264,46 @@ export function AudioPlayerProvider({
       );
       soundRef.current = sound;
       setCurrentTrack(track);
-      setViewMode("mini");
+      // Сохраняем текущий режим просмотра, если он "full", иначе устанавливаем "mini"
+      setViewMode((prevMode) => (prevMode === "full" ? "full" : "mini"));
     },
     [onStatusUpdate, unload]
   );
 
   const togglePlayPause = useCallback(async () => {
     const sound = soundRef.current;
-    if (!sound) return;
+    if (!sound || !currentTrack) return;
     const status = await sound.getStatusAsync();
-    if (!status.isLoaded) return;
+    
+    // Если трек закончился или не загружен, перезапускаем его или переходим на следующий
+    if (!status.isLoaded || (status.isLoaded && status.didJustFinish)) {
+      hasFinishedRef.current = false;
+      if (repeatMode === "repeat-one") {
+        await playTrack(currentTrack);
+      } else if (repeatMode === "shuffle") {
+        if (queue.length > 0) {
+          const availableTracks = queue.filter((t) => t.id !== currentTrack.id);
+          if (availableTracks.length > 0) {
+            const randomTrack =
+              availableTracks[Math.floor(Math.random() * availableTracks.length)];
+            await playTrack(randomTrack);
+          } else {
+            await playTrack(currentTrack);
+          }
+        }
+      } else {
+        // Sequential - следующий трек
+        await next();
+      }
+      return;
+    }
+    
     if (status.isPlaying) {
       await sound.pauseAsync();
     } else {
       await sound.playAsync();
     }
-  }, []);
+  }, [currentTrack, queue, repeatMode, playTrack, next]);
 
   const pause = useCallback(async () => {
     if (soundRef.current) {
@@ -235,17 +325,41 @@ export function AudioPlayerProvider({
 
   const next = useCallback(async () => {
     if (!currentTrack || queue.length === 0) return;
-    const idx = queue.findIndex((t) => t.id === currentTrack.id);
-    const nextIdx = (idx + 1) % queue.length;
-    await playTrack(queue[nextIdx]);
-  }, [currentTrack, queue, playTrack]);
+    hasFinishedRef.current = false;
+    if (repeatMode === "shuffle") {
+      const availableTracks = queue.filter((t) => t.id !== currentTrack.id);
+      if (availableTracks.length > 0) {
+        const randomTrack =
+          availableTracks[Math.floor(Math.random() * availableTracks.length)];
+        await playTrack(randomTrack);
+      } else {
+        await playTrack(currentTrack);
+      }
+    } else {
+      const idx = queue.findIndex((t) => t.id === currentTrack.id);
+      const nextIdx = (idx + 1) % queue.length;
+      await playTrack(queue[nextIdx]);
+    }
+  }, [currentTrack, queue, repeatMode, playTrack]);
 
   const prev = useCallback(async () => {
     if (!currentTrack || queue.length === 0) return;
-    const idx = queue.findIndex((t) => t.id === currentTrack.id);
-    const prevIdx = (idx - 1 + queue.length) % queue.length;
-    await playTrack(queue[prevIdx]);
-  }, [currentTrack, queue, playTrack]);
+    hasFinishedRef.current = false;
+    if (repeatMode === "shuffle") {
+      const availableTracks = queue.filter((t) => t.id !== currentTrack.id);
+      if (availableTracks.length > 0) {
+        const randomTrack =
+          availableTracks[Math.floor(Math.random() * availableTracks.length)];
+        await playTrack(randomTrack);
+      } else {
+        await playTrack(currentTrack);
+      }
+    } else {
+      const idx = queue.findIndex((t) => t.id === currentTrack.id);
+      const prevIdx = (idx - 1 + queue.length) % queue.length;
+      await playTrack(queue[prevIdx]);
+    }
+  }, [currentTrack, queue, repeatMode, playTrack]);
 
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
@@ -255,6 +369,7 @@ export function AudioPlayerProvider({
       durationMillis,
       viewMode,
       queue,
+      repeatMode,
       playTrack,
       togglePlayPause,
       pause,
@@ -262,6 +377,7 @@ export function AudioPlayerProvider({
       seekTo,
       setViewMode,
       setQueue,
+      setRepeatMode,
       next,
       prev,
       progressMap,
@@ -274,6 +390,7 @@ export function AudioPlayerProvider({
       durationMillis,
       viewMode,
       queue,
+      repeatMode,
       playTrack,
       togglePlayPause,
       pause,
@@ -281,6 +398,7 @@ export function AudioPlayerProvider({
       seekTo,
       setViewMode,
       setQueue,
+      setRepeatMode,
       next,
       prev,
       progressMap,
