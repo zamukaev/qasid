@@ -145,7 +145,7 @@ export function AudioPlayerProvider({
         }
       }
     },
-    [currentTrack, queue, playTrack, next]
+    [playTrack, next]
   );
 
   useEffect(() => {
@@ -272,23 +272,29 @@ export function AudioPlayerProvider({
 
   const togglePlayPause = useCallback(async () => {
     const sound = soundRef.current;
-    if (!sound || !currentTrack) return;
+    if (!sound) return;
+    
     const status = await sound.getStatusAsync();
+    const track = currentTrackRef.current;
+    const currentRepeatMode = repeatModeRef.current;
+    const currentQueue = queueRef.current;
     
     // Если трек закончился или не загружен, перезапускаем его или переходим на следующий
     if (!status.isLoaded || (status.isLoaded && status.didJustFinish)) {
+      if (!track) return;
       hasFinishedRef.current = false;
-      if (repeatMode === "repeat-one") {
-        await playTrack(currentTrack);
-      } else if (repeatMode === "shuffle") {
-        if (queue.length > 0) {
-          const availableTracks = queue.filter((t) => t.id !== currentTrack.id);
+      
+      if (currentRepeatMode === "repeat-one") {
+        await playTrack(track);
+      } else if (currentRepeatMode === "shuffle") {
+        if (currentQueue.length > 0) {
+          const availableTracks = currentQueue.filter((t) => t.id !== track.id);
           if (availableTracks.length > 0) {
             const randomTrack =
               availableTracks[Math.floor(Math.random() * availableTracks.length)];
             await playTrack(randomTrack);
           } else {
-            await playTrack(currentTrack);
+            await playTrack(track);
           }
         }
       } else {
@@ -303,7 +309,7 @@ export function AudioPlayerProvider({
     } else {
       await sound.playAsync();
     }
-  }, [currentTrack, queue, repeatMode, playTrack, next]);
+  }, [playTrack, next]);
 
   const pause = useCallback(async () => {
     if (soundRef.current) {
@@ -312,10 +318,43 @@ export function AudioPlayerProvider({
   }, []);
 
   const resume = useCallback(async () => {
-    if (soundRef.current) {
-      await soundRef.current.playAsync();
+    const sound = soundRef.current;
+    if (!sound) return;
+    
+    const status = await sound.getStatusAsync();
+    
+    // Если трек закончился, переходим на следующий или перезапускаем в зависимости от режима
+    if (status.isLoaded && status.didJustFinish) {
+      hasFinishedRef.current = false;
+      const track = currentTrackRef.current;
+      const currentRepeatMode = repeatModeRef.current;
+      const currentQueue = queueRef.current;
+      
+      if (currentRepeatMode === "repeat-one") {
+        if (track) {
+          await playTrack(track);
+        }
+      } else if (currentRepeatMode === "shuffle") {
+        if (track && currentQueue.length > 0) {
+          const availableTracks = currentQueue.filter((t) => t.id !== track.id);
+          if (availableTracks.length > 0) {
+            const randomTrack =
+              availableTracks[Math.floor(Math.random() * availableTracks.length)];
+            await playTrack(randomTrack);
+          } else {
+            await playTrack(track);
+          }
+        }
+      } else {
+        // Sequential - следующий трек (или перезапуск последнего)
+        await next();
+      }
+      return;
     }
-  }, []);
+    
+    // Обычное возобновление воспроизведения
+    await sound.playAsync();
+  }, [playTrack, next]);
 
   const seekTo = useCallback(async (millis: number) => {
     if (soundRef.current) {
@@ -324,23 +363,34 @@ export function AudioPlayerProvider({
   }, []);
 
   const next = useCallback(async () => {
-    if (!currentTrack || queue.length === 0) return;
+    // Используем refs для получения актуальных значений
+    const track = currentTrackRef.current;
+    const currentQueue = queueRef.current;
+    const currentRepeatMode = repeatModeRef.current;
+    
+    if (!track || currentQueue.length === 0) return;
     hasFinishedRef.current = false;
-    if (repeatMode === "shuffle") {
-      const availableTracks = queue.filter((t) => t.id !== currentTrack.id);
+    
+    if (currentRepeatMode === "shuffle") {
+      const availableTracks = currentQueue.filter((t) => t.id !== track.id);
       if (availableTracks.length > 0) {
         const randomTrack =
           availableTracks[Math.floor(Math.random() * availableTracks.length)];
         await playTrack(randomTrack);
       } else {
-        await playTrack(currentTrack);
+        await playTrack(track);
       }
     } else {
-      const idx = queue.findIndex((t) => t.id === currentTrack.id);
-      const nextIdx = (idx + 1) % queue.length;
-      await playTrack(queue[nextIdx]);
+      // Sequential режим
+      const idx = currentQueue.findIndex((t) => t.id === track.id);
+      if (idx === -1) return; // Трек не найден в очереди
+      const nextIdx = idx + 1;
+      if (nextIdx < currentQueue.length) {
+        await playTrack(currentQueue[nextIdx]);
+      }
+      // Если это последний трек, просто останавливаем воспроизведение (не перезапускаем)
     }
-  }, [currentTrack, queue, repeatMode, playTrack]);
+  }, [playTrack]);
 
   const prev = useCallback(async () => {
     if (!currentTrack || queue.length === 0) return;

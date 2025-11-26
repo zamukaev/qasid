@@ -60,6 +60,8 @@ export default function ReciterDetailsScreen() {
     repeatMode,
     setRepeatMode,
     next,
+    positionMillis,
+    durationMillis,
   } = useAudioPlayer();
 
   useEffect(() => {
@@ -176,20 +178,49 @@ export default function ReciterDetailsScreen() {
     const resumePosition = hasSavedPosition
       ? savedProgress.positionMillis
       : undefined;
-    
-    // Если трек уже активен, просто ставим на паузу/возобновляем без лоадера
+
+    // Если трек уже активен
     if (currentTrack?.id === trackId) {
       if (isPlaying) {
+        // Если играет, ставим на паузу
         await pause();
       } else {
-        if (resumePosition) {
-          await seekTo(resumePosition);
+        // Если не играет, проверяем, закончился ли трек
+        // Проверяем через позицию: если позиция близка к концу или равна длительности
+        const isFinished =
+          (durationMillis > 0 &&
+            positionMillis > 0 &&
+            positionMillis >= durationMillis - 100) || // Трек закончился (текущая позиция)
+          (savedProgress &&
+            savedProgress.durationMillis > 0 &&
+            savedProgress.positionMillis >= savedProgress.durationMillis - 100); // Или сохраненная позиция в конце
+
+        if (isFinished && !hasSavedPosition) {
+          // Трек закончился и нет сохраненной позиции - перезапускаем с начала
+          // Это работает для всех треков, включая последний
+          setPendingTrackId(trackId);
+          const track = {
+            id: trackId,
+            title: surah.englishName,
+            artist: reciter.name,
+            uri: { uri: surah.audioUrl },
+          };
+          try {
+            await playTrack(track);
+          } finally {
+            setPendingTrackId(null);
+          }
+        } else {
+          // Трек не закончился или есть сохраненная позиция - возобновляем
+          if (resumePosition) {
+            await seekTo(resumePosition);
+          }
+          await resume();
         }
-        await resume();
       }
       return;
     }
-    
+
     // Только для нового трека показываем лоадер
     setPendingTrackId(trackId);
     const track = {
@@ -207,29 +238,31 @@ export default function ReciterDetailsScreen() {
 
   const handlePlayAll = async () => {
     if (filteredSurahItems.length === 0 || !reciter) return;
-    
+
     // Всегда запускаем первый трек с начала
     const first = filteredSurahItems.find((item) => item.audioUrl);
     if (!first) return;
     await handlePlaySurah(first);
   };
 
-  const handleRepeatModeChange = async (mode: "sequential" | "shuffle" | "repeat-one") => {
+  const handleRepeatModeChange = async (
+    mode: "sequential" | "shuffle" | "repeat-one"
+  ) => {
     const wasPlaying = isPlaying;
     const previousMode = repeatMode;
-    
+
     // Если нажали на уже активный режим repeat-one, отключаем его (возвращаемся к sequential)
     if (mode === "repeat-one" && previousMode === "repeat-one") {
       setRepeatMode("sequential");
       return;
     }
-    
+
     setRepeatMode(mode);
-    
+
     // Если трек не играет, запускаем трек только для shuffle и repeat-one
     if (!currentTrack || !isPlaying) {
       if (filteredSurahItems.length === 0 || !reciter) return;
-      
+
       if (mode === "shuffle") {
         // Для shuffle запускаем случайный трек
         const playable = filteredSurahItems.filter((item) => item.audioUrl);
@@ -247,9 +280,9 @@ export default function ReciterDetailsScreen() {
       // Для sequential не запускаем трек, только меняем режим
       return;
     }
-    
+
     // Если трек уже играет и режим изменился, переключаем трек только для shuffle
-    if (currentTrack && wasPlaying && previousMode !== mode) {
+    if (currentTrack && wasPlaying && previousMode !== mode && reciter) {
       // Проверяем, что текущий трек принадлежит этому чтецу
       const currentTrackReciterId = currentTrack.id.split("-")[0];
       if (currentTrackReciterId === reciter.id.toString()) {
@@ -257,7 +290,7 @@ export default function ReciterDetailsScreen() {
         if (mode === "sequential" || mode === "repeat-one") {
           return;
         }
-        
+
         // Для shuffle переключаем на случайный трек
         if (mode === "shuffle") {
           const playable = filteredSurahItems.filter((item) => item.audioUrl);
@@ -266,7 +299,10 @@ export default function ReciterDetailsScreen() {
               (item) => `${reciter.id}-${item.id}` !== currentTrack.id
             );
             if (availableTracks.length > 0) {
-              const random = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+              const random =
+                availableTracks[
+                  Math.floor(Math.random() * availableTracks.length)
+                ];
               await handlePlaySurah(random);
             }
           }
@@ -274,7 +310,6 @@ export default function ReciterDetailsScreen() {
       }
     }
   };
-
 
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
@@ -387,7 +422,7 @@ export default function ReciterDetailsScreen() {
                 Play
               </Text>
             </Pressable>
-            
+
             {/* Repeat Mode Controls */}
             <View className="flex-row items-center justify-between">
               <Pressable
@@ -414,14 +449,21 @@ export default function ReciterDetailsScreen() {
                   <Ionicons
                     name="list-outline"
                     size={16}
-                    color={repeatMode === "sequential" ? "#E7C11C" : "rgba(255, 255, 255, 0.6)"}
+                    color={
+                      repeatMode === "sequential"
+                        ? "#E7C11C"
+                        : "rgba(255, 255, 255, 0.6)"
+                    }
                     style={{ marginRight: 4 }}
                   />
                   <Text
                     style={{
                       fontSize: 13,
                       fontWeight: "500",
-                      color: repeatMode === "sequential" ? "#E7C11C" : "rgba(255, 255, 255, 0.7)",
+                      color:
+                        repeatMode === "sequential"
+                          ? "#E7C11C"
+                          : "rgba(255, 255, 255, 0.7)",
                     }}
                   >
                     Sequential
@@ -453,14 +495,21 @@ export default function ReciterDetailsScreen() {
                   <Ionicons
                     name="shuffle-outline"
                     size={16}
-                    color={repeatMode === "shuffle" ? "#E7C11C" : "rgba(255, 255, 255, 0.6)"}
+                    color={
+                      repeatMode === "shuffle"
+                        ? "#E7C11C"
+                        : "rgba(255, 255, 255, 0.6)"
+                    }
                     style={{ marginRight: 4 }}
                   />
                   <Text
                     style={{
                       fontSize: 13,
                       fontWeight: "500",
-                      color: repeatMode === "shuffle" ? "#E7C11C" : "rgba(255, 255, 255, 0.7)",
+                      color:
+                        repeatMode === "shuffle"
+                          ? "#E7C11C"
+                          : "rgba(255, 255, 255, 0.7)",
                     }}
                   >
                     Shuffle
@@ -492,14 +541,21 @@ export default function ReciterDetailsScreen() {
                   <Ionicons
                     name="repeat-outline"
                     size={16}
-                    color={repeatMode === "repeat-one" ? "#E7C11C" : "rgba(255, 255, 255, 0.6)"}
+                    color={
+                      repeatMode === "repeat-one"
+                        ? "#E7C11C"
+                        : "rgba(255, 255, 255, 0.6)"
+                    }
                     style={{ marginRight: 4 }}
                   />
                   <Text
                     style={{
                       fontSize: 13,
                       fontWeight: "500",
-                      color: repeatMode === "repeat-one" ? "#E7C11C" : "rgba(255, 255, 255, 0.7)",
+                      color:
+                        repeatMode === "repeat-one"
+                          ? "#E7C11C"
+                          : "rgba(255, 255, 255, 0.7)",
                     }}
                   >
                     Repeat
