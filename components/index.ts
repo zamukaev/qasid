@@ -5,4 +5,4 @@ export { default as FullScreenPlayer } from "./FullScreenPlayer";
 export { default as ReciterCard } from "./ReciterCard";
 export { CompactReciterCard } from "./ReciterCard";
 export { AudioCard } from "./AudioCard";
-
+export { default as FeaturedCardSkeleton } from "./FeaturedCardSkeleton";
