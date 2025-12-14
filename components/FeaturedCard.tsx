@@ -1,11 +1,17 @@
-import { View, Text, Image, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  ImageSourcePropType,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import MisharyForo from "../assets/reciters/mishary-rashid.jpg";
 type Props = {
   title: string; // z.B. "Ghassan Al Shorbagy"
   subtitle?: string; // default: "Editor’s Pick"
-  imageUrl: string; // runder Avatar
+  imageUrl: ImageSourcePropType; // runder Avatar
   onPress?: () => void; // gesamter Card-Press
   onPlayPress?: () => void; // nur Play-Button
   playing?: boolean; // steuert Icon (Play/Pause)
@@ -16,7 +22,6 @@ export default function FeaturedCard({
   subtitle = "Editor’s Pick",
   imageUrl,
   onPress,
-  onPlayPress,
   playing = false,
   className = "",
 }: Props) {
@@ -39,7 +44,7 @@ export default function FeaturedCard({
           <View className="items-center">
             <View className="w-40 h-40 rounded-full overflow-hidden border border-qasid-gold-20">
               <Image
-                source={MisharyForo}
+                source={imageUrl}
                 className="w-full h-full"
                 resizeMode="cover"
               />
@@ -48,7 +53,7 @@ export default function FeaturedCard({
 
           {/* Bottom Glass Panel */}
           <View className="mt-auto">
-            <View className="flex-row items-center justify-between rounded-2xl bg-qasid-card px-5 py-4 border border-white/5">
+            <View className="h-28 flex-row items-start justify-between rounded-2xl bg-qasid-card px-5 py-4 border border-white/5">
               <View className="flex-1">
                 <Text
                   className="text-white/70 text-xs tracking-wide"
@@ -63,7 +68,7 @@ export default function FeaturedCard({
                   {title}
                 </Text>
               </View>
-              <View className="ml-4 w-10 h-10 rounded-full items-center justify-center border border-qasid-gold">
+              <View className="ml-4 w-10 h-10 rounded-full self-center items-center justify-center border border-qasid-gold">
                 <Ionicons
                   name={playing ? "pause" : "play"}
                   size={14}

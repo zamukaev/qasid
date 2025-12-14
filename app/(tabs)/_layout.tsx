@@ -74,23 +74,6 @@ export default function TabsLayout() {
             tabBarActiveTintColor: "#E7C11C",
           }}
         />
-        <Tabs.Screen
-          name="home/index"
-          options={{
-            title: "Home",
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home-outline" color={color} size={size} />
-            ),
-            tabBarActiveTintColor: "#E7C11C",
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="quran/all-reciters"
-          options={{
-            href: null,
-          }}
-        />
       </Tabs>
       {viewMode !== "hidden" && <NowPlayingBar />}
       {viewMode === "full" && <FullScreenPlayer />}

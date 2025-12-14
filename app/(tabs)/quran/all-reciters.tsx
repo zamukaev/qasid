@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef } from "react";
-import { ScrollView, Text, View, TextInput } from "react-native";
+import { ScrollView, Text, View, TextInput, Pressable } from "react-native";
 import { axiosInstance } from "../../../services/api-service";
 import { Reciter } from "../../../types/quran";
 import MisharyForo from "../../../assets/reciters/mishary-rashid.jpg";
 import { Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 export default function AllReciters() {
+  const router = useRouter();
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [filteredReciters, setFilteredReciters] = useState<Reciter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,7 +132,11 @@ export default function AllReciters() {
         </View>
       </View>
 
-      <ScrollView>
+      <ScrollView
+        contentContainerStyle={{
+          paddingBottom: 120, // Отступ для мини-плеера
+        }}
+      >
         {/* Searching indicator */}
         {isSearching && (
           <View className="px-4 py-2 items-center">
@@ -141,13 +147,19 @@ export default function AllReciters() {
         <View className="px-4 py-6">
           {/* Three-column grid */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
-            {filteredReciters.map((reciter, index) => (
-              <View
+            {filteredReciters.map((reciter) => (
+              <Pressable
                 key={reciter.id}
                 style={{
                   width: "30%",
                   alignItems: "center",
                 }}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/quran/reciter/[id]",
+                    params: { id: reciter.id.toString() },
+                  })
+                }
               >
                 <View
                   className="rounded-full mb-3"
@@ -167,7 +179,7 @@ export default function AllReciters() {
                 <Text className="text-qasid-white text-center text-base">
                   {reciter.name}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>

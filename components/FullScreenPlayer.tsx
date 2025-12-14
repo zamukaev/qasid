@@ -23,9 +23,8 @@ export default function FullScreenPlayer() {
     setViewMode,
     next,
     prev,
+    togglePlayPause,
   } = useAudioPlayer();
-
-  const [isFavorite, setIsFavorite] = useState(false);
 
   const progress = useMemo(() => {
     if (!durationMillis) return 0;
@@ -105,6 +104,8 @@ export default function FullScreenPlayer() {
           paddingHorizontal: 20,
           paddingTop: 50,
           paddingBottom: 20,
+          borderBottomWidth: 1,
+          borderBottomColor: "rgba(255, 255, 255, 0.1)",
         }}
       >
         <Pressable onPress={handleClose} style={{ padding: 8 }}>
@@ -114,27 +115,13 @@ export default function FullScreenPlayer() {
           style={{
             color: "#ffffff",
             fontSize: 16,
-            fontWeight: "500",
+            fontWeight: "700",
+            letterSpacing: 0.5,
           }}
         >
-          Сейчас играет
+          Now Playing
         </Text>
-        <Pressable
-          onPress={() => {
-            setIsFavorite(!isFavorite);
-            console.log(
-              isFavorite ? "Удалить из избранного:" : "Добавить в избранное:",
-              currentTrack?.title
-            );
-          }}
-          style={{ padding: 8 }}
-        >
-          <Ionicons
-            name={isFavorite ? "heart" : "heart-outline"}
-            size={28}
-            color={isFavorite ? "#ff6b6b" : "#ffffff"}
-          />
-        </Pressable>
+        <View style={{ width: 44 }} />
       </View>
 
       {/* Main Content */}
@@ -153,39 +140,69 @@ export default function FullScreenPlayer() {
               width: 300,
               height: 300,
               borderRadius: 12,
-              backgroundColor: "#1a1a1a",
+              backgroundColor: "rgba(255, 255, 255, 0.08)",
+              borderWidth: 2,
+              borderColor: "rgba(255, 255, 255, 0.15)",
               alignItems: "center",
               justifyContent: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 15,
+              elevation: 10,
             }}
           >
-            <Ionicons name="musical-notes" size={100} color="#ffffff" />
+            <View
+              style={{
+                width: 280,
+                height: 280,
+                borderRadius: 8,
+                backgroundColor: "rgba(20, 20, 22, 0.8)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="musical-notes" size={100} color="#E7C11C" />
+            </View>
           </View>
         </View>
 
         {/* Track Info */}
         <View style={{ alignItems: "center" }}>
-          <Text
-            style={{
-              color: "#ffffff",
-              fontSize: 24,
-              fontWeight: "600",
-              textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
-            {currentTrack?.title || "Трек"}
-          </Text>
-          {currentTrack?.artist && (
             <Text
               style={{
-                color: "#9CA3AF",
-                fontSize: 16,
+                color: "#ffffff",
+                fontSize: 26,
+                fontWeight: "700",
                 textAlign: "center",
+                marginBottom: 12,
               }}
             >
-              {currentTrack.artist}
+              {currentTrack?.title || "Track"}
             </Text>
-          )}
+            {currentTrack?.artist && (
+              <View
+                style={{
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  paddingHorizontal: 16,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.2)",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "rgba(255, 255, 255, 0.8)",
+                    fontSize: 16,
+                    textAlign: "center",
+                    fontWeight: "500",
+                  }}
+                >
+                  {currentTrack.artist}
+                </Text>
+              </View>
+            )}
         </View>
 
         {/* Progress Bar */}
@@ -200,8 +217,8 @@ export default function FullScreenPlayer() {
                 ) * (durationMillis || 0);
               seekTo(target);
             }}
-            minimumTrackTintColor="#ffffff"
-            maximumTrackTintColor="#4b4b4b"
+            minimumTrackTintColor="#E7C11C"
+            maximumTrackTintColor="rgba(255, 255, 255, 0.2)"
             thumbTintColor="#ffffff"
             style={{ height: 40, marginBottom: 10 }}
           />
@@ -211,10 +228,10 @@ export default function FullScreenPlayer() {
               justifyContent: "space-between",
             }}
           >
-            <Text style={{ color: "#9CA3AF", fontSize: 14 }}>
+            <Text style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 14, fontWeight: "500" }}>
               {formatMillis(positionMillis)}
             </Text>
-            <Text style={{ color: "#9CA3AF", fontSize: 14 }}>
+            <Text style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 14, fontWeight: "500" }}>
               {formatMillis(durationMillis)}
             </Text>
           </View>
@@ -230,23 +247,51 @@ export default function FullScreenPlayer() {
           }}
         >
           {/* Previous */}
-          <Pressable onPress={prev} style={{ padding: 15, marginRight: 20 }}>
+          <Pressable 
+            onPress={prev} 
+            style={{ 
+              padding: 15, 
+              marginRight: 20,
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              borderRadius: 30,
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.2)",
+            }}
+          >
             <Ionicons name="play-skip-back" size={32} color="#ffffff" />
           </Pressable>
 
           {/* Play/Pause */}
-          {isPlaying ? (
-            <Pressable onPress={pause} style={{ padding: 10 }}>
-              <Ionicons name="pause-circle" size={70} color="#E7C11C" />
-            </Pressable>
-          ) : (
-            <Pressable onPress={resume} style={{ padding: 10 }}>
-              <Ionicons name="play-circle" size={70} color="#E7C11C" />
-            </Pressable>
-          )}
+          <Pressable 
+            onPress={togglePlayPause} 
+            style={{ 
+              padding: 10,
+              shadowColor: "#E7C11C",
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.5,
+              shadowRadius: 15,
+              elevation: 8,
+            }}
+          >
+            <Ionicons
+              name={isPlaying ? "pause-circle" : "play-circle"}
+              size={70}
+              color="#E7C11C"
+            />
+          </Pressable>
 
           {/* Next */}
-          <Pressable onPress={next} style={{ padding: 15, marginLeft: 20 }}>
+          <Pressable 
+            onPress={next} 
+            style={{ 
+              padding: 15, 
+              marginLeft: 20,
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              borderRadius: 30,
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.2)",
+            }}
+          >
             <Ionicons name="play-skip-forward" size={32} color="#ffffff" />
           </Pressable>
         </View>
