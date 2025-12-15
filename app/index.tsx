@@ -36,10 +36,6 @@ export default function Welcome() {
   useEffect(() => {
     if (isLoading) return;
     const isAuthGroup = segments[0] === "(tabs)";
-    console.log(
-      "User auth state:",
-      user ? "authenticated" : "not authenticated"
-    );
     if (user && !isAuthGroup) {
       router.replace("(tabs)/quran");
     } else if (!user && isAuthGroup) {

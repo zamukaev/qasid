@@ -108,14 +108,14 @@ export function AudioPlayerProvider({
         // Обработка окончания трека
         if (status.didJustFinish && !hasFinishedRef.current) {
           hasFinishedRef.current = true;
-          
+
           // Небольшая задержка перед переходом на следующий трек
           setTimeout(async () => {
             // Используем актуальные значения из ref, чтобы гарантировать правильные данные
             const finishedTrack = currentTrackRef.current;
             const currentRepeatMode = repeatModeRef.current;
             const currentQueue = queueRef.current;
-            
+
             if (currentRepeatMode === "repeat-one") {
               // Повторяем трек, который только что закончился
               if (finishedTrack) {
@@ -124,7 +124,9 @@ export function AudioPlayerProvider({
             } else if (currentRepeatMode === "shuffle") {
               // Случайный трек
               if (finishedTrack && currentQueue.length > 0) {
-                const availableTracks = currentQueue.filter((t) => t.id !== finishedTrack.id);
+                const availableTracks = currentQueue.filter(
+                  (t) => t.id !== finishedTrack.id
+                );
                 if (availableTracks.length > 0) {
                   const randomTrack =
                     availableTracks[
@@ -138,7 +140,21 @@ export function AudioPlayerProvider({
               }
             } else {
               // Sequential - следующий трек по порядку
-              await next();
+              if (finishedTrack && currentQueue.length > 0) {
+                const idx = currentQueue.findIndex(
+                  (t) => t.id === finishedTrack.id
+                );
+                const nextIdx = idx + 1;
+
+                // If there's a next track, play it
+                if (nextIdx < currentQueue.length) {
+                  await playTrack(currentQueue[nextIdx]);
+                } else {
+                  // End of queue - stop playing
+                  await pause();
+                  setViewMode("mini");
+                }
+              }
             }
             hasFinishedRef.current = false;
           }, 100);
@@ -147,7 +163,6 @@ export function AudioPlayerProvider({
     },
     [playTrack, next]
   );
-
   useEffect(() => {
     const loadProgress = async () => {
       try {
@@ -163,17 +178,16 @@ export function AudioPlayerProvider({
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progressMap)).catch(
-      (error) => console.warn("Failed to persist progress map", error)
-    );
+    AsyncStorage.setItem(
+      PROGRESS_STORAGE_KEY,
+      JSON.stringify(progressMap)
+    ).catch((error) => console.warn("Failed to persist progress map", error));
   }, [progressMap]);
 
   useEffect(() => {
     if (!currentTrack) return;
     if (!durationMillis) return;
-    const progressRatio = durationMillis
-      ? positionMillis / durationMillis
-      : 0;
+    const progressRatio = durationMillis ? positionMillis / durationMillis : 0;
     const trackId = currentTrack.id;
     const now = Date.now();
 
@@ -273,17 +287,17 @@ export function AudioPlayerProvider({
   const togglePlayPause = useCallback(async () => {
     const sound = soundRef.current;
     if (!sound) return;
-    
+
     const status = await sound.getStatusAsync();
     const track = currentTrackRef.current;
     const currentRepeatMode = repeatModeRef.current;
     const currentQueue = queueRef.current;
-    
+
     // Если трек закончился или не загружен, перезапускаем его или переходим на следующий
     if (!status.isLoaded || (status.isLoaded && status.didJustFinish)) {
       if (!track) return;
       hasFinishedRef.current = false;
-      
+
       if (currentRepeatMode === "repeat-one") {
         await playTrack(track);
       } else if (currentRepeatMode === "shuffle") {
@@ -291,7 +305,9 @@ export function AudioPlayerProvider({
           const availableTracks = currentQueue.filter((t) => t.id !== track.id);
           if (availableTracks.length > 0) {
             const randomTrack =
-              availableTracks[Math.floor(Math.random() * availableTracks.length)];
+              availableTracks[
+                Math.floor(Math.random() * availableTracks.length)
+              ];
             await playTrack(randomTrack);
           } else {
             await playTrack(track);
@@ -303,7 +319,7 @@ export function AudioPlayerProvider({
       }
       return;
     }
-    
+
     if (status.isPlaying) {
       await sound.pauseAsync();
     } else {
@@ -320,16 +336,16 @@ export function AudioPlayerProvider({
   const resume = useCallback(async () => {
     const sound = soundRef.current;
     if (!sound) return;
-    
+
     const status = await sound.getStatusAsync();
-    
+
     // Если трек закончился, переходим на следующий или перезапускаем в зависимости от режима
     if (status.isLoaded && status.didJustFinish) {
       hasFinishedRef.current = false;
       const track = currentTrackRef.current;
       const currentRepeatMode = repeatModeRef.current;
       const currentQueue = queueRef.current;
-      
+
       if (currentRepeatMode === "repeat-one") {
         if (track) {
           await playTrack(track);
@@ -339,7 +355,9 @@ export function AudioPlayerProvider({
           const availableTracks = currentQueue.filter((t) => t.id !== track.id);
           if (availableTracks.length > 0) {
             const randomTrack =
-              availableTracks[Math.floor(Math.random() * availableTracks.length)];
+              availableTracks[
+                Math.floor(Math.random() * availableTracks.length)
+              ];
             await playTrack(randomTrack);
           } else {
             await playTrack(track);
@@ -351,7 +369,7 @@ export function AudioPlayerProvider({
       }
       return;
     }
-    
+
     // Обычное возобновление воспроизведения
     await sound.playAsync();
   }, [playTrack, next]);
@@ -367,10 +385,10 @@ export function AudioPlayerProvider({
     const track = currentTrackRef.current;
     const currentQueue = queueRef.current;
     const currentRepeatMode = repeatModeRef.current;
-    
+
     if (!track || currentQueue.length === 0) return;
     hasFinishedRef.current = false;
-    
+
     if (currentRepeatMode === "shuffle") {
       const availableTracks = currentQueue.filter((t) => t.id !== track.id);
       if (availableTracks.length > 0) {

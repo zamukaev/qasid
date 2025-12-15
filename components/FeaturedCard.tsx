@@ -1,25 +1,17 @@
-import {
-  View,
-  Text,
-  Image,
-  Pressable,
-  ImageSourcePropType,
-} from "react-native";
+import { View, Text, Image, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import MisharyForo from "../assets/reciters/mishary-rashid.jpg";
 type Props = {
   title: string; // z.B. "Ghassan Al Shorbagy"
   subtitle?: string; // default: "Editor’s Pick"
-  imageUrl: ImageSourcePropType; // runder Avatar
+  imageUrl: string; // runder Avatar
   onPress?: () => void; // gesamter Card-Press
-  onPlayPress?: () => void; // nur Play-Button
   playing?: boolean; // steuert Icon (Play/Pause)
   className?: string; // optional für zusätzliche Styles
 };
 export default function FeaturedCard({
   title,
-  subtitle = "Editor’s Pick",
+  subtitle,
   imageUrl,
   onPress,
   playing = false,
@@ -44,7 +36,7 @@ export default function FeaturedCard({
           <View className="items-center">
             <View className="w-40 h-40 rounded-full overflow-hidden border border-qasid-gold-20">
               <Image
-                source={imageUrl}
+                source={{ uri: imageUrl }}
                 className="w-full h-full"
                 resizeMode="cover"
               />
@@ -56,7 +48,7 @@ export default function FeaturedCard({
             <View className="h-28 flex-row items-start justify-between rounded-2xl bg-qasid-card px-5 py-4 border border-white/5">
               <View className="flex-1">
                 <Text
-                  className="text-white/70 text-xs tracking-wide"
+                  className="text-qasid-gold/70 text-x tracking-wide"
                   numberOfLines={1}
                 >
                   {subtitle}

@@ -12,26 +12,32 @@ import { Reciter } from "../../../types/quran";
 import { CompactReciterCard } from "../../../components";
 import { useRouter } from "expo-router";
 import FeaturedCard from "../../../components/FeaturedCard";
-
-const FEATURED_LIST = [92, 123, 221, 107];
+import FeaturedCardSkeleton from "../../../components/FeaturedCardSkeleton";
+import { loadFeaturedItems } from "../../../services/featured-service";
+import { FeaturedItem } from "../../../types/featured";
 
 export default function Quran() {
   const router = useRouter();
   const [reciters, setReciters] = useState<Reciter[]>([]);
-  const [featuredItems, setFeaturedItems] = useState<Reciter[]>([]);
+  const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  //test api
+
+  const fetchFeaturedItems = async () => {
+    try {
+      const data = await loadFeaturedItems();
+      setFeaturedItems(data);
+    } catch (e) {
+      console.error("Error loading featured items ", e);
+    } finally {
+    }
+  };
+
   const fetchQuran = async () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get("/reciters?language=eng");
-      setFeaturedItems(() =>
-        response.data.reciters.filter((reciter: Reciter) =>
-          FEATURED_LIST.includes(reciter.id)
-        )
-      );
       setReciters(
         response.data.reciters
           .sort((a: Reciter, b: Reciter) => {
@@ -52,8 +58,61 @@ export default function Quran() {
       setLoading(false);
     }
   };
+
+  const showFeaturedItems = () => {
+    if (featuredItems.length > 0) {
+      return (
+        <View className="flex-1 px-4 py-6">
+          <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
+          <FlatList
+            data={featuredItems}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(reciter) => reciter.id.toString()}
+            renderItem={({ item }) => (
+              <FeaturedCard
+                title={item.title_en}
+                subtitle={item.title_ar}
+                imageUrl={item.image_path}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/quran/reciter/[id]",
+                    params: {
+                      id: item.id.toString(),
+                      content_type: item.content_type,
+                      target: item.target,
+                    },
+                  })
+                }
+                playing={false}
+                className="mb-4 mr-4"
+                key={item.id}
+              />
+            )}
+          />
+        </View>
+      );
+    }
+    return (
+      <View className="flex-1 px-4 py-6">
+        <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
+        <FlatList
+          data={[1, 2, 3]}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={() => <FeaturedCardSkeleton className="mb-4 mr-4" />}
+        />
+      </View>
+    );
+  };
+
   useEffect(() => {
     fetchQuran();
+  }, []);
+
+  useEffect(() => {
+    fetchFeaturedItems();
   }, []);
 
   if (error) {
@@ -98,32 +157,7 @@ export default function Quran() {
     <SafeAreaView className="flex-1 bg-qasid-black">
       <ScrollView>
         {/* Featured Section */}
-        <View className="flex-1 px-4 py-6">
-          <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
-          <FlatList
-            data={featuredItems}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(reciter) => reciter.id.toString()}
-            renderItem={({ item }) => (
-              <FeaturedCard
-                title={item.name}
-                subtitle="Editor's Pick"
-                imageUrl={require(`../../../assets/reciters/99.jpg`)}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(tabs)/quran/reciter/[id]",
-                    params: { id: item.id.toString() },
-                  })
-                }
-                playing={false}
-                className="mb-4 mr-4"
-                key={item.id}
-              />
-            )}
-          />
-        </View>
-
+        {showFeaturedItems()}
         {/* All Reciters Section */}
         <View className="px-4 py-6">
           <View className="flex-row justify-between items-center mb-4">
