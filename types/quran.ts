@@ -17,9 +17,9 @@ export interface ChaptersResponse {
   };
 }
 
-interface Moshaf {
+export interface Moshaf {
   id: number;
-  name: string;
+  name?: string;
   reciter_name?: string;
   server: string;
   surah_total: number;
@@ -32,8 +32,9 @@ export interface Reciter {
   name: string;
   letter: string;
   arabic_name?: string;
-  photo_url?: string;
+  image_path?: string;
   moshaf: Moshaf[];
+  description?: string;
 }
 
 export interface firebaseReciter {
@@ -42,13 +43,27 @@ export interface firebaseReciter {
   name_ar: string;
   image_path: string;
   is_active: boolean;
+  description?: string;
 }
 
 export interface Surah {
-  id: string;
-  title_en: string;
-  title_ar: string;
-  order: number;
+  id?: string;
+  title_en?: string;
+  title_ar?: string;
+  order?: number;
   audio_path: string;
   surah_number: number;
+}
+export interface ResponseSurah {
+  surahs: Surah[];
+  nextCursor?: {
+    current_page?: number;
+    total_pages?: number;
+    [k: string]: unknown;
+  };
+}
+
+export interface RecitersImage {
+  id: number;
+  image_path: string;
 }

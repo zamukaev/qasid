@@ -1,12 +1,16 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  getStorage,
+  ref,
+  getDownloadURL,
+} from "@react-native-firebase/storage";
+import {
   ActivityIndicator,
   Image,
   Pressable,
   SafeAreaView,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,13 +21,15 @@ import { axiosInstance } from "../../../../services/api-service";
 import { Reciter, Surah } from "../../../../types/quran";
 import { SURAH_METADATA } from "../../../../constants/surahMetadata";
 
-import PlaceholderAvatar from "../../../../assets/reciters/mishary-rashid.jpg";
+import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
 import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
 import {
-  fetchBeautifulCollection,
+  fetchBeautifulCollectionPage,
   fetchFeaturedSurahs,
   getFeaturedItemById,
+  getRecitersImageById,
 } from "../../../../services/featured-service";
+import { Loader, Search, ShowError } from "../../../../components";
 
 interface SurahListItem {
   id: number;
@@ -56,6 +62,10 @@ export default function ReciterDetailsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [pendingTrackId, setPendingTrackId] = useState<string | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const [expandedDescription, setExpandedDescription] = useState(false);
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const {
     playTrack,
@@ -82,7 +92,11 @@ export default function ReciterDetailsScreen() {
     try {
       setLoading(true);
       const data = await getFeaturedItemById(id);
-      const beautifulRecitations = await fetchBeautifulCollection(target);
+      const { surahs: beautifulRecitations, nextCursor } =
+        await fetchBeautifulCollectionPage(target);
+
+      setLastDoc(nextCursor);
+      setHasMore(!!nextCursor);
 
       if (!data) {
         setError("Featured reciter was not found.");
@@ -107,11 +121,12 @@ export default function ReciterDetailsScreen() {
       setReciter({
         id: data.id,
         name: data.title_en,
-        photo_url: data.image_path,
+        image_path: data.image_path,
         moshaf: moshaf,
         data: "",
         letter: "",
         arabic_name: data.title_ar,
+        description: data.description,
       });
       setLoading(false);
     } catch (fetchError) {
@@ -133,8 +148,9 @@ export default function ReciterDetailsScreen() {
     try {
       setLoading(true);
       const data = await getFeaturedItemById(id);
-      const surahs = await fetchFeaturedSurahs(target);
-
+      const { surahs, nextCursor } = await fetchFeaturedSurahs(target);
+      setLastDoc(nextCursor);
+      setHasMore(!!nextCursor);
       if (!surahs || surahs.length === 0) {
         setError("No surahs found for this reciter.");
         return;
@@ -143,6 +159,7 @@ export default function ReciterDetailsScreen() {
         setError("Featured reciter was not found.");
         return;
       }
+
       const moshaf = surahs.map((item: Surah, index: number) => ({
         id: index,
         name: item.title_en,
@@ -155,11 +172,12 @@ export default function ReciterDetailsScreen() {
       setReciter({
         id: data.id,
         name: data.title_en,
-        photo_url: data.image_path,
+        image_path: data.image_path,
         moshaf: moshaf,
         data: "",
         letter: "",
         arabic_name: data.title_ar,
+        description: data.description,
       });
       setLoading(false);
     } catch (fetchError) {
@@ -170,6 +188,46 @@ export default function ReciterDetailsScreen() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore || !target) return;
+    setLoadingMore(true);
+    try {
+      const { surahs: newItems, nextCursor } =
+        content_type === "collection"
+          ? await fetchBeautifulCollectionPage(target, 20, lastDoc)
+          : await fetchFeaturedSurahs(target, 20, lastDoc);
+
+      setLastDoc(nextCursor);
+      setHasMore(!!nextCursor);
+
+      if (newItems.length > 0) {
+        const newMoshaf = newItems.map((item: any, index: number) => ({
+          id: (reciter?.moshaf.length || 0) + index,
+          name: item.title_en,
+          arabic_name: item.title_ar,
+          reciter_name: item.name_en,
+          server: item.audio_path ?? "",
+          surah_list: item?.surah_number?.toString(),
+          surah_total: newItems.length,
+          moshaf_type: 0,
+        }));
+
+        setReciter((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            moshaf: [...prev.moshaf, ...newMoshaf],
+          };
+        });
+      }
+    } catch (error) {
+      setError("Unable to load more items.");
+      console.error("Error loading more items:", error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -196,16 +254,21 @@ export default function ReciterDetailsScreen() {
         `/reciters?language=eng&reciter=${id}`
       );
 
-      const fetchedReciter: Reciter | undefined = response.data?.reciters?.[0];
+      const fetchedReciter: Reciter = response.data.reciters[0];
+      const reciterId: number = +fetchedReciter.id;
+
       if (!fetchedReciter) {
         setError("Reciter was not found.");
         setReciter(null);
         return;
       }
+
+      const imagesResponse = await getRecitersImageById(reciterId);
       setReciter({
         ...fetchedReciter,
-        photo_url: fetchedReciter.photo_url ?? "",
+        image_path: imagesResponse?.image_path || "",
       });
+      setLoading(false);
     } catch (fetchError) {
       setError(
         fetchError instanceof Error
@@ -300,24 +363,24 @@ export default function ReciterDetailsScreen() {
   }, [navigation, reciter?.name]);
 
   useEffect(() => {
-    if (!reciter) return;
-    const queueTracks = surahItems
-      .filter((item) => !!item.audioUrl)
-      .map((item) => ({
-        id: `${reciter.id}-${item.id}`,
-        title: item.englishName,
-        artist: reciter.name,
-        uri: { uri: item.audioUrl as string },
-      }));
-    setQueue(queueTracks);
-  }, [reciter, setQueue, surahItems]);
-
-  useEffect(() => {
     setSearchQuery("");
   }, [reciter?.id]);
 
   const handlePlaySurah = async (surah: SurahListItem) => {
     if (!reciter || !surah.audioUrl) return;
+
+    let audioUrl = surah.audioUrl;
+    if (!audioUrl.startsWith("http")) {
+      try {
+        const storage = getStorage();
+        audioUrl = await getDownloadURL(ref(storage, audioUrl));
+      } catch (e) {
+        setError("Unable to load audio URL.");
+        console.error("Failed to resolve audio URL", e);
+        return;
+      }
+    }
+
     const trackId = `${reciter.id}-${surah.id}`;
     const savedProgress = progressMap[trackId];
     const hasSavedPosition =
@@ -354,7 +417,7 @@ export default function ReciterDetailsScreen() {
             id: trackId,
             title: surah.englishName,
             artist: reciter.name,
-            uri: { uri: surah.audioUrl },
+            uri: { uri: audioUrl },
           };
           try {
             await playTrack(track);
@@ -374,11 +437,22 @@ export default function ReciterDetailsScreen() {
 
     // Только для нового трека показываем лоадер
     setPendingTrackId(trackId);
+
+    const queueTracks = surahItems
+      .filter((item) => !!item.audioUrl)
+      .map((item) => ({
+        id: `${reciter.id}-${item.id}`,
+        title: item.englishName,
+        artist: reciter.name,
+        uri: { uri: item.audioUrl as string },
+      }));
+    setQueue(queueTracks);
+
     const track = {
       id: trackId,
       title: surah.englishName,
       artist: reciter.name,
-      uri: { uri: surah.audioUrl },
+      uri: { uri: audioUrl },
     };
     try {
       await playTrack(track, resumePosition);
@@ -465,6 +539,14 @@ export default function ReciterDetailsScreen() {
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
     setShowScrollToTop(offsetY > 600);
+
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const isCloseToBottom =
+      layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
+
+    if (isCloseToBottom && hasMore && !loadingMore) {
+      loadMore();
+    }
   };
 
   const scrollToTop = () => {
@@ -472,55 +554,22 @@ export default function ReciterDetailsScreen() {
   };
 
   if (loading) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-qasid-black">
-        <ActivityIndicator size="small" color="#E7C11C" />
-        <Text className="text-qasid-gold mt-3">Loading reciter…</Text>
-      </SafeAreaView>
-    );
+    return <Loader message="Loading reciter..." />;
   }
 
   if (error) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-qasid-black px-6">
-        <Text className="text-qasid-gold text-center text-base">{error}</Text>
-      </SafeAreaView>
-    );
+    return <ShowError message={error} />;
   }
 
   if (!reciter && !loading) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-qasid-black px-6">
-        <Text className="text-qasid-gold text-center text-base">
-          Reciter data is not available.
-        </Text>
-      </SafeAreaView>
-    );
+    return <ShowError message="Reciter data is not available." />;
   }
 
   const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
-      <View className="px-4 py-3 bg-qasid-black border-b border-qasid-gray/30">
-        <View className="flex-row items-center bg-qasid-gray/50 rounded-xl px-4 py-3">
-          <Ionicons
-            name="search"
-            size={20}
-            color="#9CA3AF"
-            style={{ marginRight: 8 }}
-          />
-          <TextInput
-            className="flex-1 text-qasid-white text-base"
-            placeholder="Surah Name or Number"
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
-        </View>
-      </View>
-
+      <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={{ paddingBottom: contentBottomPadding }}
@@ -540,8 +589,8 @@ export default function ReciterDetailsScreen() {
             >
               <Image
                 source={
-                  reciter?.photo_url
-                    ? { uri: reciter.photo_url }
+                  reciter?.image_path
+                    ? { uri: reciter.image_path }
                     : PlaceholderAvatar
                 }
                 className="h-24 w-24 rounded-full border border-qasid-gold/30"
@@ -569,9 +618,22 @@ export default function ReciterDetailsScreen() {
           </View>
 
           <View className="mt-6">
-            <Text className="text-qasid-white/80 leading-6 text-base">
-              {mockDescription}
+            <Text
+              numberOfLines={expandedDescription ? undefined : 3}
+              className="text-qasid-white/80 leading-6 text-base"
+            >
+              {reciter?.description ?? mockDescription}
             </Text>
+            {(reciter?.description ?? mockDescription).length > 150 && (
+              <Pressable
+                onPress={() => setExpandedDescription(!expandedDescription)}
+                className="mt-2"
+              >
+                <Text className="text-qasid-gold/80 text-sm font-semibold">
+                  {expandedDescription ? "See less" : "See more"}
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           <View className="mt-6">

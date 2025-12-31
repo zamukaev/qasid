@@ -1,26 +1,25 @@
 import { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  ScrollView,
-  Text,
-  View,
-  FlatList,
-  Pressable,
-} from "react-native";
+import { SafeAreaView, ScrollView, Text, View, Pressable } from "react-native";
 import { axiosInstance } from "../../../services/api-service";
 import { Reciter } from "../../../types/quran";
-import { CompactReciterCard } from "../../../components";
+import {
+  CompactReciterCard,
+  FeaturedList,
+  Loader,
+  ShowError,
+} from "../../../components";
 import { useRouter } from "expo-router";
-import FeaturedCard from "../../../components/FeaturedCard";
-import FeaturedCardSkeleton from "../../../components/FeaturedCardSkeleton";
-import { loadFeaturedItems } from "../../../services/featured-service";
+
+import {
+  loadFeaturedItems,
+  loadRecitersImages,
+} from "../../../services/featured-service";
 import { FeaturedItem } from "../../../types/featured";
 
 export default function Quran() {
   const router = useRouter();
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>([]);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +36,11 @@ export default function Quran() {
   const fetchQuran = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/reciters?language=eng");
+      const response = await axiosInstance.get(
+        "/reciters?language=eng&limit=20"
+      );
+      const imagesResponse = await loadRecitersImages();
+
       setReciters(
         response.data.reciters
           .sort((a: Reciter, b: Reciter) => {
@@ -47,7 +50,9 @@ export default function Quran() {
           })
           .map((reciter: Reciter) => ({
             ...reciter,
-            photo_url: "",
+            image_path:
+              imagesResponse.find((img) => img.id === reciter.id)?.image_path ??
+              "",
           }))
       );
       setLoading(false);
@@ -59,92 +64,17 @@ export default function Quran() {
     }
   };
 
-  const showFeaturedItems = () => {
-    if (featuredItems.length > 0) {
-      return (
-        <View className="flex-1 px-4 py-6">
-          <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
-          <FlatList
-            data={featuredItems}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(reciter) => reciter.id.toString()}
-            renderItem={({ item }) => (
-              <FeaturedCard
-                title={item.title_en}
-                subtitle={item.title_ar}
-                imageUrl={item.image_path}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(tabs)/quran/reciter/[id]",
-                    params: {
-                      id: item.id.toString(),
-                      content_type: item.content_type,
-                      target: item.target,
-                    },
-                  })
-                }
-                playing={false}
-                className="mb-4 mr-4"
-                key={item.id}
-              />
-            )}
-          />
-        </View>
-      );
-    }
-    return (
-      <View className="flex-1 px-4 py-6">
-        <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
-        <FlatList
-          data={[1, 2, 3]}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(_, index) => index.toString()}
-          renderItem={() => <FeaturedCardSkeleton className="mb-4 mr-4" />}
-        />
-      </View>
-    );
-  };
-
   useEffect(() => {
     fetchQuran();
-  }, []);
-
-  useEffect(() => {
     fetchFeaturedItems();
   }, []);
 
   if (error) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-qasid-black">
-        <Text className="text-qasid-gold text-lg mb-2">{error}</Text>
-      </SafeAreaView>
-    );
+    return <ShowError message={error} />;
   }
 
   if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-qasid-black">
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-qasid-gold text-lg mb-2">
-            Loading reciters...
-          </Text>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderWidth: 4,
-              borderColor: "#E7C11C44",
-              borderTopColor: "#E7C11C",
-              borderRadius: 20,
-              marginTop: 8,
-            }}
-            className="animate-spin"
-          />
-        </View>
-      </SafeAreaView>
-    );
+    return <Loader message=" Loading reciters..." />;
   }
 
   // Calculate the total width needed for all cards
@@ -156,9 +86,7 @@ export default function Quran() {
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
       <ScrollView>
-        {/* Featured Section */}
-        {showFeaturedItems()}
-        {/* All Reciters Section */}
+        <FeaturedList featuredItems={featuredItems} />
         <View className="px-4 py-6">
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-qasid-white text-2xl font-bold">
@@ -170,8 +98,6 @@ export default function Quran() {
               </Text>
             </Pressable>
           </View>
-
-          {/* Scrollable two-row grid */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
