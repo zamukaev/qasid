@@ -10,6 +10,7 @@ export interface BeautifulRecitation {
   tags: string[];
   is_active: boolean;
   image_path: string;
+  description?: string;
 }
 
 export interface FeaturedItem {
@@ -23,4 +24,5 @@ export interface FeaturedItem {
   is_active: boolean;
   order: number;
   featured: boolean;
+  description: string;
 }

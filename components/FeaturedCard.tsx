@@ -1,14 +1,16 @@
 import { View, Text, Image, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-type Props = {
-  title: string; // z.B. "Ghassan Al Shorbagy"
-  subtitle?: string; // default: "Editor’s Pick"
-  imageUrl: string; // runder Avatar
-  onPress?: () => void; // gesamter Card-Press
-  playing?: boolean; // steuert Icon (Play/Pause)
-  className?: string; // optional für zusätzliche Styles
-};
+
+import PlaceholderAvatar from "../assets/images/avatar.webp";
+interface Props {
+  title: string;
+  subtitle?: string;
+  imageUrl: string;
+  onPress?: () => void;
+  playing?: boolean;
+  className?: string;
+}
 export default function FeaturedCard({
   title,
   subtitle,
@@ -20,23 +22,23 @@ export default function FeaturedCard({
   return (
     <Pressable
       onPress={onPress}
-      className={`overflow-hidden rounded-3xl ${className}`}
+      className={`overflow-hidden rounded-2xl ${className}`}
       android_ripple={{ color: "#E7C11C33" }}
     >
       {/* Background Gradient (Dark -> soft Gold haze) */}
       <LinearGradient
-        colors={["#0B0B0C", "#141416", "rgba(231,193,28,0.10)"]}
-        start={{ x: 0.1, y: 0.0 }}
+        colors={["#1C1C1C", "#0B0B0C", "rgba(231,193,28,0.10)"]}
+        start={{ x: 0.2, y: 0.0 }}
         end={{ x: 1, y: 1 }}
-        className="rounded-3xl"
+        className="rounded-1xl"
       >
         {/* Content Layer */}
-        <View className="p-5 h-80 w-72">
+        <View className="p-5 h-80 w-60">
           {/* Avatar */}
           <View className="items-center">
             <View className="w-40 h-40 rounded-full overflow-hidden border border-qasid-gold-20">
               <Image
-                source={{ uri: imageUrl }}
+                source={imageUrl ? { uri: imageUrl } : PlaceholderAvatar}
                 className="w-full h-full"
                 resizeMode="cover"
               />
@@ -45,7 +47,7 @@ export default function FeaturedCard({
 
           {/* Bottom Glass Panel */}
           <View className="mt-auto">
-            <View className="h-28 flex-row items-start justify-between rounded-2xl bg-qasid-card px-5 py-4 border border-white/5">
+            <View className="h-28 flex-row items-start justify-between  bg-qasid-card py-4">
               <View className="flex-1">
                 <Text
                   className="text-qasid-gold/70 text-x tracking-wide"
@@ -59,13 +61,6 @@ export default function FeaturedCard({
                 >
                   {title}
                 </Text>
-              </View>
-              <View className="ml-4 w-10 h-10 rounded-full self-center items-center justify-center border border-qasid-gold">
-                <Ionicons
-                  name={playing ? "pause" : "play"}
-                  size={14}
-                  color="#E7C11C"
-                />
               </View>
             </View>
           </View>

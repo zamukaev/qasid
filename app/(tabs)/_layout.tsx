@@ -1,7 +1,6 @@
-// app/(tabs)/_layout.tsx
-import { Redirect, Tabs, useRouter } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   FirebaseAuthTypes,
   getAuth,
@@ -11,7 +10,6 @@ import { NowPlayingBar, FullScreenPlayer } from "../../components";
 import { useAudioPlayer } from "../../context/AudioPlayerContext";
 
 export default function TabsLayout() {
-  const [auth, setAuth] = useState(true);
   const router = useRouter();
   const { viewMode } = useAudioPlayer();
 
@@ -24,7 +22,7 @@ export default function TabsLayout() {
   useEffect(() => {
     const subscribe = onAuthStateChanged(getAuth(), handleAuthStateChanged);
     return subscribe;
-  });
+  }, []);
 
   return (
     <>
@@ -50,10 +48,11 @@ export default function TabsLayout() {
             tabBarActiveTintColor: "#E7C11C",
           }}
         />
+
         <Tabs.Screen
-          name="nasheeds/index"
+          name="nasheeds"
           options={{
-            title: "Нашиды",
+            title: "Nasheeds",
             tabBarIcon: ({ color, size }) => (
               <Ionicons
                 name="musical-notes-outline"

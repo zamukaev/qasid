@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   Animated,
   Modal,
   StyleSheet,
@@ -98,8 +98,7 @@ export default function ErrorAlert({
           },
         ]}
       >
-        <TouchableOpacity
-          activeOpacity={0.9}
+        <Pressable
           onPress={hideToast}
           style={[
             styles.toast,
@@ -131,15 +130,15 @@ export default function ErrorAlert({
               {message}
             </Text>
 
-            <TouchableOpacity
+            <Pressable
               onPress={hideToast}
               style={styles.closeButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <AntDesign name="close" size={18} color="#E7C11C" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </Animated.View>
     </Modal>
   );

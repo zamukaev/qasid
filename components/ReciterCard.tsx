@@ -1,7 +1,6 @@
-import React from "react";
 import { Pressable, Text, View, Image } from "react-native";
 
-import MisharyForo from "../assets/reciters/mishary-rashid.jpg";
+import PlaceholderAvatar from "../assets/images/avatar.webp";
 import { Reciter } from "../types/quran";
 import { useRouter } from "expo-router";
 
@@ -43,7 +42,11 @@ export default function ReciterCard({
         {true ? (
           <Image
             className="h-16 w-16 rounded-full  border border-qasid-gold/25 "
-            source={MisharyForo}
+            source={
+              reciter.image_path
+                ? { uri: reciter.image_path }
+                : PlaceholderAvatar
+            }
           />
         ) : (
           <View className="flex-1 border bg-qasid-gray border-qasid-gold/25 items-center justify-center h-16 w-16 rounded-full">
@@ -96,7 +99,9 @@ export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
       >
         <Image
           className="h-20 w-20 rounded-full border-2 border-qasid-gold/25"
-          source={MisharyForo}
+          source={
+            reciter.image_path ? { uri: reciter.image_path } : PlaceholderAvatar
+          }
         />
       </View>
       <Text className="text-qasid-white text-center text-sm">
