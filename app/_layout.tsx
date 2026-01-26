@@ -1,6 +1,9 @@
 import { getAuth } from "@react-native-firebase/auth";
 import { Stack } from "expo-router";
 import { AudioPlayerProvider } from "../context/AudioPlayerContext";
+import "react-native-reanimated";
+import "../global.css";
+import { NavigationContainer } from "@react-navigation/native";
 
 export default function RootLayout() {
   return (

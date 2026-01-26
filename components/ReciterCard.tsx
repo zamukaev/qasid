@@ -1,4 +1,3 @@
-import React, { useEffect } from "react";
 import { Pressable, Text, View, Image } from "react-native";
 
 import PlaceholderAvatar from "../assets/images/avatar.webp";
@@ -81,10 +80,6 @@ export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
       params: { id: reciter.id.toString() },
     });
   };
-
-  useEffect(() => {
-    console.log("Reciter Image Path:", reciter);
-  }, [reciter]);
 
   return (
     <Pressable

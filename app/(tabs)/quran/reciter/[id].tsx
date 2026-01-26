@@ -5,7 +5,6 @@ import {
   getDownloadURL,
 } from "@react-native-firebase/storage";
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   SafeAreaView,
@@ -29,7 +28,18 @@ import {
   getFeaturedItemById,
   getRecitersImageById,
 } from "../../../../services/featured-service";
-import { Loader, Search, ShowError } from "../../../../components";
+import {
+  Loader,
+  Search,
+  SharedCard,
+  ShowError,
+  SharedCardSkeleton,
+  ReciterHeaderSkeleton,
+} from "../../../../components";
+import {
+  PlayButton,
+  PlayButtonVariant,
+} from "../../../../components/PlayButton";
 
 interface SurahListItem {
   id: number;
@@ -41,13 +51,6 @@ interface SurahListItem {
 
 const mockDescription =
   "One of the most inspiring reciters of our time, known for a warm tone and precise tajweed. Perfect both for focused listening and daily remembrance.";
-
-const formatMillis = (ms: number) => {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-};
 
 export default function ReciterDetailsScreen() {
   const { id, content_type, target } = useLocalSearchParams<{
@@ -67,6 +70,7 @@ export default function ReciterDetailsScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const [activeMood, setActiveMood] = useState<string>("All");
   const {
     playTrack,
     setQueue,
@@ -87,7 +91,7 @@ export default function ReciterDetailsScreen() {
   const getFeaturedCollection = async (
     content_type: string,
     target: string,
-    id: string
+    id: string,
   ) => {
     try {
       setLoading(true);
@@ -116,6 +120,7 @@ export default function ReciterDetailsScreen() {
         surah_list: item?.surah_number?.toString(),
         surah_total: beautifulRecitations.length,
         moshaf_type: 0,
+        image_path: item?.image_path || "",
       }));
 
       setReciter({
@@ -133,7 +138,7 @@ export default function ReciterDetailsScreen() {
       setError(
         fetchError instanceof Error
           ? fetchError.message
-          : "Unable to load the reciter data."
+          : "Unable to load the reciter data.",
       );
     } finally {
       setLoading(false);
@@ -143,7 +148,7 @@ export default function ReciterDetailsScreen() {
   const getFeaturedReciter = async (
     content_type: string,
     target: string,
-    id: string
+    id: string,
   ) => {
     try {
       setLoading(true);
@@ -184,7 +189,7 @@ export default function ReciterDetailsScreen() {
       setError(
         fetchError instanceof Error
           ? fetchError.message
-          : "Unable to load the reciter data."
+          : "Unable to load the reciter data.",
       );
     } finally {
       setLoading(false);
@@ -213,6 +218,7 @@ export default function ReciterDetailsScreen() {
           surah_list: item?.surah_number?.toString(),
           surah_total: newItems.length,
           moshaf_type: 0,
+          image_path: item?.image_path || "",
         }));
 
         setReciter((prev) => {
@@ -251,7 +257,7 @@ export default function ReciterDetailsScreen() {
     try {
       setLoading(true);
       const response = await axiosInstance.get(
-        `/reciters?language=eng&reciter=${id}`
+        `/reciters?language=eng&reciter=${id}`,
       );
 
       const fetchedReciter: Reciter = response.data.reciters[0];
@@ -273,7 +279,7 @@ export default function ReciterDetailsScreen() {
       setError(
         fetchError instanceof Error
           ? fetchError.message
-          : "Unable to load the reciter data."
+          : "Unable to load the reciter data.",
       );
     } finally {
       setLoading(false);
@@ -281,6 +287,7 @@ export default function ReciterDetailsScreen() {
   };
 
   useEffect(() => {
+    console.log("reciter");
     fetchReciter();
   }, [id]);
 
@@ -471,7 +478,7 @@ export default function ReciterDetailsScreen() {
   };
 
   const handleRepeatModeChange = async (
-    mode: "sequential" | "shuffle" | "repeat-one"
+    mode: "sequential" | "shuffle" | "repeat-one",
   ) => {
     const wasPlaying = isPlaying;
     const previousMode = repeatMode;
@@ -521,7 +528,7 @@ export default function ReciterDetailsScreen() {
           const playable = filteredSurahItems.filter((item) => item.audioUrl);
           if (playable.length > 0) {
             const availableTracks = playable.filter(
-              (item) => `${reciter.id}-${item.id}` !== currentTrack.id
+              (item) => `${reciter.id}-${item.id}` !== currentTrack.id,
             );
             if (availableTracks.length > 0) {
               const random =
@@ -553,10 +560,6 @@ export default function ReciterDetailsScreen() {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  if (loading) {
-    return <Loader message="Loading reciter..." />;
-  }
-
   if (error) {
     return <ShowError message={error} />;
   }
@@ -576,218 +579,221 @@ export default function ReciterDetailsScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        <View className="px-5 pt-6">
-          <View className="flex-row items-center">
-            <View
-              className="rounded-full mr-4"
-              style={{
-                shadowColor: "#E7C11C",
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.35,
-                shadowRadius: 12,
-              }}
-            >
-              <Image
-                source={
-                  reciter?.image_path
-                    ? { uri: reciter.image_path }
-                    : PlaceholderAvatar
-                }
-                className="h-24 w-24 rounded-full border border-qasid-gold/30"
-              />
-            </View>
-            <View className="flex-1">
-              <Text className="text-2xl text-qasid-white font-bold mb-1">
-                {reciter?.name}
-              </Text>
-              <Text className="text-sm text-qasid-gold/80">
-                {primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
-                  ?.name ?? "Murattal Recitation"}
-              </Text>
-              {!!primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
-                ?.surah_total && (
-                <Text className="text-xs text-qasid-white/60 mt-2">
-                  Surahs recorded:{" "}
-                  {
-                    primaryMoshaf.find((moshaf) => moshaf.id === reciter?.id)
-                      ?.surah_total
+        {loading ? (
+          <ReciterHeaderSkeleton />
+        ) : (
+          <View className="px-5 pt-6">
+            <View className="flex-row items-center">
+              <View
+                className="rounded-full mr-4"
+                style={{
+                  shadowColor: "#E7C11C",
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 12,
+                }}
+              >
+                <Image
+                  source={
+                    reciter?.image_path
+                      ? { uri: reciter.image_path }
+                      : PlaceholderAvatar
                   }
+                  className="h-24 w-24 rounded-full border border-qasid-gold/30"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-2xl text-qasid-white font-bold mb-1">
+                  {reciter?.name}
                 </Text>
+                <Text className="text-sm text-qasid-gold/80">
+                  {primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
+                    ?.name ?? "Murattal Recitation"}
+                </Text>
+                {!!primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
+                  ?.surah_total && (
+                  <Text className="text-xs text-qasid-white/60 mt-2">
+                    Surahs recorded:{" "}
+                    {
+                      primaryMoshaf.find((moshaf) => moshaf.id === reciter?.id)
+                        ?.surah_total
+                    }
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View className="mt-6">
+              <Text
+                numberOfLines={expandedDescription ? undefined : 3}
+                className="text-qasid-white/80 leading-6 text-base"
+              >
+                {reciter?.description ?? mockDescription}
+              </Text>
+              {(reciter?.description ?? mockDescription).length > 150 && (
+                <Pressable
+                  onPress={() => setExpandedDescription(!expandedDescription)}
+                  className="mt-2"
+                >
+                  <Text className="text-qasid-gold/80 text-sm font-semibold">
+                    {expandedDescription ? "See less" : "See more"}
+                  </Text>
+                </Pressable>
               )}
             </View>
-          </View>
 
-          <View className="mt-6">
-            <Text
-              numberOfLines={expandedDescription ? undefined : 3}
-              className="text-qasid-white/80 leading-6 text-base"
-            >
-              {reciter?.description ?? mockDescription}
-            </Text>
-            {(reciter?.description ?? mockDescription).length > 150 && (
-              <Pressable
-                onPress={() => setExpandedDescription(!expandedDescription)}
-                className="mt-2"
-              >
-                <Text className="text-qasid-gold/80 text-sm font-semibold">
-                  {expandedDescription ? "See less" : "See more"}
-                </Text>
-              </Pressable>
-            )}
-          </View>
+            <View className="mt-6">
+              <PlayButton
+                clasName="mb-4 mb-4"
+                handlePlayAll={handlePlayAll}
+                label="Play"
+                kind={PlayButtonVariant.PRIMARY}
+                isPlaying={isPlaying}
+              />
 
-          <View className="mt-6">
-            <Pressable
-              className="w-full bg-qasid-gold rounded-2xl py-3 items-center justify-center mb-4"
-              onPress={handlePlayAll}
-            >
-              <Text className="text-qasid-black font-semibold text-base">
-                Play
-              </Text>
-            </Pressable>
-
-            {/* Repeat Mode Controls */}
-            <View className="flex-row items-center justify-between">
-              <Pressable
-                onPress={() => handleRepeatModeChange("sequential")}
-                style={{
-                  flex: 1,
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 8,
-                  backgroundColor:
-                    repeatMode === "sequential"
-                      ? "rgba(231, 193, 28, 0.15)"
-                      : "rgba(255, 255, 255, 0.05)",
-                  borderWidth: 1,
-                  borderColor:
-                    repeatMode === "sequential"
-                      ? "rgba(231, 193, 28, 0.4)"
-                      : "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="list-outline"
-                    size={16}
-                    color={
+              {/* Repeat Mode Controls */}
+              <View className="flex-row items-center justify-between">
+                <Pressable
+                  onPress={() => handleRepeatModeChange("sequential")}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    paddingVertical: 10,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 8,
+                    backgroundColor:
                       repeatMode === "sequential"
-                        ? "#E7C11C"
-                        : "rgba(255, 255, 255, 0.6)"
-                    }
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "500",
-                      color:
+                        ? "rgba(231, 193, 28, 0.15)"
+                        : "rgba(255, 255, 255, 0.05)",
+                    borderWidth: 1,
+                    borderColor:
+                      repeatMode === "sequential"
+                        ? "rgba(231, 193, 28, 0.4)"
+                        : "rgba(255, 255, 255, 0.1)",
+                  }}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons
+                      name="list-outline"
+                      size={16}
+                      color={
                         repeatMode === "sequential"
                           ? "#E7C11C"
-                          : "rgba(255, 255, 255, 0.7)",
-                    }}
-                  >
-                    Sequential
-                  </Text>
-                </View>
-              </Pressable>
+                          : "rgba(255, 255, 255, 0.6)"
+                      }
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "500",
+                        color:
+                          repeatMode === "sequential"
+                            ? "#E7C11C"
+                            : "rgba(255, 255, 255, 0.7)",
+                      }}
+                    >
+                      Sequential
+                    </Text>
+                  </View>
+                </Pressable>
 
-              <Pressable
-                onPress={() => handleRepeatModeChange("shuffle")}
-                style={{
-                  flex: 1,
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginHorizontal: 4,
-                  backgroundColor:
-                    repeatMode === "shuffle"
-                      ? "rgba(231, 193, 28, 0.15)"
-                      : "rgba(255, 255, 255, 0.05)",
-                  borderWidth: 1,
-                  borderColor:
-                    repeatMode === "shuffle"
-                      ? "rgba(231, 193, 28, 0.4)"
-                      : "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="shuffle-outline"
-                    size={16}
-                    color={
+                <Pressable
+                  onPress={() => handleRepeatModeChange("shuffle")}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    paddingVertical: 10,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginHorizontal: 4,
+                    backgroundColor:
                       repeatMode === "shuffle"
-                        ? "#E7C11C"
-                        : "rgba(255, 255, 255, 0.6)"
-                    }
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "500",
-                      color:
+                        ? "rgba(231, 193, 28, 0.15)"
+                        : "rgba(255, 255, 255, 0.05)",
+                    borderWidth: 1,
+                    borderColor:
+                      repeatMode === "shuffle"
+                        ? "rgba(231, 193, 28, 0.4)"
+                        : "rgba(255, 255, 255, 0.1)",
+                  }}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons
+                      name="shuffle-outline"
+                      size={16}
+                      color={
                         repeatMode === "shuffle"
                           ? "#E7C11C"
-                          : "rgba(255, 255, 255, 0.7)",
-                    }}
-                  >
-                    Shuffle
-                  </Text>
-                </View>
-              </Pressable>
+                          : "rgba(255, 255, 255, 0.6)"
+                      }
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "500",
+                        color:
+                          repeatMode === "shuffle"
+                            ? "#E7C11C"
+                            : "rgba(255, 255, 255, 0.7)",
+                      }}
+                    >
+                      Shuffle
+                    </Text>
+                  </View>
+                </Pressable>
 
-              <Pressable
-                onPress={() => handleRepeatModeChange("repeat-one")}
-                style={{
-                  flex: 1,
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginLeft: 8,
-                  backgroundColor:
-                    repeatMode === "repeat-one"
-                      ? "rgba(231, 193, 28, 0.15)"
-                      : "rgba(255, 255, 255, 0.05)",
-                  borderWidth: 1,
-                  borderColor:
-                    repeatMode === "repeat-one"
-                      ? "rgba(231, 193, 28, 0.4)"
-                      : "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="repeat-outline"
-                    size={16}
-                    color={
+                <Pressable
+                  onPress={() => handleRepeatModeChange("repeat-one")}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    paddingVertical: 10,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginLeft: 8,
+                    backgroundColor:
                       repeatMode === "repeat-one"
-                        ? "#E7C11C"
-                        : "rgba(255, 255, 255, 0.6)"
-                    }
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "500",
-                      color:
+                        ? "rgba(231, 193, 28, 0.15)"
+                        : "rgba(255, 255, 255, 0.05)",
+                    borderWidth: 1,
+                    borderColor:
+                      repeatMode === "repeat-one"
+                        ? "rgba(231, 193, 28, 0.4)"
+                        : "rgba(255, 255, 255, 0.1)",
+                  }}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons
+                      name="repeat-outline"
+                      size={16}
+                      color={
                         repeatMode === "repeat-one"
                           ? "#E7C11C"
-                          : "rgba(255, 255, 255, 0.7)",
-                    }}
-                  >
-                    Repeat
-                  </Text>
-                </View>
-              </Pressable>
+                          : "rgba(255, 255, 255, 0.6)"
+                      }
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "500",
+                        color:
+                          repeatMode === "repeat-one"
+                            ? "#E7C11C"
+                            : "rgba(255, 255, 255, 0.7)",
+                      }}
+                    >
+                      Repeat
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         <View className="mt-8 px-5">
           <View className="mb-4">
@@ -796,104 +802,65 @@ export default function ReciterDetailsScreen() {
             </Text>
           </View>
 
-          {filteredSurahItems.map((surah) => {
-            const trackKey = `${reciter?.id}-${surah.id}`;
-            const isActive = currentTrack?.id === trackKey;
-            const isPending = pendingTrackId === trackKey;
-            const progressEntry = progressMap[trackKey];
-            const hasSavedProgress =
-              progressEntry &&
-              progressEntry.positionMillis > 0 &&
-              progressEntry.durationMillis > 0 &&
-              progressEntry.positionMillis <
-                progressEntry.durationMillis - 5000;
-            const progressPercent = hasSavedProgress
-              ? Math.min(
-                  99,
-                  Math.round(
-                    (progressEntry.positionMillis /
-                      progressEntry.durationMillis) *
-                      100
-                  )
-                )
-              : 0;
-            const resumeMillis =
-              hasSavedProgress && progressEntry
-                ? progressEntry.positionMillis
-                : 0;
-            return (
-              <Pressable
-                key={surah.id}
-                onPress={() => handlePlaySurah(surah)}
-                disabled={isPending}
-                className="flex-row items-center px-4 py-3 mb-3 rounded-2xl border border-qasid-gold/15 bg-qasid-gray/30 relative overflow-hidden"
-              >
-                {isPending && (
-                  <View className="absolute inset-0 bg-qasid-black/60 items-center justify-center z-10">
-                    <ActivityIndicator size="small" color="#E7C11C" />
-                  </View>
-                )}
-                <View className="h-10 w-10 rounded-full bg-qasid-gray/50 items-center justify-center mr-3">
-                  {isActive ? (
-                    <Pressable
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        handlePlaySurah(surah);
-                      }}
-                      className="h-full w-full items-center justify-center"
-                    >
-                      <Ionicons
-                        name={isPlaying ? "pause" : "play"}
-                        size={20}
-                        color="#E7C11C"
-                      />
-                    </Pressable>
-                  ) : (
-                    <Text className="text-qasid-gold font-semibold">
-                      {surah.id.toString()}
-                    </Text>
-                  )}
-                </View>
-                <View className="flex-1">
-                  <Text className="text-qasid-white font-semibold text-base">
-                    {surah.englishName}
-                  </Text>
-                  {surah.reciter_name ? (
-                    <Text className="text-qasid-gold/80 text-sm">
-                      {surah.reciter_name}
-                    </Text>
-                  ) : (
-                    <Text className="text-qasid-gold/80 text-sm">
-                      {surah.arabicName}
-                    </Text>
-                  )}
-                  {hasSavedProgress ? (
-                    <View className="flex-row items-center mt-2">
-                      <View className="flex-row items-center bg-qasid-gold/15 border border-qasid-gold/30 rounded-full px-3 py-1">
-                        <Ionicons
-                          name="time-outline"
-                          size={14}
-                          color="#E7C11C"
-                          style={{ marginRight: 6 }}
-                        />
-                        <Text className="text-qasid-gold text-xs font-medium">
-                          In progress · {progressPercent}%
-                        </Text>
-                        <Text className="text-qasid-white/60 text-xs ml-2">
-                          Resume {formatMillis(resumeMillis)}
-                        </Text>
-                      </View>
-                    </View>
-                  ) : null}
-                </View>
-              </Pressable>
-            );
-          })}
+          {loading ? (
+            // Show skeleton loaders while loading
+            Array.from({ length: 8 }).map((_, index) => (
+              <View key={`skeleton-${index}`} className="mb-1">
+                <SharedCardSkeleton />
+              </View>
+            ))
+          ) : (
+            <>
+              {filteredSurahItems.map((surah) => {
+                const trackKey = `${reciter?.id}-${surah.id}`;
+                const isActive = currentTrack?.id === trackKey;
+                const isPending = pendingTrackId === trackKey;
+                const progressEntry = progressMap[trackKey];
+                const hasSavedProgress =
+                  progressEntry &&
+                  progressEntry.positionMillis > 0 &&
+                  progressEntry.durationMillis > 0 &&
+                  progressEntry.positionMillis <
+                    progressEntry.durationMillis - 5000;
+                const progressPercent = hasSavedProgress
+                  ? Math.min(
+                      99,
+                      Math.round(
+                        (progressEntry.positionMillis /
+                          progressEntry.durationMillis) *
+                          100,
+                      ),
+                    )
+                  : 0;
+                const resumeMillis =
+                  hasSavedProgress && progressEntry
+                    ? progressEntry.positionMillis
+                    : 0;
+                return (
+                  <SharedCard
+                    className="mb-1"
+                    key={trackKey}
+                    handlePlayTrack={() => handlePlaySurah(surah)}
+                    isPlaying={isPlaying}
+                    isPaused={isActive}
+                    title={surah.englishName}
+                    subtitle={surah.arabicName}
+                    track={{
+                      id: surah.id.toString(),
+                      artist: surah?.reciter_name,
+                      title: surah.englishName,
+                      uri: surah.audioUrl,
+                    }}
+                  />
+                );
+              })}
 
-          {filteredSurahItems.length === 0 && (
-            <Text className="text-qasid-white/70 text-base">
-              There are no recordings available for this reciter yet.
-            </Text>
+              {filteredSurahItems.length === 0 && !loading && (
+                <Text className="text-qasid-white/70 text-base">
+                  There are no recordings available for this reciter yet.
+                </Text>
+              )}
+            </>
           )}
         </View>
       </ScrollView>

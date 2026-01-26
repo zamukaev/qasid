@@ -25,6 +25,7 @@ export interface Moshaf {
   surah_total: number;
   moshaf_type: number;
   surah_list: string;
+  image_path?: string;
 }
 export interface Reciter {
   id: number | string;

@@ -4,6 +4,7 @@ import { axiosInstance } from "../../../services/api-service";
 import { Reciter } from "../../../types/quran";
 import {
   CompactReciterCard,
+  CompactReciterCardSkeleton,
   FeaturedList,
   Loader,
   ShowError,
@@ -37,7 +38,7 @@ export default function Quran() {
     try {
       setLoading(true);
       const response = await axiosInstance.get(
-        "/reciters?language=eng&limit=20"
+        "/reciters?language=eng&limit=20",
       );
       const imagesResponse = await loadRecitersImages();
 
@@ -53,7 +54,7 @@ export default function Quran() {
             image_path:
               imagesResponse.find((img) => img.id === reciter.id)?.image_path ??
               "",
-          }))
+          })),
       );
       setLoading(false);
     } catch (error) {
@@ -73,12 +74,9 @@ export default function Quran() {
     return <ShowError message={error} />;
   }
 
-  if (loading) {
-    return <Loader message=" Loading reciters..." />;
-  }
-
   // Calculate the total width needed for all cards
-  const totalColumns = Math.ceil(reciters.length / 2);
+  const displayReciters = loading ? Array.from({ length: 20 }) : reciters;
+  const totalColumns = Math.ceil(displayReciters.length / 2);
   const cardWidth = 100;
   const cardGap = 0;
   const containerWidth = totalColumns * (cardWidth + cardGap);
@@ -106,22 +104,39 @@ export default function Quran() {
             }}
           >
             <View style={{ width: containerWidth, height: 300 }}>
-              {reciters.map((reciter, index) => {
-                const row = index % 2;
-                const column = Math.floor(index / 2);
-                return (
-                  <View
-                    key={reciter.id}
-                    style={{
-                      position: "absolute",
-                      left: column * (cardWidth + cardGap),
-                      top: row * 140,
-                    }}
-                  >
-                    <CompactReciterCard reciter={reciter} />
-                  </View>
-                );
-              })}
+              {loading
+                ? displayReciters.map((_, index) => {
+                    const row = index % 2;
+                    const column = Math.floor(index / 2);
+                    return (
+                      <View
+                        key={`skeleton-${index}`}
+                        style={{
+                          position: "absolute",
+                          left: column * (cardWidth + cardGap),
+                          top: row * 140,
+                        }}
+                      >
+                        <CompactReciterCardSkeleton />
+                      </View>
+                    );
+                  })
+                : reciters.map((reciter, index) => {
+                    const row = index % 2;
+                    const column = Math.floor(index / 2);
+                    return (
+                      <View
+                        key={reciter.id}
+                        style={{
+                          position: "absolute",
+                          left: column * (cardWidth + cardGap),
+                          top: row * 140,
+                        }}
+                      >
+                        <CompactReciterCard reciter={reciter} />
+                      </View>
+                    );
+                  })}
             </View>
           </ScrollView>
         </View>

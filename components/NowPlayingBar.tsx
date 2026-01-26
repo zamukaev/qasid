@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Pressable, TouchableOpacity } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 
@@ -108,7 +108,7 @@ export default function NowPlayingBar() {
 
       {/* Ползунок прогресса внизу */}
       <View style={{ marginTop: 8 }}>
-        <TouchableOpacity
+        <Pressable
           onPress={(event) => {
             const { locationX } = event.nativeEvent;
             const progress = locationX / 300;
@@ -132,7 +132,7 @@ export default function NowPlayingBar() {
               borderRadius: 2,
             }}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

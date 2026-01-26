@@ -93,7 +93,6 @@ export async function fetchBeautifulCollection(
     const data = docSnap.data() as any;
     const audioUrl = await getDownloadURL(ref(storage, data.audio_path));
     const reciterImageUrl = await getDownloadURL(ref(storage, data.image_path));
-
     items.push({
       id: docSnap.id,
       title_en: data.title_en,

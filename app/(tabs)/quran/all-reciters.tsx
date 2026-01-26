@@ -5,7 +5,12 @@ import { Reciter } from "../../../types/quran";
 import { Image } from "react-native";
 import { useRouter } from "expo-router";
 import { loadRecitersImages } from "../../../services/featured-service";
-import { Loader, Search, ShowError } from "../../../components";
+import {
+  Loader,
+  Search,
+  ShowError,
+  ReciterGridCardSkeleton,
+} from "../../../components";
 import PlaceholderAvatar from "../../../assets/images/avatar.webp";
 
 export default function AllReciters() {
@@ -23,7 +28,6 @@ export default function AllReciters() {
       setLoading(true);
       const response = await axiosInstance.get("/reciters?language=eng");
       const imagesResponse = await loadRecitersImages();
-      console.log("Reciters response:", response.data.reciters);
       const sortedReciters = response.data.reciters
         .sort((a: Reciter, b: Reciter) => {
           if (a.letter < b.letter) return -1;
@@ -70,7 +74,7 @@ export default function AllReciters() {
         setFilteredReciters(reciters);
       } else {
         const filtered = reciters.filter((reciter) =>
-          reciter.name.toLowerCase().includes(searchQuery.toLowerCase())
+          reciter.name.toLowerCase().includes(searchQuery.toLowerCase()),
         );
         setFilteredReciters(filtered);
       }
@@ -88,16 +92,14 @@ export default function AllReciters() {
     return <ShowError message={error} />;
   }
 
-  if (loading) {
-    return <Loader message=" Loading reciters..." />;
-  }
-
   return (
     <View className="flex-1 bg-qasid-black">
       <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <FlatList
-        data={filteredReciters}
-        keyExtractor={(item) => item.id.toString()}
+        data={loading ? Array.from({ length: 18 }) : filteredReciters}
+        keyExtractor={(item, index) =>
+          loading ? `skeleton-${index}` : (item as Reciter).id.toString()
+        }
         numColumns={3}
         contentContainerStyle={{
           paddingBottom: 120,
@@ -113,43 +115,47 @@ export default function AllReciters() {
             </View>
           ) : null
         }
-        renderItem={({ item: reciter }) => (
-          <Pressable
-            style={{
-              width: "30%",
-              alignItems: "center",
-            }}
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/quran/reciter/[id]",
-                params: { id: reciter.id.toString() },
-              })
-            }
-          >
-            <View
-              className="rounded-full mb-3"
+        renderItem={({ item }) =>
+          loading ? (
+            <ReciterGridCardSkeleton />
+          ) : (
+            <Pressable
               style={{
-                shadowColor: "#E7C11C",
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
+                width: "30%",
+                alignItems: "center",
               }}
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/quran/reciter/[id]",
+                  params: { id: (item as Reciter).id.toString() },
+                })
+              }
             >
-              <Image
-                className="h-32 w-32 rounded-full border-2 border-qasid-gold/25"
-                source={
-                  reciter.image_path
-                    ? { uri: reciter.image_path }
-                    : PlaceholderAvatar
-                }
-              />
-            </View>
-            <Text className="text-qasid-white text-center text-base">
-              {reciter.name}
-            </Text>
-          </Pressable>
-        )}
+              <View
+                className="rounded-full mb-3"
+                style={{
+                  shadowColor: "#E7C11C",
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+              >
+                <Image
+                  className="h-32 w-32 rounded-full border-2 border-qasid-gold/25"
+                  source={
+                    (item as Reciter).image_path
+                      ? { uri: (item as Reciter).image_path }
+                      : PlaceholderAvatar
+                  }
+                />
+              </View>
+              <Text className="text-qasid-white text-center text-base">
+                {(item as Reciter).name}
+              </Text>
+            </Pressable>
+          )
+        }
       />
     </View>
   );

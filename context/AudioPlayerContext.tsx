@@ -56,7 +56,7 @@ type AudioPlayerContextValue = {
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | undefined>(
-  undefined
+  undefined,
 );
 
 export function AudioPlayerProvider({
@@ -137,7 +137,7 @@ export function AudioPlayerProvider({
   useEffect(() => {
     AsyncStorage.setItem(
       PROGRESS_STORAGE_KEY,
-      JSON.stringify(progressMap)
+      JSON.stringify(progressMap),
     ).catch((error) => console.warn("Failed to persist progress map", error));
   }, [progressMap]);
 
@@ -210,7 +210,7 @@ export function AudioPlayerProvider({
         delete parsed[trackId];
         await AsyncStorage.setItem(
           PROGRESS_STORAGE_KEY,
-          JSON.stringify(parsed)
+          JSON.stringify(parsed),
         );
       }
     } catch (error) {
@@ -243,7 +243,7 @@ export function AudioPlayerProvider({
       }
     } else if (currentRepeatMode === "shuffle") {
       const availableTracks = currentQueue.filter(
-        (t) => t.id !== finishedTrack.id
+        (t) => t.id !== finishedTrack.id,
       );
       const trackToPlay =
         availableTracks.length > 0
@@ -285,7 +285,7 @@ export function AudioPlayerProvider({
           } catch (e) {
             console.error(
               "Failed to resolve firebase path in AudioPlayerContext",
-              e
+              e,
             );
           }
         }
@@ -302,7 +302,7 @@ export function AudioPlayerProvider({
           "playbackStatusUpdate",
           (status: any) => {
             onStatusUpdate(status);
-          }
+          },
         );
         statusListenerRef.current = unsubscribe;
 
@@ -313,7 +313,7 @@ export function AudioPlayerProvider({
         console.error("Error playing track:", error);
       }
     },
-    [unload, onStatusUpdate]
+    [unload, onStatusUpdate],
   );
 
   const togglePlayPause = useCallback(async () => {
@@ -452,7 +452,7 @@ export function AudioPlayerProvider({
       prev,
       progressMap,
       clearProgress,
-    ]
+    ],
   );
 
   return (
