@@ -287,7 +287,6 @@ export default function ReciterDetailsScreen() {
   };
 
   useEffect(() => {
-    console.log("reciter");
     fetchReciter();
   }, [id]);
 

@@ -243,10 +243,8 @@ export default function Nasheeds() {
   const loadNasheedsByMood = async (moodKind: NasheedKind) => {
     try {
       setLoading(true);
-      console.log("Loading nasheeds by mood:", moodKind);
       // Fetch nasheeds by mood from your service
       const { nasheeds, nextCursor } = await getNasheedsByMood(moodKind);
-      console.log("Loaded nasheeds:", nasheeds.length);
       setNasheeds(nasheeds);
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
@@ -261,10 +259,8 @@ export default function Nasheeds() {
   const loadAllNasheeds = async () => {
     try {
       setLoading(true);
-      console.log("Loading all nasheeds...");
       // Fetch all nasheeds from your service
       const { nasheeds, nextCursor } = await getAllNasheeds();
-      console.log("Loaded nasheeds:", nasheeds.length);
       setNasheeds(nasheeds);
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
@@ -280,7 +276,6 @@ export default function Nasheeds() {
     try {
       setMoodsLoading(true);
       const fetchedMoods = await getMoods();
-      console.log("Loaded moods:", fetchedMoods);
       setMoods(fetchedMoods);
       setMoodsLoading(false);
     } catch (err) {
