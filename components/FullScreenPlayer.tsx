@@ -6,7 +6,10 @@ import {
   Animated,
   Dimensions,
   PanResponder,
+  TouchableOpacity,
 } from "react-native";
+import Fontisto from "@expo/vector-icons/Fontisto";
+import Feather from "@expo/vector-icons/Feather";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
@@ -24,12 +27,24 @@ export default function FullScreenPlayer() {
     next,
     prev,
     togglePlayPause,
+    repeatMode,
+    setRepeatMode,
   } = useAudioPlayer();
 
   const progress = useMemo(() => {
     if (!durationMillis) return 0;
     return positionMillis / durationMillis;
   }, [positionMillis, durationMillis]);
+
+  const handleRepeatModeChange = (
+    mode: "sequential" | "shuffle" | "repeat-one",
+  ) => {
+    if (mode === "repeat-one" && repeatMode === "repeat-one") {
+      setRepeatMode("sequential");
+      return;
+    }
+    setRepeatMode(mode);
+  };
 
   const handleClose = () => {
     Animated.timing(translateY, {
@@ -77,7 +92,7 @@ export default function FullScreenPlayer() {
           }).start();
         }
       },
-    })
+    }),
   ).current;
 
   return (
@@ -128,7 +143,6 @@ export default function FullScreenPlayer() {
       <View
         style={{
           flex: 1,
-          justifyContent: "space-between",
           paddingHorizontal: 20,
           paddingBottom: 20,
         }}
@@ -168,59 +182,58 @@ export default function FullScreenPlayer() {
         </View>
 
         {/* Track Info */}
-        <View style={{ alignItems: "center" }}>
-            <Text
+        <View style={{ alignItems: "center", marginTop: 30, marginBottom: 20 }}>
+          <Text
+            style={{
+              color: "#ffffff",
+              fontSize: 26,
+              fontWeight: "700",
+              textAlign: "center",
+              marginBottom: 12,
+            }}
+          >
+            {currentTrack?.title || "Track"}
+          </Text>
+          {currentTrack?.artist && (
+            <View
               style={{
-                color: "#ffffff",
-                fontSize: 26,
-                fontWeight: "700",
-                textAlign: "center",
-                marginBottom: 12,
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+                paddingHorizontal: 16,
+                paddingVertical: 6,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: "rgba(255, 255, 255, 0.2)",
               }}
             >
-              {currentTrack?.title || "Track"}
-            </Text>
-            {currentTrack?.artist && (
-              <View
+              <Text
                 style={{
-                  backgroundColor: "rgba(255, 255, 255, 0.1)",
-                  paddingHorizontal: 16,
-                  paddingVertical: 6,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.2)",
+                  color: "rgba(255, 255, 255, 0.8)",
+                  fontSize: 16,
+                  textAlign: "center",
+                  fontWeight: "500",
                 }}
               >
-                <Text
-                  style={{
-                    color: "rgba(255, 255, 255, 0.8)",
-                    fontSize: 16,
-                    textAlign: "center",
-                    fontWeight: "500",
-                  }}
-                >
-                  {currentTrack.artist}
-                </Text>
-              </View>
-            )}
+                {currentTrack.artist}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Progress Bar */}
-        <View style={{ marginBottom: 20 }}>
+        <View>
           <Slider
             value={progress}
             onSlidingComplete={(ratio) => {
               const target =
                 Math.max(
                   0,
-                  Math.min(1, Array.isArray(ratio) ? ratio[0] : ratio)
+                  Math.min(1, Array.isArray(ratio) ? ratio[0] : ratio),
                 ) * (durationMillis || 0);
               seekTo(target);
             }}
             minimumTrackTintColor="#E7C11C"
             maximumTrackTintColor="rgba(255, 255, 255, 0.2)"
             thumbTintColor="#ffffff"
-            style={{ height: 40, marginBottom: 10 }}
           />
           <View
             style={{
@@ -228,10 +241,22 @@ export default function FullScreenPlayer() {
               justifyContent: "space-between",
             }}
           >
-            <Text style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 14, fontWeight: "500" }}>
+            <Text
+              style={{
+                color: "rgba(255, 255, 255, 0.6)",
+                fontSize: 14,
+                fontWeight: "500",
+              }}
+            >
               {formatMillis(positionMillis)}
             </Text>
-            <Text style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 14, fontWeight: "500" }}>
+            <Text
+              style={{
+                color: "rgba(255, 255, 255, 0.6)",
+                fontSize: 14,
+                fontWeight: "500",
+              }}
+            >
               {formatMillis(durationMillis)}
             </Text>
           </View>
@@ -243,33 +268,25 @@ export default function FullScreenPlayer() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            marginBottom: 80,
+            marginBottom: 20,
           }}
         >
           {/* Previous */}
-          <Pressable 
-            onPress={prev} 
-            style={{ 
-              padding: 15, 
+          <TouchableOpacity
+            onPress={prev}
+            style={{
               marginRight: 20,
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
-              borderRadius: 30,
-              borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.2)",
             }}
           >
-            <Ionicons name="play-skip-back" size={32} color="#ffffff" />
-          </Pressable>
+            <Fontisto name="step-backwrad" size={32} color="#ffffff" />
+          </TouchableOpacity>
 
           {/* Play/Pause */}
-          <Pressable 
-            onPress={togglePlayPause} 
-            style={{ 
+          <TouchableOpacity
+            onPress={togglePlayPause}
+            style={{
               padding: 10,
-              shadowColor: "#E7C11C",
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.5,
-              shadowRadius: 15,
               elevation: 8,
             }}
           >
@@ -278,22 +295,53 @@ export default function FullScreenPlayer() {
               size={70}
               color="#E7C11C"
             />
-          </Pressable>
+          </TouchableOpacity>
 
           {/* Next */}
-          <Pressable 
-            onPress={next} 
-            style={{ 
-              padding: 15, 
+          <TouchableOpacity
+            onPress={next}
+            style={{
               marginLeft: 20,
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
-              borderRadius: 30,
-              borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.2)",
             }}
           >
-            <Ionicons name="play-skip-forward" size={32} color="#ffffff" />
-          </Pressable>
+            <Fontisto name="step-forward" size={32} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row justify-between">
+          {/* Repeat One */}
+          <TouchableOpacity
+            className="self-center p-4 bg-white/10 rounded-full"
+            onPress={() => handleRepeatModeChange("repeat-one")}
+          >
+            <Feather
+              name="repeat"
+              size={28}
+              color={repeatMode === "repeat-one" ? "#E7C11C" : "#ffffff"}
+            />
+          </TouchableOpacity>
+          {/* Sequential */}
+          <TouchableOpacity
+            className="self-center p-4 bg-white/10 rounded-full"
+            onPress={() => handleRepeatModeChange("sequential")}
+          >
+            <Feather
+              name="list"
+              size={28}
+              color={repeatMode === "sequential" ? "#E7C11C" : "#ffffff"}
+            />
+          </TouchableOpacity>
+          {/* Shuffle */}
+          <TouchableOpacity
+            className="self-center p-4 bg-white/10 rounded-full"
+            onPress={() => handleRepeatModeChange("shuffle")}
+          >
+            <Feather
+              name="shuffle"
+              size={28}
+              color={repeatMode === "shuffle" ? "#E7C11C" : "#ffffff"}
+            />
+          </TouchableOpacity>
         </View>
       </View>
     </Animated.View>
