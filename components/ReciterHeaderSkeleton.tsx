@@ -26,13 +26,6 @@ export default function ReciterHeaderSkeleton() {
         </View>
       </View>
 
-      {/* Description Skeleton */}
-      <View className="mt-6">
-        <View className="h-4 w-full bg-gray-700/30 rounded mb-2 animate-pulse" />
-        <View className="h-4 w-5/6 bg-gray-700/30 rounded mb-2 animate-pulse" />
-        <View className="h-4 w-4/6 bg-gray-700/30 rounded animate-pulse" />
-      </View>
-
       {/* Play Button Skeleton */}
       <View className="mt-6">
         <View className="h-12 w-full bg-gray-700/30 rounded-xl mb-4 animate-pulse" />

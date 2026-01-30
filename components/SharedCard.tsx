@@ -11,6 +11,7 @@ export type QasidTrackRowProps = {
   subtitle?: string; // artist / reciter
   duration?: string; // "2:50"
   image?: string; // { uri } или require(...)
+  order?: number; // 1-based order
   track: Track;
   handlePlayTrack: (track: any) => void;
   isPlaying?: boolean;
@@ -21,7 +22,9 @@ export type QasidTrackRowProps = {
 export const SharedCard = ({
   title,
   subtitle = "",
+  duration,
   image,
+  order,
   track,
   handlePlayTrack,
   isPlaying,
@@ -86,6 +89,7 @@ export const SharedCard = ({
                 className="text-[16px] font-semibold text-white/90"
                 numberOfLines={1}
               >
+                {order ? `${order}. ` : ""}
                 {title}
               </Text>
             </View>
@@ -99,6 +103,11 @@ export const SharedCard = ({
               </Text>
             )}
           </View>
+          {!!duration && (
+            <View className="ml-3 items-end">
+              <Text className="text-[12px] text-white/60">{duration}</Text>
+            </View>
+          )}
         </View>
       </View>
     </Pressable>

@@ -15,6 +15,10 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import { createAudioPlayer } from "expo-audio";
 
 import { axiosInstance } from "../../../../services/api-service";
 import { Reciter, Surah } from "../../../../types/quran";
@@ -22,6 +26,7 @@ import { SURAH_METADATA } from "../../../../constants/surahMetadata";
 
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
 import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
+import { formatMillis } from "../../../../utils/formatMillis";
 import {
   fetchBeautifulCollectionPage,
   fetchFeaturedSurahs,
@@ -71,6 +76,10 @@ export default function ReciterDetailsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [activeMood, setActiveMood] = useState<string>("All");
+  const [durationMap, setDurationMap] = useState<Record<string, number>>({});
+  const durationMapRef = useRef<Record<string, number>>({});
+  const durationInFlightRef = useRef<Set<string>>(new Set());
+  const isMountedRef = useRef(true);
   const {
     playTrack,
     setQueue,
@@ -87,6 +96,110 @@ export default function ReciterDetailsScreen() {
     positionMillis,
     durationMillis,
   } = useAudioPlayer();
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const resolveAudioUrl = async (audioUrl: string) => {
+    if (audioUrl.startsWith("http")) return audioUrl;
+    const storage = getStorage();
+    return getDownloadURL(ref(storage, audioUrl));
+  };
+
+  const getDurationMillis = async (audioUrl: string) => {
+    return new Promise<number | null>((resolve) => {
+      let settled = false;
+      const player = createAudioPlayer({ uri: audioUrl });
+      const cleanup = (listener?: { remove: () => void }) => {
+        if (listener) listener.remove();
+        try {
+          player.pause();
+        } catch {}
+        try {
+          player.remove();
+        } catch {}
+      };
+
+      const timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(null);
+      }, 5000);
+
+      const listener = player.addListener("playbackStatusUpdate", (status: any) => {
+        if (settled) return;
+        if (status?.isLoaded && status.duration > 0) {
+          settled = true;
+          clearTimeout(timeoutId);
+          cleanup(listener);
+          resolve(status.duration * 1000);
+        }
+      });
+    });
+  };
+
+  const loadDurationForTrack = async (trackKey: string, audioUrl?: string | null) => {
+    if (!audioUrl) return;
+    if (durationMapRef.current[trackKey]) return;
+    if (durationInFlightRef.current.has(trackKey)) return;
+
+    durationInFlightRef.current.add(trackKey);
+    try {
+      const resolvedUrl = await resolveAudioUrl(audioUrl);
+      const duration = await getDurationMillis(resolvedUrl);
+      if (!duration || duration <= 0) return;
+      if (!isMountedRef.current) return;
+
+      setDurationMap((prev) => {
+        if (prev[trackKey]) return prev;
+        const next = { ...prev, [trackKey]: duration };
+        durationMapRef.current = next;
+        return next;
+      });
+    } catch (durationError) {
+      console.warn("Failed to load duration", durationError);
+    } finally {
+      durationInFlightRef.current.delete(trackKey);
+    }
+  };
+
+  useEffect(() => {
+    if (loading || !reciter) return;
+    const queue = filteredSurahItems
+      .filter((item) => item.audioUrl)
+      .map((item) => ({
+        key: `${reciter?.id}-${item.id}`,
+        url: item.audioUrl,
+      }))
+      .filter((item) => !durationMapRef.current[item.key]);
+
+    if (queue.length === 0) return;
+
+    const MAX_CONCURRENT = 3;
+    let cancelled = false;
+
+    const worker = async () => {
+      while (!cancelled && queue.length > 0) {
+        const nextItem = queue.shift();
+        if (!nextItem) return;
+        await loadDurationForTrack(nextItem.key, nextItem.url);
+      }
+    };
+
+    void Promise.all(
+      Array.from({ length: Math.min(MAX_CONCURRENT, queue.length) }).map(() =>
+        worker(),
+      ),
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filteredSurahItems, reciter, loading]);
 
   const getFeaturedCollection = async (
     content_type: string,
@@ -609,36 +722,37 @@ export default function ReciterDetailsScreen() {
                   {primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
                     ?.name ?? "Murattal Recitation"}
                 </Text>
-                {!!primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
-                  ?.surah_total && (
-                  <Text className="text-xs text-qasid-white/60 mt-2">
-                    Surahs recorded:{" "}
-                    {
-                      primaryMoshaf.find((moshaf) => moshaf.id === reciter?.id)
-                        ?.surah_total
-                    }
-                  </Text>
-                )}
               </View>
             </View>
 
-            <View className="mt-6">
-              <Text
-                numberOfLines={expandedDescription ? undefined : 3}
-                className="text-qasid-white/80 leading-6 text-base"
-              >
-                {reciter?.description ?? mockDescription}
-              </Text>
-              {(reciter?.description ?? mockDescription).length > 150 && (
-                <Pressable
-                  onPress={() => setExpandedDescription(!expandedDescription)}
-                  className="mt-2"
-                >
-                  <Text className="text-qasid-gold/80 text-sm font-semibold">
-                    {expandedDescription ? "See less" : "See more"}
+            <View className="mt-6 w-full flex-row justify-evenly items-center">
+              <View className="flex-row items-center gap-2">
+                <Feather name="headphones" size={14} color="#E7C11C" />
+                <Text className="text-m text-qasid-white">Clear Tajweed</Text>
+              </View>
+              <View className="flex-row items-center gap-2">
+                <MaterialCommunityIcons
+                  name="mosque"
+                  size={14}
+                  color="#E7C11C"
+                />
+                <Text className="text-m text-qasid-white">
+                  Daily Reflection
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-2">
+                <FontAwesome6 name="list-ul" size={14} color="#E7C11C" />
+                {!!primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
+                  ?.surah_total && (
+                  <Text className="text-m text-qasid-white">
+                    {
+                      primaryMoshaf.find((moshaf) => moshaf.id === reciter?.id)
+                        ?.surah_total
+                    }{" "}
+                    Surahs
                   </Text>
-                </Pressable>
-              )}
+                )}
+              </View>
             </View>
 
             <View className="mt-6">
@@ -810,7 +924,7 @@ export default function ReciterDetailsScreen() {
             ))
           ) : (
             <>
-              {filteredSurahItems.map((surah) => {
+              {filteredSurahItems.map((surah, index) => {
                 const trackKey = `${reciter?.id}-${surah.id}`;
                 const isActive = currentTrack?.id === trackKey;
                 const isPending = pendingTrackId === trackKey;
@@ -835,6 +949,11 @@ export default function ReciterDetailsScreen() {
                   hasSavedProgress && progressEntry
                     ? progressEntry.positionMillis
                     : 0;
+                const knownDurationMillis =
+                  durationMap[trackKey] ?? progressEntry?.durationMillis;
+                const durationLabel = knownDurationMillis
+                  ? formatMillis(knownDurationMillis)
+                  : undefined;
                 return (
                   <SharedCard
                     className="mb-1"
@@ -843,7 +962,9 @@ export default function ReciterDetailsScreen() {
                     isPlaying={isPlaying}
                     isPaused={isActive}
                     title={surah.englishName}
+                    order={index + 1}
                     subtitle={surah.arabicName}
+                    duration={durationLabel}
                     track={{
                       id: surah.id.toString(),
                       artist: surah?.reciter_name,
