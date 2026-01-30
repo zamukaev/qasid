@@ -38,7 +38,6 @@ export const getNasheedsByMood = async (
   pageSize = 20,
   cursor?: any,
 ) => {
-  console.log("Fetching nasheeds for mood:", moodKind);
   const db = getFirestore();
   const base = [
     collection(db, "nasheeds"),

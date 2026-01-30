@@ -11,7 +11,7 @@ interface PlayButtonProps {
   label: string;
   clasName?: string;
   kind?: PlayButtonVariant;
-  isPlaying?: boolean;
+  isPlaying: boolean | null;
 }
 
 export const PlayButton = ({

@@ -13,7 +13,7 @@ module.exports = {
           gold: "#E7C11C", // кнопка Sign In
           gray: "#1c1c1c", // кнопка Sign Up
           black: "#0B0B0B", // фон
-          white: "#ffff",
+          white: "#ffffff",
           title: "#E7C11C", // заголовок QASID
           "qasid-bg": "#0B0B0C",
           "qasid-bg-2": "#141416",

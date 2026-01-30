@@ -353,7 +353,11 @@ export default function Nasheeds() {
               handlePlayAll={handlePlayAll}
               label="Play All"
               kind={PlayButtonVariant.SECONDARY}
-              isPlaying={isPlaying}
+              isPlaying={
+                isPlaying &&
+                currentTrack &&
+                nasheeds.some((n) => n.id === currentTrack.id)
+              }
             />
           </View>
         )}
