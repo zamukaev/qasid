@@ -103,11 +103,6 @@ export const SharedCard = ({
               </Text>
             )}
           </View>
-          {!!duration && (
-            <View className="ml-3 items-end">
-              <Text className="text-[12px] text-white/60">{duration}</Text>
-            </View>
-          )}
         </View>
       </View>
     </Pressable>
