@@ -6,7 +6,6 @@ import {
   CompactReciterCard,
   CompactReciterCardSkeleton,
   FeaturedList,
-  Loader,
   ShowError,
 } from "../../../components";
 import { useRouter } from "expo-router";

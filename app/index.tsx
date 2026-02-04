@@ -1,7 +1,5 @@
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Text, View } from "react-native";
-
-import "../global.css";
 import { Link } from "expo-router";
 import {
   getAuth,
@@ -13,6 +11,7 @@ import { SafeAreaView, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSegments } from "expo-router";
 import { useUserStore } from "../stores/userStore";
+import "../global.css";
 
 export default function Welcome() {
   const { user, isLoading, isAuthenticated, setUser, setLoading } =
@@ -22,7 +21,7 @@ export default function Welcome() {
   const segments = useSegments();
 
   const handleAuthStateChanged = (
-    firebaseUser: FirebaseAuthTypes.User | null
+    firebaseUser: FirebaseAuthTypes.User | null,
   ) => {
     setUser(firebaseUser);
   };
@@ -54,25 +53,18 @@ export default function Welcome() {
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
       <StatusBar style="light" />
-
       <View className="flex-1 items-center justify-center px-8">
         <Image
           source={require("../assets/logo.png")}
           resizeMode="contain"
           className="w-36 h-36 mb-6"
         />
-
-        {/* Заголовок */}
         <Text className="text-qasid-title text-6xl font-display tracking-[4] mb-2">
           QASID
         </Text>
-
-        {/* Подзаголовок */}
         <Text className="text-white/80 text-xl text-center mb-10">
           Sacred sounds. Pure soul.
         </Text>
-
-        {/* CTA: Sign Up */}
         <Link href="/signup" asChild>
           <Pressable
             className="w-full rounded-xl bg-qasid-gold py-4 mb-3"
