@@ -6,7 +6,6 @@ import {
 } from "@react-native-firebase/storage";
 import {
   Image,
-  Pressable,
   SafeAreaView,
   ScrollView,
   Text,
@@ -53,9 +52,6 @@ interface SurahListItem {
   audioUrl: string | null;
 }
 
-const mockDescription =
-  "One of the most inspiring reciters of our time, known for a warm tone and precise tajweed. Perfect both for focused listening and daily remembrance.";
-
 export default function ReciterDetailsScreen() {
   const { id, content_type, target } = useLocalSearchParams<{
     id?: string;
@@ -63,24 +59,22 @@ export default function ReciterDetailsScreen() {
     target?: string;
   }>();
   const navigation = useNavigation();
+
   const [reciter, setReciter] = useState<Reciter | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pendingTrackId, setPendingTrackId] = useState<string | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
-  const [expandedDescription, setExpandedDescription] = useState(false);
   const [lastDoc, setLastDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const scrollViewRef = useRef<ScrollView | null>(null);
-
-  const [activeMood, setActiveMood] = useState<string>("All");
   const [durationMap, setDurationMap] = useState<Record<string, number>>({});
+
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const durationMapRef = useRef<Record<string, number>>({});
   const durationInFlightRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
-
   const {
     playTrack,
     setQueue,
@@ -94,6 +88,8 @@ export default function ReciterDetailsScreen() {
     positionMillis,
     durationMillis,
   } = useAudioPlayer();
+
+  const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
 
   useEffect(() => {
     return () => {
@@ -128,19 +124,25 @@ export default function ReciterDetailsScreen() {
         resolve(null);
       }, 5000);
 
-      const listener = player.addListener("playbackStatusUpdate", (status: any) => {
-        if (settled) return;
-        if (status?.isLoaded && status.duration > 0) {
-          settled = true;
-          clearTimeout(timeoutId);
-          cleanup(listener);
-          resolve(status.duration * 1000);
-        }
-      });
+      const listener = player.addListener(
+        "playbackStatusUpdate",
+        (status: any) => {
+          if (settled) return;
+          if (status?.isLoaded && status.duration > 0) {
+            settled = true;
+            clearTimeout(timeoutId);
+            cleanup(listener);
+            resolve(status.duration * 1000);
+          }
+        },
+      );
     });
   };
 
-  const loadDurationForTrack = async (trackKey: string, audioUrl?: string | null) => {
+  const loadDurationForTrack = async (
+    trackKey: string,
+    audioUrl?: string | null,
+  ) => {
     if (!audioUrl) return;
     if (durationMapRef.current[trackKey]) return;
     if (durationInFlightRef.current.has(trackKey)) return;
@@ -164,40 +166,6 @@ export default function ReciterDetailsScreen() {
       durationInFlightRef.current.delete(trackKey);
     }
   };
-
-  useEffect(() => {
-    if (loading || !reciter) return;
-    const queue = filteredSurahItems
-      .filter((item) => item.audioUrl)
-      .map((item) => ({
-        key: `${reciter?.id}-${item.id}`,
-        url: item.audioUrl,
-      }))
-      .filter((item) => !durationMapRef.current[item.key]);
-
-    if (queue.length === 0) return;
-
-    const MAX_CONCURRENT = 3;
-    let cancelled = false;
-
-    const worker = async () => {
-      while (!cancelled && queue.length > 0) {
-        const nextItem = queue.shift();
-        if (!nextItem) return;
-        await loadDurationForTrack(nextItem.key, nextItem.url);
-      }
-    };
-
-    void Promise.all(
-      Array.from({ length: Math.min(MAX_CONCURRENT, queue.length) }).map(() =>
-        worker(),
-      ),
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [filteredSurahItems, reciter, loading]);
 
   const getFeaturedCollection = async (
     content_type: string,
@@ -397,10 +365,6 @@ export default function ReciterDetailsScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchReciter();
-  }, [id]);
-
   const multipleMoshafsAvailable = reciter?.moshaf && reciter.moshaf.length > 1;
 
   const primaryMoshaf = reciter?.moshaf;
@@ -473,16 +437,6 @@ export default function ReciterDetailsScreen() {
     });
   }, [searchQuery, surahItems]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: reciter?.name ?? "Reciter",
-    });
-  }, [navigation, reciter?.name]);
-
-  useEffect(() => {
-    setSearchQuery("");
-  }, [reciter?.id]);
-
   const handlePlaySurah = async (surah: SurahListItem) => {
     if (!reciter || !surah.audioUrl) return;
 
@@ -534,6 +488,7 @@ export default function ReciterDetailsScreen() {
             id: trackId,
             title: surah.englishName,
             artist: reciter.name,
+            artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
             uri: { uri: audioUrl },
           };
           try {
@@ -561,6 +516,7 @@ export default function ReciterDetailsScreen() {
         id: `${reciter.id}-${item.id}`,
         title: item.englishName,
         artist: reciter.name,
+        artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
         uri: { uri: item.audioUrl as string },
       }));
     setQueue(queueTracks);
@@ -569,6 +525,7 @@ export default function ReciterDetailsScreen() {
       id: trackId,
       title: surah.englishName,
       artist: reciter.name,
+      artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
       uri: { uri: audioUrl },
     };
     try {
@@ -604,6 +561,53 @@ export default function ReciterDetailsScreen() {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: reciter?.name ?? "Reciter",
+    });
+  }, [navigation, reciter?.name]);
+
+  useEffect(() => {
+    setSearchQuery("");
+  }, [reciter?.id]);
+  useEffect(() => {
+    fetchReciter();
+  }, [id]);
+
+  useEffect(() => {
+    if (loading || !reciter) return;
+    const queue = filteredSurahItems
+      .filter((item) => item.audioUrl)
+      .map((item) => ({
+        key: `${reciter?.id}-${item.id}`,
+        url: item.audioUrl,
+      }))
+      .filter((item) => !durationMapRef.current[item.key]);
+
+    if (queue.length === 0) return;
+
+    const MAX_CONCURRENT = 3;
+    let cancelled = false;
+
+    const worker = async () => {
+      while (!cancelled && queue.length > 0) {
+        const nextItem = queue.shift();
+        if (!nextItem) return;
+        await loadDurationForTrack(nextItem.key, nextItem.url);
+      }
+    };
+
+    void Promise.all(
+      Array.from({ length: Math.min(MAX_CONCURRENT, queue.length) }).map(() =>
+        worker(),
+      ),
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filteredSurahItems, reciter, loading]);
+
   if (error) {
     return <ShowError message={error} />;
   }
@@ -611,8 +615,6 @@ export default function ReciterDetailsScreen() {
   if (!reciter && !loading) {
     return <ShowError message="Reciter data is not available." />;
   }
-
-  const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">

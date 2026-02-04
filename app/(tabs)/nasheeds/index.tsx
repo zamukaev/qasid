@@ -18,13 +18,10 @@ import {
   BannerSkeleton,
   MoodChipSkeleton,
 } from "../../../components";
-import { useAudioPlayer, Track } from "../../../context/AudioPlayerContext";
-import Audio from "../../../assets/al_qawlu_sawarim.mp3";
-
+import { useAudioPlayer } from "../../../context/AudioPlayerContext";
 import Banner from "../../../assets/images/night_moon_banner_long.webp";
 import { PlayButton, PlayButtonVariant } from "../../../components/PlayButton";
 import { MoodType, NasheedKind, Nasheed } from "../../../types/nasheed";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 import {
   getAllNasheeds,
   getMoods,
@@ -36,6 +33,17 @@ import {
   ref,
 } from "@react-native-firebase/storage";
 export default function Nasheeds() {
+  const [moods, setMoods] = useState<MoodType[]>([]);
+  const [moodsLoading, setMoodsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeMood, setActiveMood] = useState<MoodType | null>(null);
+  const [nasheeds, setNasheeds] = useState<Nasheed[]>([]);
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pendingTrackId, setPendingTrackId] = useState<string | null>(null);
+
   const {
     playTrack,
     pause,
@@ -49,22 +57,13 @@ export default function Nasheeds() {
     positionMillis,
     durationMillis,
   } = useAudioPlayer();
-  const [moods, setMoods] = useState<MoodType[]>([]);
-  const [moodsLoading, setMoodsLoading] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeMood, setActiveMood] = useState<MoodType | null>(null);
-  const [nasheeds, setNasheeds] = useState<Nasheed[]>([]);
-  const [lastDoc, setLastDoc] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [pendingTrackId, setPendingTrackId] = useState<string | null>(null);
-  const scrollViewRef = useRef<ScrollView | null>(null);
-  const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
 
+  const scrollViewRef = useRef<ScrollView | null>(null);
   // Animation values
   const titleOpacity = useRef(new Animated.Value(1)).current;
   const chipScale = useRef(new Animated.Value(1)).current;
+
+  const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
 
   const handlePlayNasheed = async (nasheed: Nasheed) => {
     if (!nasheed.audio_path) return;
@@ -115,6 +114,7 @@ export default function Nasheeds() {
             id: trackId,
             title: nasheed.title_en,
             artist: nasheed.title_ar || "Nasheed",
+            artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
             uri: { uri: audioUrl },
           };
           try {
@@ -143,6 +143,7 @@ export default function Nasheeds() {
         id: item.id,
         title: item.title_en,
         artist: item.title_ar || "Nasheed",
+        artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
         uri: { uri: item.audio_path },
       }));
     setQueue(queueTracks);
@@ -151,6 +152,7 @@ export default function Nasheeds() {
       id: trackId,
       title: nasheed.title_en,
       artist: nasheed.title_ar || "Nasheed",
+      artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
       uri: { uri: audioUrl },
     };
     try {
@@ -429,6 +431,8 @@ export default function Nasheeds() {
                     id: nasheed.id,
                     title: nasheed.title_en,
                     artist: nasheed.title_ar || "Nasheed",
+                    artworkUri:
+                      "https://via.placeholder.com/300x300.png?text=Qasid",
                     uri: nasheed.audio_path,
                   };
                   return (

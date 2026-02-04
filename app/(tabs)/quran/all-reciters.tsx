@@ -6,7 +6,6 @@ import { Image } from "react-native";
 import { useRouter } from "expo-router";
 import { loadRecitersImages } from "../../../services/featured-service";
 import {
-  Loader,
   Search,
   ShowError,
   ReciterGridCardSkeleton,
@@ -21,6 +20,7 @@ export default function AllReciters() {
   const [loading, setLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const fetchReciters = async () => {
