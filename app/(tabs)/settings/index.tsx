@@ -1,6 +1,8 @@
 import {
   View,
   Text,
+  Image,
+  Pressable,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
@@ -10,7 +12,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
-import { ScreenLayout } from "../../../components";
+
 import { useUserStore } from "../../../stores/userStore";
 
 export default function Settings() {
@@ -46,11 +48,11 @@ export default function Settings() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-qasid-black">
+    <SafeAreaView className="flex-1 bg-qasid-black ">
       <ScrollView className="flex-1 px-5">
         {/* Header */}
         <View className="pt-6 pb-6">
-          <Text className="text-qasid-gold text-3xl font-bold">Settings</Text>
+          <Text className="text-qasid-white text-3xl font-bold">Settings</Text>
           <Text className="text-white/60 text-base mt-2">
             Personalize your QASID experience
           </Text>
@@ -107,37 +109,40 @@ export default function Settings() {
             Subscription
           </Text>
 
-          <View className="relative overflow-hidden rounded-2xl">
-            <View className="absolute inset-0 bg-qasid-bg-2" />
-            <LinearGradient
-              colors={[
-                "rgba(231,193,28,0.08)",
-                "rgba(231,193,28,0.02)",
-                "rgba(0,0,0,0.00)",
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ position: "absolute", inset: 0 }}
-            />
-            <View className="absolute inset-0 rounded-2xl border border-white/10" />
+          <View className="w-full rounded-2xl border border-qasid-gold/20 bg-qasid-black px-5 py-6 shadow-lg">
+            <Text className="text-sm text-white/50">Current Plan</Text>
 
-            <View className="px-4 py-4">
-              <View className="flex-row items-center justify-between">
-                <View>
-                  <Text className="text-white text-base font-semibold">
-                    Free Plan
-                  </Text>
-                  <Text className="text-white/50 text-sm mt-0.5">
-                    Basic features included
-                  </Text>
-                </View>
-                <View className="px-3 py-1 rounded-full bg-qasid-gold/20">
-                  <Text className="text-qasid-gold text-xs font-semibold">
-                    Current
+            <View className="mt-2 flex-row items-center justify-between">
+              <Text className="text-2xl font-semibold text-white">
+                Free Plan
+              </Text>
+              <View className="rounded-full border border-qasid-gold/30 bg-qasid-gold/10 px-3 py-1">
+                <Text className="text-xs font-semibold text-qasid-gold">
+                  Current
+                </Text>
+              </View>
+            </View>
+
+            <Text className="mt-3 text-sm text-white/50 leading-5">
+              Basic access to Quran & limited features
+            </Text>
+
+            <TouchableOpacity
+              className="mt-6"
+              activeOpacity={0.8}
+              onPress={() => router.push("/settings/premium")}
+            >
+              <View className="relative overflow-hidden rounded-2xl">
+                <View className="absolute inset-0 bg-qasid-gold/10" />
+                <View className="absolute inset-0 rounded-2xl border border-qasid-gold/30" />
+
+                <View className="px-4 py-4 items-center">
+                  <Text className="text-qasid-gold text-base font-semibold">
+                    Upgrade to Premium →
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -216,7 +221,7 @@ export default function Settings() {
         </View>
 
         {/* Log Out Button */}
-        <View className="mb-8">
+        <View className="mb-24">
           <TouchableOpacity onPress={handleLogout} activeOpacity={0.8}>
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-red-600/10" />
