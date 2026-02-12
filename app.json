@@ -9,16 +9,19 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "jsEngine": "jsc",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.abusafiia.qasid.dev",
+      "buildNumber": "1.0.0",
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -39,7 +42,8 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-audio"
+      "expo-audio",
+      "expo-asset"
     ],
     "web": {
       "favicon": "./assets/favicon.png",
