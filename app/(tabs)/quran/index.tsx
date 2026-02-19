@@ -36,9 +36,7 @@ export default function Quran() {
   const fetchQuran = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(
-        "/reciters?language=eng&limit=20",
-      );
+      const response = await axiosInstance.get("/reciters?language=eng");
       const imagesResponse = await loadRecitersImages();
 
       setReciters(
@@ -53,7 +51,7 @@ export default function Quran() {
             image_path:
               imagesResponse.find((img) => img.id === reciter.id)?.image_path ??
               "",
-          })),
+          }))
       );
       setLoading(false);
     } catch (error) {

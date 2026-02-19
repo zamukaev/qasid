@@ -8,6 +8,7 @@ import {
   Linking,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import Constants from "expo-constants";
 import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
 import { ScreenLayout } from "../../../components";
@@ -17,6 +18,7 @@ export default function Settings() {
   const { user, clearUser } = useUserStore();
   const router = useRouter();
   const auth = getAuth();
+  const appVersion = Constants.expoConfig?.version ?? "unknown";
 
   const handleLogout = async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -210,7 +212,7 @@ export default function Settings() {
               <Text className="text-white text-base font-semibold mb-1">
                 QASID
               </Text>
-              <Text className="text-white/50 text-sm">Version 1.0.0</Text>
+              <Text className="text-white/50 text-sm">Version {appVersion}</Text>
             </View>
           </View>
         </View>
