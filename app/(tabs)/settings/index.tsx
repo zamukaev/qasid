@@ -11,7 +11,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
-import { ScreenLayout } from "../../../components";
 import { useUserStore } from "../../../stores/userStore";
 
 export default function Settings() {
@@ -40,7 +39,7 @@ export default function Settings() {
   };
 
   const handleContactSupport = () => {
-    Linking.openURL("mailto:support@qasid.app");
+    router.push("/(tabs)/settings/contact-support");
   };
 
   const handleTermsPrivacy = () => {
