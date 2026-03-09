@@ -23,6 +23,7 @@ export default function SettingsLayout() {
         options={{
           headerBackTitle: "Settings",
           headerShown: false,
+          animation: "slide_from_right",
         }}
       />
     </Stack>

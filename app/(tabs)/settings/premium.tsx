@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -71,11 +72,12 @@ const featureComparison: {
 ];
 
 export default function Premium() {
+  const router = useRouter();
   const currentPlan = useUserStore((state) => state.currentPlan);
   const currentPlanId: PlanId = currentPlan;
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId>(currentPlanId);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(16)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -124,9 +126,20 @@ export default function Premium() {
         <Animated.View
           style={{
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
+            transform: [{ translateX: slideAnim }],
           }}
         >
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.replace("/settings")}
+            className="pt-4 pb-1 flex-row items-center self-start"
+          >
+            <Ionicons name="chevron-back" size={22} color="#E7C11C" />
+            <Text className="text-qasid-gold text-base font-semibold">
+              Settings
+            </Text>
+          </TouchableOpacity>
+
           <View className="pt-6 pb-3">
             <Text className="text-qasid-white text-3xl font-bold leading-tight">
               Premium
