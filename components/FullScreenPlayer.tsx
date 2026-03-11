@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -20,8 +20,6 @@ export default function FullScreenPlayer() {
     isPlaying,
     positionMillis,
     durationMillis,
-    pause,
-    resume,
     seekTo,
     setViewMode,
     next,

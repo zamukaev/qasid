@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { SafeAreaView, ScrollView, Text, View, Pressable } from "react-native";
-import { axiosInstance } from "../../../services/api-service";
-import { Reciter } from "../../../types/quran";
+import { FirebaseReciter } from "../../../types/quran";
 import {
   CompactReciterCard,
   CompactReciterCardSkeleton,
@@ -10,15 +9,13 @@ import {
 } from "../../../components";
 import { useRouter } from "expo-router";
 
-import {
-  loadFeaturedItems,
-  loadRecitersImages,
-} from "../../../services/featured-service";
+import { loadFeaturedItems } from "../../../services/featured-service";
 import { FeaturedItem } from "../../../types/featured";
+import { fetchReciters } from "../../../services/quran-service";
 
 export default function Quran() {
   const router = useRouter();
-  const [reciters, setReciters] = useState<Reciter[]>([]);
+  const [reciters, setReciters] = useState<FirebaseReciter[]>([]);
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,37 +30,22 @@ export default function Quran() {
     }
   };
 
-  const fetchQuran = async () => {
+  const loadReciters = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/reciters?language=eng");
-      const imagesResponse = await loadRecitersImages();
-
-      setReciters(
-        response.data.reciters
-          .sort((a: Reciter, b: Reciter) => {
-            if (a.letter < b.letter) return -1;
-            if (a.letter > b.letter) return 1;
-            return 0;
-          })
-          .map((reciter: Reciter) => ({
-            ...reciter,
-            image_path:
-              imagesResponse.find((img) => img.id === reciter.id)?.image_path ??
-              "",
-          }))
-      );
+      const response = await fetchReciters();
+      setReciters(response.reciters);
       setLoading(false);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error));
-      console.error(error);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      console.error("Error loading reciters ", e);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchQuran();
+    loadReciters();
     fetchFeaturedItems();
   }, []);
 
@@ -71,12 +53,16 @@ export default function Quran() {
     return <ShowError message={error} />;
   }
 
-  // Calculate the total width needed for all cards
+  // Use two rows only when there are more than six items.
   const displayReciters = loading ? Array.from({ length: 20 }) : reciters;
-  const totalColumns = Math.ceil(displayReciters.length / 2);
+  const useTwoRows = loading || reciters.length > 6;
+  const rows = useTwoRows ? 2 : 1;
+  const totalColumns = Math.ceil(displayReciters.length / rows);
   const cardWidth = 100;
   const cardGap = 0;
+  const rowHeight = 140;
   const containerWidth = totalColumns * (cardWidth + cardGap);
+  const containerHeight = rows * rowHeight;
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
@@ -100,18 +86,18 @@ export default function Quran() {
               paddingRight: 20,
             }}
           >
-            <View style={{ width: containerWidth, height: 300 }}>
+            <View style={{ width: containerWidth, height: containerHeight }}>
               {loading
                 ? displayReciters.map((_, index) => {
-                    const row = index % 2;
-                    const column = Math.floor(index / 2);
+                    const row = index % rows;
+                    const column = Math.floor(index / rows);
                     return (
                       <View
                         key={`skeleton-${index}`}
                         style={{
                           position: "absolute",
                           left: column * (cardWidth + cardGap),
-                          top: row * 140,
+                          top: row * rowHeight,
                         }}
                       >
                         <CompactReciterCardSkeleton />
@@ -119,15 +105,15 @@ export default function Quran() {
                     );
                   })
                 : reciters.map((reciter, index) => {
-                    const row = index % 2;
-                    const column = Math.floor(index / 2);
+                    const row = index % rows;
+                    const column = Math.floor(index / rows);
                     return (
                       <View
                         key={reciter.id}
                         style={{
                           position: "absolute",
                           left: column * (cardWidth + cardGap),
-                          top: row * 140,
+                          top: row * rowHeight,
                         }}
                       >
                         <CompactReciterCard reciter={reciter} />

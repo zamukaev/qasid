@@ -23,7 +23,7 @@ export default function EmailSignInScreen() {
   const handleSignIn = async () => {
     setLoading(true);
     try {
-      const user = await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (e: any) {
       const err = e as FirebaseAuthTypes.NativeFirebaseAuthError;
       const errorMessage = getFirebaseErrorMessage(err.code);

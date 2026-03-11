@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -72,7 +72,7 @@ export const SharedCard = ({
           ) : (
             <View className="h-12 w-12 rounded-xl bg-qasid-gray/30 items-center justify-center">
               <Text className="text-qasid-white font-semibold">
-                {track.id.toString()}
+                {track.surahNumber?.toString()}
               </Text>
             </View>
           )}
@@ -100,6 +100,14 @@ export const SharedCard = ({
                 numberOfLines={1}
               >
                 {track?.artist ? track?.artist : subtitle}
+              </Text>
+            )}
+            {!!duration && (
+              <Text
+                className="mt-0.5 text-[12px] text-white/45"
+                numberOfLines={1}
+              >
+                {duration}
               </Text>
             )}
           </View>

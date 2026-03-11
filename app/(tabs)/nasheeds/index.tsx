@@ -11,7 +11,6 @@ import {
 } from "react-native";
 
 import {
-  Loader,
   ShowError,
   SharedCard,
   SharedCardSkeleton,
@@ -42,7 +41,6 @@ export default function Nasheeds() {
   const [lastDoc, setLastDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [pendingTrackId, setPendingTrackId] = useState<string | null>(null);
 
   const {
     playTrack,
@@ -109,7 +107,6 @@ export default function Nasheeds() {
 
         if (isFinished && !hasSavedPosition) {
           // Track finished and no saved position - restart from beginning
-          setPendingTrackId(trackId);
           const track = {
             id: trackId,
             title: nasheed.title_en,
@@ -117,11 +114,7 @@ export default function Nasheeds() {
             artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
             uri: { uri: audioUrl },
           };
-          try {
-            await playTrack(track);
-          } finally {
-            setPendingTrackId(null);
-          }
+          await playTrack(track);
         } else {
           // Track not finished or has saved position - resume
           if (resumePosition) {
@@ -132,9 +125,6 @@ export default function Nasheeds() {
       }
       return;
     }
-
-    // For new track, show loader
-    setPendingTrackId(trackId);
 
     // Set queue with all nasheeds
     const queueTracks = nasheeds
@@ -155,11 +145,7 @@ export default function Nasheeds() {
       artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
       uri: { uri: audioUrl },
     };
-    try {
-      await playTrack(track, resumePosition);
-    } finally {
-      setPendingTrackId(null);
-    }
+    await playTrack(track, resumePosition);
   };
 
   const handlePlayAll = async () => {

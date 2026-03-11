@@ -1,21 +1,16 @@
 import { Pressable, Text, View, Image } from "react-native";
 
-import PlaceholderAvatar from "../assets/images/avatar.webp";
-import { Reciter } from "../types/quran";
+import { FirebaseReciter } from "../types/quran";
 import { useRouter } from "expo-router";
+import { useReciterImageSource } from "../hooks/useReciterImageSource";
 
 interface ReciterCardProps {
-  reciter: Reciter;
-  href: number;
-  style?: any;
+  reciter: FirebaseReciter;
 }
 
-export default function ReciterCard({
-  reciter,
-  href,
-  style,
-}: ReciterCardProps) {
+export default function ReciterCard({ reciter }: ReciterCardProps) {
   const router = useRouter();
+  const imageSource = useReciterImageSource(reciter.image_path);
   const handlePress = () => {
     router.push({
       pathname: "/(tabs)/quran/reciter/[id]",
@@ -42,26 +37,22 @@ export default function ReciterCard({
         {true ? (
           <Image
             className="h-16 w-16 rounded-full  border border-qasid-gold/25 "
-            source={
-              reciter.image_path
-                ? { uri: reciter.image_path }
-                : PlaceholderAvatar
-            }
+            source={imageSource}
           />
         ) : (
           <View className="flex-1 border bg-qasid-gray border-qasid-gold/25 items-center justify-center h-16 w-16 rounded-full">
             <Text className="text-qasid-gold font-semibold text-3xl">
-              {reciter.name.charAt(0).toUpperCase()}
+              {reciter.name_en.charAt(0).toUpperCase()}
             </Text>
           </View>
         )}
       </View>
       <View className="flex-1">
         <Text className="text-qasid-white font-semibold text-lg">
-          {reciter.name}
+          {reciter.name_en}
         </Text>
         <Text className="text-qasid-gold font-light text-base opacity-[0.8]">
-          {reciter.moshaf[0].name}
+          {reciter.name_ar}
         </Text>
       </View>
     </Pressable>
@@ -69,11 +60,12 @@ export default function ReciterCard({
 }
 
 interface CompactReciterCardProps {
-  reciter: Reciter;
+  reciter: FirebaseReciter;
 }
 
 export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
   const router = useRouter();
+  const imageSource = useReciterImageSource(reciter.image_path);
   const handlePress = () => {
     router.push({
       pathname: "/(tabs)/quran/reciter/[id]",
@@ -99,13 +91,11 @@ export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
       >
         <Image
           className="h-20 w-20 rounded-full border-2 border-qasid-gold/25"
-          source={
-            reciter.image_path ? { uri: reciter.image_path } : PlaceholderAvatar
-          }
+          source={imageSource}
         />
       </View>
       <Text className="text-qasid-white text-center text-sm">
-        {reciter.name}
+        {reciter.name_en}
       </Text>
     </Pressable>
   );

@@ -111,7 +111,7 @@ export default function SignUp() {
             disabled={true}
             className="items-center  rounded-2xl bg-white/05 px-10 py-5  bg-gray-800/50"
             android_ripple={{ color: "#2a2a2a" }}
-            style={({ pressed }) => [{ opacity: 0.5 }]}
+            style={{ opacity: 0.5 }}
             onPress={() => {}}
           >
             <View className="flex-row w-full">

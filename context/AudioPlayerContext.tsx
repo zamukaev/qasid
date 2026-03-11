@@ -23,6 +23,7 @@ type Track = {
   title: string;
   artist?: string;
   artworkUri?: any;
+  surahNumber?: number;
   uri: any;
 };
 

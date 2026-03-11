@@ -10,11 +10,6 @@ import {
   startAfter,
 } from "@react-native-firebase/firestore";
 
-import {
-  getDownloadURL,
-  ref,
-  getStorage,
-} from "@react-native-firebase/storage";
 import { MoodType, Nasheed, NasheedKind } from "../types/nasheed";
 
 export const getMoods = async () => {
