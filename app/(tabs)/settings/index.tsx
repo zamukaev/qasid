@@ -11,7 +11,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
-import { ScreenLayout } from "../../../components";
 import { useUserStore } from "../../../stores/userStore";
 
 export default function Settings() {
@@ -212,7 +211,9 @@ export default function Settings() {
               <Text className="text-white text-base font-semibold mb-1">
                 QASID
               </Text>
-              <Text className="text-white/50 text-sm">Version {appVersion}</Text>
+              <Text className="text-white/50 text-sm">
+                Version {appVersion}
+              </Text>
             </View>
           </View>
         </View>

@@ -22,17 +22,6 @@ export default function NowPlayingBar() {
     }
   }, [positionMillis, durationMillis]);
 
-  const handleSliderChange = (value: number) => {
-    setSliderValue(value);
-  };
-
-  const handleSliderComplete = (value: number) => {
-    if (durationMillis > 0) {
-      const newPosition = value * durationMillis;
-      seekTo(newPosition);
-    }
-  };
-
   if (!currentTrack) return null;
 
   return (

@@ -1,6 +1,5 @@
 import { View, Text, Image, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 
 import PlaceholderAvatar from "../assets/images/avatar.webp";
 interface Props {
@@ -16,7 +15,6 @@ export default function FeaturedCard({
   subtitle,
   imageUrl,
   onPress,
-  playing = false,
   className = "",
 }: Props) {
   return (

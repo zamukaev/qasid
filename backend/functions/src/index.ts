@@ -7,9 +7,7 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https";
-import * as logger from "firebase-functions/logger";
+import { setGlobalOptions } from "firebase-functions";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

@@ -16,14 +16,14 @@ import {
   getDownloadURL,
 } from "@react-native-firebase/storage";
 import { BeautifulRecitation, FeaturedItem } from "../types/featured";
-import { RecitersImage, ResponseSurah, Surah } from "../types/quran";
+import { ResponseSurah, Surah } from "../types/quran";
 
 export async function loadFeaturedItems(): Promise<FeaturedItem[]> {
   const db = getFirestore();
   const q = query(
     collection(db, "featuredItems"),
     where("is_active", "==", true),
-    orderBy("order")
+    orderBy("order"),
   );
   const snapshot = await getDocs(q);
   const items: FeaturedItem[] = [];
@@ -51,7 +51,7 @@ export async function loadFeaturedItems(): Promise<FeaturedItem[]> {
 }
 
 export async function getFeaturedItemById(
-  id: string
+  id: string,
 ): Promise<FeaturedItem | null> {
   const db = getFirestore();
   const docSnap = await getDoc(doc(db, "featuredItems", id));
@@ -78,13 +78,13 @@ export async function getFeaturedItemById(
 }
 
 export async function fetchBeautifulCollection(
-  target: string
+  target: string,
 ): Promise<BeautifulRecitation[]> {
   const db = getFirestore();
   const q = query(
     collection(db, target),
     where("is_active", "==", true),
-    orderBy("order")
+    orderBy("order"),
   );
   const snapshot = await getDocs(q);
   const items: BeautifulRecitation[] = [];
@@ -114,10 +114,9 @@ export async function fetchBeautifulCollection(
 export async function fetchFeaturedSurahs(
   target: string,
   pageSize = 20,
-  cursor?: any
+  cursor?: any,
 ): Promise<ResponseSurah> {
   const db = getFirestore();
-  const storage = getStorage();
   const base = [
     collection(db, "reciters", target, "surahs"),
     orderBy("surah_number"),
@@ -150,7 +149,7 @@ export async function fetchFeaturedSurahs(
         audio_path: data.audio_path,
         surah_number: data.surah_number,
       };
-    })
+    }),
   );
 
   const lastDoc = docs.length ? docs[docs.length - 1] : undefined;
@@ -167,10 +166,9 @@ export async function fetchFeaturedSurahs(
 export async function fetchBeautifulCollectionPage(
   target: string,
   pageSize = 20,
-  cursor?: any // QueryDocumentSnapshot
+  cursor?: any, // QueryDocumentSnapshot
 ): Promise<ResponseSurah> {
   const db = getFirestore();
-  const storage = getStorage();
 
   const base = [
     collection(db, target),
@@ -222,43 +220,5 @@ export async function fetchBeautifulCollectionPage(
   return {
     surahs,
     nextCursor: nextCursor as any,
-  };
-}
-
-// 1. Funktion, die Featured Items lädt
-export async function loadRecitersImages(): Promise<RecitersImage[]> {
-  const db = getFirestore();
-  const q = query(collection(db, "recitersImages"));
-  const snapshot = await getDocs(q);
-  const items: RecitersImage[] = [];
-  const storage = getStorage();
-  for (const doc of snapshot.docs) {
-    const data = doc.data() as any;
-    const imageUrl = await getDownloadURL(ref(storage, data.image_path));
-
-    items.push({
-      id: data.id,
-      image_path: imageUrl,
-    });
-  }
-  return items;
-}
-
-export async function getRecitersImageById(
-  id: number
-): Promise<RecitersImage | null> {
-  const db = getFirestore();
-  const q = query(collection(db, "recitersImages"), where("id", "==", id));
-  const snapshot = await getDocs(q);
-  if (snapshot.empty) {
-    return null;
-  }
-  const data = snapshot.docs[0].data() as any;
-  const storage = getStorage();
-  const imageUrl = await getDownloadURL(ref(storage, data.image_path));
-
-  return {
-    id: data.id,
-    image_path: imageUrl,
   };
 }

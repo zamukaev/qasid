@@ -22,7 +22,7 @@ export default function EmailSignUpScreen() {
     setLoading(true);
     try {
       const auth = getAuth();
-      const user = await createUserWithEmailAndPassword(auth, email, password);
+      await createUserWithEmailAndPassword(auth, email, password);
     } catch (e: any) {
       const err = e as FirebaseAuthTypes.NativeFirebaseAuthError;
       const errorMessage = getFirebaseErrorMessage(err.code);

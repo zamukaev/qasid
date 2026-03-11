@@ -1,6 +1,3 @@
-type NasheedType = "nasheeds";
-type NasheedStatus = "published";
-
 export type NasheedKind =
   | "all"
   | "beautiful"

@@ -1,59 +1,116 @@
 import { useEffect, useState, useRef } from "react";
 import { Text, View, Pressable, FlatList } from "react-native";
-import { axiosInstance } from "../../../services/api-service";
-import { Reciter } from "../../../types/quran";
+import { FirebaseReciter, ResponseReciters } from "../../../types/quran";
 import { Image } from "react-native";
 import { useRouter } from "expo-router";
-import { loadRecitersImages } from "../../../services/featured-service";
 import {
   Search,
   ShowError,
   ReciterGridCardSkeleton,
 } from "../../../components";
-import PlaceholderAvatar from "../../../assets/images/avatar.webp";
+import { fetchReciters } from "../../../services/quran-service";
+import { useReciterImageSource } from "../../../hooks/useReciterImageSource";
+
+interface ReciterGridItemProps {
+  reciter: FirebaseReciter;
+  onPress: (id: string | number) => void;
+}
+
+function ReciterGridItem({ reciter, onPress }: ReciterGridItemProps) {
+  const imageSource = useReciterImageSource(reciter.image_path);
+
+  return (
+    <Pressable
+      style={{
+        width: "30%",
+        alignItems: "center",
+      }}
+      onPress={() => onPress(reciter.id)}
+    >
+      <View
+        className="rounded-full mb-3"
+        style={{
+          shadowColor: "#E7C11C",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <Image
+          className="h-32 w-32 rounded-full border-2 border-qasid-gold/25"
+          source={imageSource}
+        />
+      </View>
+      <Text className="text-qasid-white text-center text-base">
+        {reciter.name_en}
+      </Text>
+    </Pressable>
+  );
+}
 
 export default function AllReciters() {
+  const PAGE_SIZE = 24;
   const router = useRouter();
-  const [reciters, setReciters] = useState<Reciter[]>([]);
-  const [filteredReciters, setFilteredReciters] = useState<Reciter[]>([]);
+  const [reciters, setReciters] = useState<FirebaseReciter[]>([]);
+  const [filteredReciters, setFilteredReciters] = useState<FirebaseReciter[]>(
+    [],
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<ResponseReciters["nextCursor"]>();
+  const [hasMore, setHasMore] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchReciters = async () => {
-    try {
+  const loadReciters = async (loadMore = false) => {
+    if (loadMore) {
+      if (loading || loadingMore || !hasMore || !nextCursor) {
+        return;
+      }
+      setLoadingMore(true);
+    } else {
+      if (loading) {
+        return;
+      }
       setLoading(true);
-      const response = await axiosInstance.get("/reciters?language=eng");
-      const imagesResponse = await loadRecitersImages();
-      const sortedReciters = response.data.reciters
-        .sort((a: Reciter, b: Reciter) => {
-          if (a.letter < b.letter) return -1;
-          if (a.letter > b.letter) return 1;
-          return 0;
-        })
-        .map((reciter: Reciter) => ({
-          ...reciter,
-          image_path:
-            imagesResponse.find((img) => img.id === reciter.id)?.image_path ??
-            "",
-        }));
+    }
 
-      setReciters(sortedReciters);
-      setFilteredReciters(sortedReciters);
-      setLoading(false);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : String(error));
-      console.error(error);
+    try {
+      const response = await fetchReciters(
+        PAGE_SIZE,
+        loadMore ? nextCursor : undefined,
+      );
+
+      setReciters((prev) => {
+        if (!loadMore) {
+          return response.reciters;
+        }
+
+        const existingIds = new Set(prev.map((item) => item.id));
+        const newItems = response.reciters.filter((item) => !existingIds.has(item.id));
+        return [...prev, ...newItems];
+      });
+
+      setNextCursor(response.nextCursor);
+      setHasMore(Boolean(response.nextCursor) && response.reciters.length === PAGE_SIZE);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      console.error("Error loading reciters ", e);
     } finally {
-      setLoading(false);
+      if (loadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchReciters();
+    loadReciters(false);
   }, []);
 
   useEffect(() => {
@@ -73,8 +130,10 @@ export default function AllReciters() {
       if (searchQuery.trim() === "") {
         setFilteredReciters(reciters);
       } else {
-        const filtered = reciters.filter((reciter) =>
-          reciter.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        const filtered = reciters.filter(
+          (reciter) =>
+            reciter.name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            reciter.name_ar.toLowerCase().includes(searchQuery.toLowerCase()),
         );
         setFilteredReciters(filtered);
       }
@@ -92,13 +151,19 @@ export default function AllReciters() {
     return <ShowError message={error} />;
   }
 
+  const listData: (FirebaseReciter | number)[] = loading
+    ? Array.from({ length: 18 }, (_, index) => index)
+    : filteredReciters;
+
   return (
     <View className="flex-1 bg-qasid-black">
       <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <FlatList
-        data={loading ? Array.from({ length: 18 }) : filteredReciters}
+        data={listData}
         keyExtractor={(item, index) =>
-          loading ? `skeleton-${index}` : (item as Reciter).id.toString()
+          loading || typeof item === "number"
+            ? `skeleton-${index}`
+            : item.id.toString()
         }
         numColumns={3}
         contentContainerStyle={{
@@ -115,47 +180,34 @@ export default function AllReciters() {
             </View>
           ) : null
         }
-        renderItem={({ item }) =>
-          loading ? (
-            <ReciterGridCardSkeleton />
-          ) : (
-            <Pressable
-              style={{
-                width: "30%",
-                alignItems: "center",
-              }}
-              onPress={() =>
+        ListFooterComponent={
+          loadingMore ? (
+            <View className="py-4 items-center">
+              <Text className="text-qasid-gold text-sm">Loading more...</Text>
+            </View>
+          ) : null
+        }
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          loadReciters(true);
+        }}
+        renderItem={({ item }: { item: FirebaseReciter | number }) => {
+          if (loading || typeof item === "number") {
+            return <ReciterGridCardSkeleton />;
+          }
+
+          return (
+            <ReciterGridItem
+              reciter={item as FirebaseReciter}
+              onPress={(id) =>
                 router.push({
                   pathname: "/(tabs)/quran/reciter/[id]",
-                  params: { id: (item as Reciter).id.toString() },
+                  params: { id: id.toString() },
                 })
               }
-            >
-              <View
-                className="rounded-full mb-3"
-                style={{
-                  shadowColor: "#E7C11C",
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-              >
-                <Image
-                  className="h-32 w-32 rounded-full border-2 border-qasid-gold/25"
-                  source={
-                    (item as Reciter).image_path
-                      ? { uri: (item as Reciter).image_path }
-                      : PlaceholderAvatar
-                  }
-                />
-              </View>
-              <Text className="text-qasid-white text-center text-base">
-                {(item as Reciter).name}
-              </Text>
-            </Pressable>
-          )
-        }
+            />
+          );
+        }}
       />
     </View>
   );
