@@ -39,7 +39,7 @@ export default function Settings() {
   };
 
   const handleContactSupport = () => {
-    Linking.openURL("mailto:support@qasid.app");
+    router.push("/(tabs)/settings/contact-support");
   };
 
   const handleTermsPrivacy = () => {
