@@ -7,13 +7,14 @@ export interface FirebaseReciter {
   desc: string;
 }
 
+export interface ReciterCursor {
+  id: string;
+  name_en: string;
+}
+
 export interface ResponseReciters {
   reciters: FirebaseReciter[];
-  nextCursor?: {
-    current_page?: number;
-    total_pages?: number;
-    [k: string]: unknown;
-  };
+  nextCursor?: ReciterCursor;
 }
 
 export interface Surah {

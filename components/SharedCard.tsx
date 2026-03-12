@@ -102,14 +102,6 @@ export const SharedCard = ({
                 {track?.artist ? track?.artist : subtitle}
               </Text>
             )}
-            {!!duration && (
-              <Text
-                className="mt-0.5 text-[12px] text-white/45"
-                numberOfLines={1}
-              >
-                {duration}
-              </Text>
-            )}
           </View>
         </View>
       </View>

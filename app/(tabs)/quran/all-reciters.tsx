@@ -8,7 +8,10 @@ import {
   ShowError,
   ReciterGridCardSkeleton,
 } from "../../../components";
-import { fetchReciters } from "../../../services/quran-service";
+import {
+  fetchFilteredReciters,
+  fetchReciters,
+} from "../../../services/quran-service";
 import { useReciterImageSource } from "../../../hooks/useReciterImageSource";
 
 interface ReciterGridItemProps {
@@ -53,9 +56,6 @@ export default function AllReciters() {
   const PAGE_SIZE = 24;
   const router = useRouter();
   const [reciters, setReciters] = useState<FirebaseReciter[]>([]);
-  const [filteredReciters, setFilteredReciters] = useState<FirebaseReciter[]>(
-    [],
-  );
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -65,8 +65,13 @@ export default function AllReciters() {
   const [error, setError] = useState<string | null>(null);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const latestSearchRef = useRef("");
+  const hasInitializedRef = useRef(false);
 
-  const loadReciters = async (loadMore = false) => {
+  const loadReciters = async (loadMore = false, query = "") => {
+    const trimmedQuery = query.trim();
+    const isSearchMode = trimmedQuery.length > 0;
+
     if (loadMore) {
       if (loading || loadingMore || !hasMore || !nextCursor) {
         return;
@@ -80,10 +85,17 @@ export default function AllReciters() {
     }
 
     try {
-      const response = await fetchReciters(
-        PAGE_SIZE,
-        loadMore ? nextCursor : undefined,
-      );
+      const response = isSearchMode
+        ? await fetchFilteredReciters(
+            trimmedQuery,
+            PAGE_SIZE,
+            loadMore ? nextCursor : undefined,
+          )
+        : await fetchReciters(PAGE_SIZE, loadMore ? nextCursor : undefined);
+
+      if (latestSearchRef.current !== trimmedQuery) {
+        return;
+      }
 
       setReciters((prev) => {
         if (!loadMore) {
@@ -96,7 +108,8 @@ export default function AllReciters() {
       });
 
       setNextCursor(response.nextCursor);
-      setHasMore(Boolean(response.nextCursor) && response.reciters.length === PAGE_SIZE);
+      setHasMore(Boolean(response.nextCursor));
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       console.error("Error loading reciters ", e);
@@ -110,42 +123,39 @@ export default function AllReciters() {
   };
 
   useEffect(() => {
-    loadReciters(false);
+    latestSearchRef.current = "";
+    loadReciters(false, "");
+    hasInitializedRef.current = true;
   }, []);
 
   useEffect(() => {
-    // Clear previous timer
+    if (!hasInitializedRef.current) {
+      return;
+    }
+
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
 
-    // Show searching indicator
     if (searchQuery.trim() !== "") {
       setIsSearching(true);
     }
 
-    // Set new timer
     debounceTimer.current = setTimeout(() => {
+      const trimmedQuery = searchQuery.trim();
+      latestSearchRef.current = trimmedQuery;
       setIsSearching(false);
-      if (searchQuery.trim() === "") {
-        setFilteredReciters(reciters);
-      } else {
-        const filtered = reciters.filter(
-          (reciter) =>
-            reciter.name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            reciter.name_ar.toLowerCase().includes(searchQuery.toLowerCase()),
-        );
-        setFilteredReciters(filtered);
-      }
-    }, 500); // 500ms debounce
+      setHasMore(true);
+      setNextCursor(undefined);
+      loadReciters(false, trimmedQuery);
+    }, 500);
 
-    // Cleanup
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
       }
     };
-  }, [searchQuery, reciters]);
+  }, [searchQuery]);
 
   if (error) {
     return <ShowError message={error} />;
@@ -153,7 +163,7 @@ export default function AllReciters() {
 
   const listData: (FirebaseReciter | number)[] = loading
     ? Array.from({ length: 18 }, (_, index) => index)
-    : filteredReciters;
+    : reciters;
 
   return (
     <View className="flex-1 bg-qasid-black">
@@ -189,7 +199,7 @@ export default function AllReciters() {
         }
         onEndReachedThreshold={0.4}
         onEndReached={() => {
-          loadReciters(true);
+          loadReciters(true, latestSearchRef.current);
         }}
         renderItem={({ item }: { item: FirebaseReciter | number }) => {
           if (loading || typeof item === "number") {

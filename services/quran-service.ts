@@ -10,6 +10,7 @@ import {
 } from "@react-native-firebase/firestore";
 import {
   FirebaseReciter,
+  ReciterCursor,
   ResponseReciters,
   ResponseSurah,
   Surah,
@@ -20,6 +21,13 @@ import {
   getStorage,
   ref,
 } from "@react-native-firebase/storage";
+
+const FIREBASE_PROJECT_ID = "qasid-fd80d";
+const SEARCH_RECITERS_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunctions.net/searchReciters`;
+const SEARCH_BATCH_SIZE = 50;
+const MAX_SEARCH_SCAN_PAGES = 10;
+
+const normalizeSearchText = (value: string) => value.trim().toLowerCase();
 
 export async function fetchReciters(
   pageSize: number = 20,
@@ -71,6 +79,77 @@ export async function fetchReciters(
   return {
     reciters,
     nextCursor,
+  };
+}
+
+export async function fetchFilteredReciters(
+  search: string,
+  pageSize: number = 20,
+  cursor?: ReciterCursor,
+): Promise<ResponseReciters> {
+  const trimmedSearch = search.trim();
+  const params = new URLSearchParams({
+    search: trimmedSearch,
+    pageSize: String(pageSize),
+  });
+
+  if (cursor?.id && cursor?.name_en !== undefined) {
+    params.set("cursorId", cursor.id);
+    params.set("cursorNameEn", cursor.name_en);
+  }
+
+  const response = await fetch(`${SEARCH_RECITERS_URL}?${params.toString()}`);
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.warn("searchReciters HTTP fallback triggered:", errorBody);
+    return fetchFilteredRecitersFallback(trimmedSearch, pageSize, cursor);
+  }
+
+  const payload = (await response.json()) as ResponseReciters;
+
+  return {
+    reciters: Array.isArray(payload.reciters) ? payload.reciters : [],
+    nextCursor: payload.nextCursor,
+  };
+}
+
+async function fetchFilteredRecitersFallback(
+  search: string,
+  pageSize: number = 20,
+  cursor?: ReciterCursor,
+): Promise<ResponseReciters> {
+  const normalizedSearch = normalizeSearchText(search);
+  const reciters: FirebaseReciter[] = [];
+  let currentCursor = cursor;
+  let pagesScanned = 0;
+  let hasMore = true;
+
+  while (
+    reciters.length < pageSize &&
+    hasMore &&
+    pagesScanned < MAX_SEARCH_SCAN_PAGES
+  ) {
+    const response = await fetchReciters(SEARCH_BATCH_SIZE, currentCursor);
+
+    const matchingReciters = response.reciters.filter((reciter) => {
+      const nameEn = normalizeSearchText(reciter.name_en ?? "");
+      const nameAr = normalizeSearchText(reciter.name_ar ?? "");
+
+      return (
+        nameEn.includes(normalizedSearch) || nameAr.includes(normalizedSearch)
+      );
+    });
+
+    reciters.push(...matchingReciters.slice(0, pageSize - reciters.length));
+    currentCursor = response.nextCursor;
+    hasMore = Boolean(response.nextCursor);
+    pagesScanned += 1;
+  }
+
+  return {
+    reciters,
+    nextCursor: hasMore ? currentCursor : undefined,
   };
 }
 
