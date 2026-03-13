@@ -1,3 +1,4 @@
+import { getApp } from "@react-native-firebase/app";
 import {
   getFirestore,
   query,
@@ -13,7 +14,7 @@ import {
 import { MoodType, Nasheed, NasheedKind } from "../types/nasheed";
 
 export const getMoods = async () => {
-  const firestore = getFirestore();
+  const firestore = getFirestore(getApp());
   const moodsCollection = collection(firestore, "mood");
   const moodsQuery = query(moodsCollection, orderBy("title", "asc"));
 
@@ -33,7 +34,7 @@ export const getNasheedsByMood = async (
   pageSize = 20,
   cursor?: any,
 ) => {
-  const db = getFirestore();
+  const db = getFirestore(getApp());
   const base = [
     collection(db, "nasheeds"),
     where("is_active", "==", true),
@@ -79,7 +80,7 @@ export const getNasheedsByMood = async (
 };
 
 export const getAllNasheeds = async (pageSize = 20, cursor?: any) => {
-  const db = getFirestore();
+  const db = getFirestore(getApp());
   const base = [
     collection(db, "nasheeds"),
     where("is_active", "==", true),

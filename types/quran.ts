@@ -12,6 +12,12 @@ export interface ReciterCursor {
   name_en: string;
 }
 
+export interface SurahCursor {
+  id: string;
+  surah_number?: number;
+  order?: number;
+}
+
 export interface ResponseReciters {
   reciters: FirebaseReciter[];
   nextCursor?: ReciterCursor;
@@ -27,9 +33,5 @@ export interface Surah {
 }
 export interface ResponseSurah {
   surahs: Surah[];
-  nextCursor?: {
-    current_page?: number;
-    total_pages?: number;
-    [k: string]: unknown;
-  };
+  nextCursor?: SurahCursor;
 }

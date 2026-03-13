@@ -59,7 +59,8 @@ export default function AllReciters() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<ResponseReciters["nextCursor"]>();
+  const [nextCursor, setNextCursor] =
+    useState<ResponseReciters["nextCursor"]>();
   const [hasMore, setHasMore] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export default function AllReciters() {
   const loadReciters = async (loadMore = false, query = "") => {
     const trimmedQuery = query.trim();
     const isSearchMode = trimmedQuery.length > 0;
+    const isInitialLoad = !loadMore && reciters.length === 0 && !isSearchMode;
 
     if (loadMore) {
       if (loading || loadingMore || !hasMore || !nextCursor) {
@@ -78,10 +80,14 @@ export default function AllReciters() {
       }
       setLoadingMore(true);
     } else {
-      if (loading) {
+      if (loading && !isSearchMode) {
         return;
       }
-      setLoading(true);
+      if (isSearchMode) {
+        setIsSearching(true);
+      } else if (isInitialLoad) {
+        setLoading(true);
+      }
     }
 
     try {
@@ -103,7 +109,9 @@ export default function AllReciters() {
         }
 
         const existingIds = new Set(prev.map((item) => item.id));
-        const newItems = response.reciters.filter((item) => !existingIds.has(item.id));
+        const newItems = response.reciters.filter(
+          (item) => !existingIds.has(item.id),
+        );
         return [...prev, ...newItems];
       });
 
@@ -117,7 +125,10 @@ export default function AllReciters() {
       if (loadMore) {
         setLoadingMore(false);
       } else {
-        setLoading(false);
+        setIsSearching(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     }
   };
@@ -137,14 +148,9 @@ export default function AllReciters() {
       clearTimeout(debounceTimer.current);
     }
 
-    if (searchQuery.trim() !== "") {
-      setIsSearching(true);
-    }
-
     debounceTimer.current = setTimeout(() => {
       const trimmedQuery = searchQuery.trim();
       latestSearchRef.current = trimmedQuery;
-      setIsSearching(false);
       setHasMore(true);
       setNextCursor(undefined);
       loadReciters(false, trimmedQuery);
@@ -161,9 +167,10 @@ export default function AllReciters() {
     return <ShowError message={error} />;
   }
 
-  const listData: (FirebaseReciter | number)[] = loading
-    ? Array.from({ length: 18 }, (_, index) => index)
-    : reciters;
+  const listData: (FirebaseReciter | number)[] =
+    loading || isSearching
+      ? Array.from({ length: 18 }, (_, index) => index)
+      : reciters;
 
   return (
     <View className="flex-1 bg-qasid-black">
@@ -183,17 +190,18 @@ export default function AllReciters() {
           gap: 16,
         }}
         columnWrapperStyle={{ gap: 16 }}
-        ListHeaderComponent={
-          isSearching ? (
-            <View className="px-4 py-2 items-center">
-              <Text className="text-qasid-gold text-sm">Searching...</Text>
-            </View>
-          ) : null
-        }
         ListFooterComponent={
           loadingMore ? (
             <View className="py-4 items-center">
               <Text className="text-qasid-gold text-sm">Loading more...</Text>
+            </View>
+          ) : !loading && reciters.length === 0 ? (
+            <View className="py-8 items-center">
+              <Text className="text-qasid-white/70 text-sm">
+                {searchQuery.trim()
+                  ? "No reciters found for this search."
+                  : "No reciters available right now."}
+              </Text>
             </View>
           ) : null
         }
