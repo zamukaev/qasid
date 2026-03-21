@@ -11,13 +11,21 @@ import { useRouter } from "expo-router";
 
 import { loadFeaturedItems } from "../../../services/featured-service";
 import { FeaturedItem } from "../../../types/featured";
-import { fetchReciters } from "../../../services/quran-service";
+import {
+  fetchNewReciters,
+  fetchPopularReciters,
+  fetchReciters,
+} from "../../../services/quran-service";
+import { FontAwesome6 } from "@expo/vector-icons";
 
 export default function Quran() {
   const router = useRouter();
   const [reciters, setReciters] = useState<FirebaseReciter[]>([]);
+  const [popularReciters, setPopularReciters] = useState<FirebaseReciter[]>([]);
+  const [newReciters, setNewReciters] = useState<FirebaseReciter[]>([]);
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingNew, setLoadingNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchFeaturedItems = async () => {
@@ -33,9 +41,12 @@ export default function Quran() {
   const loadReciters = async () => {
     try {
       setLoading(true);
-      const response = await fetchReciters();
+      const [response, popular] = await Promise.all([
+        fetchReciters(),
+        fetchPopularReciters(),
+      ]);
       setReciters(response.reciters);
-      setLoading(false);
+      setPopularReciters(popular);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       console.error("Error loading reciters ", e);
@@ -44,8 +55,21 @@ export default function Quran() {
     }
   };
 
+  const loadNewReciters = async () => {
+    try {
+      setLoadingNew(true);
+      const response = await fetchNewReciters(8);
+      setNewReciters(response.reciters);
+    } catch (e) {
+      console.error("Error loading new reciters ", e);
+    } finally {
+      setLoadingNew(false);
+    }
+  };
+
   useEffect(() => {
     loadReciters();
+    loadNewReciters();
     fetchFeaturedItems();
   }, []);
 
@@ -55,6 +79,12 @@ export default function Quran() {
 
   // Use two rows only when there are more than six items.
   const displayReciters = loading ? Array.from({ length: 20 }) : reciters;
+  const displayPopularReciters: Array<FirebaseReciter | null> = loading
+    ? Array.from({ length: 8 }, () => null)
+    : popularReciters;
+  const displayNewReciters: Array<FirebaseReciter | null> = loadingNew
+    ? Array.from({ length: 8 }, () => null)
+    : newReciters;
   const useTwoRows = loading || reciters.length > 6;
   const rows = useTwoRows ? 2 : 1;
   const totalColumns = Math.ceil(displayReciters.length / rows);
@@ -68,15 +98,93 @@ export default function Quran() {
     <SafeAreaView className="flex-1 bg-qasid-black">
       <ScrollView>
         <FeaturedList featuredItems={featuredItems} />
+        <View className="px-4 pt-6">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-qasid-white text-2xl font-bold">
+              Popular Reciters
+            </Text>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/quran/all-reciters",
+                  params: { sort: "popular" },
+                })
+              }
+            >
+              <FontAwesome6 name="angle-right" size={14} color="#E7C11C" />
+            </Pressable>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingRight: 20,
+            }}
+          >
+            <View className="flex-row">
+              {displayPopularReciters.map((reciter, index) => (
+                <View
+                  key={reciter?.id ?? `popular-skeleton-${index}`}
+                  className="mr-3"
+                >
+                  {!reciter ? (
+                    <CompactReciterCardSkeleton />
+                  ) : (
+                    <CompactReciterCard reciter={reciter} />
+                  )}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+        {(loadingNew || newReciters.length > 0) && (
+          <View className="px-4 py-6">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-qasid-white text-2xl font-bold">
+                New Reciters
+              </Text>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/quran/all-reciters",
+                    params: { sort: "new" },
+                  })
+                }
+              >
+                <FontAwesome6 name="angle-right" size={14} color="#E7C11C" />
+              </Pressable>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingRight: 20,
+              }}
+            >
+              <View className="flex-row">
+                {displayNewReciters.map((reciter, index) => (
+                  <View
+                    key={reciter?.id ?? `new-skeleton-${index}`}
+                    className="mr-3"
+                  >
+                    {!reciter ? (
+                      <CompactReciterCardSkeleton />
+                    ) : (
+                      <CompactReciterCard reciter={reciter} />
+                    )}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
         <View className="px-4 py-6">
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-qasid-white text-2xl font-bold">
               All Reciters
             </Text>
             <Pressable onPress={() => router.push("quran/all-reciters")}>
-              <Text className="text-qasid-title text-base font-semibold underline">
-                See All
-              </Text>
+              <FontAwesome6 name="angle-right" size={14} color="#E7C11C" />
             </Pressable>
           </View>
           <ScrollView

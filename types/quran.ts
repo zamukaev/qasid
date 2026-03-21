@@ -5,11 +5,21 @@ export interface FirebaseReciter {
   image_path: string;
   is_active: boolean;
   desc: string;
+  popularity_score?: number;
+  play_count?: number;
+  qualified_play_count?: number;
+  completed_play_count?: number;
+  publishedAt?: unknown;
+  createdAt?: unknown;
 }
+
+export type ReciterPlaybackEventType = "started" | "qualified" | "completed";
 
 export interface ReciterCursor {
   id: string;
-  name_en: string;
+  name_en?: string;
+  publishedAt?: unknown;
+  data?: unknown;
 }
 
 export interface SurahCursor {

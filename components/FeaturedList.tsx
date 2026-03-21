@@ -11,22 +11,34 @@ interface FeaturedListProps {
 const FeaturedList = ({ featuredItems }: FeaturedListProps) => {
   const router = useRouter();
 
-  if (featuredItems.length > 0) {
-    return (
-      <View className="flex-1 px-4 py-6">
-        <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
-        <FlatList
-          data={featuredItems}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(reciter) => reciter.id.toString()}
-          renderItem={({ item }) => (
+  return (
+    <View className="flex-1 px-4 py-6">
+      <View className="mb-5">
+        <Text className="mt-1 text-qasid-white text-2xl font-bold">
+          Featured
+        </Text>
+      </View>
+
+      <FlatList
+        data={featuredItems}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingRight: 20,
+        }}
+        keyExtractor={(item, index) =>
+          item ? item.id.toString() : `featured-skeleton-${index}`
+        }
+        renderItem={({ item }) =>
+          item === null ? (
+            <FeaturedCardSkeleton className="mr-4" />
+          ) : (
             <FeaturedCard
               title={item.title_en}
               subtitle={item.title_ar}
               imageUrl={item.image_path}
               playing={false}
-              className="mb-4 mr-4"
+              className="mr-4"
               onPress={() =>
                 router.push({
                   pathname: "/(tabs)/quran/reciter/[id]",
@@ -38,21 +50,8 @@ const FeaturedList = ({ featuredItems }: FeaturedListProps) => {
                 })
               }
             />
-          )}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 px-4 py-6">
-      <Text className="text-white text-3xl font-bold mb-8">Featured</Text>
-      <FlatList
-        data={[1, 2, 3]}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(_, index) => index.toString()}
-        renderItem={() => <FeaturedCardSkeleton className="mb-4 mr-4" />}
+          )
+        }
       />
     </View>
   );
