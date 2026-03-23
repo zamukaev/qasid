@@ -340,6 +340,7 @@ export default function ReciterDetailsScreen() {
   };
 
   const fetchReciter = async () => {
+    console.log("Fetching reciter with params", { id, content_type, target });
     if (!id) {
       setError("Reciter is not specified.");
       return;
@@ -392,6 +393,7 @@ export default function ReciterDetailsScreen() {
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
     } catch (fetchError) {
+      console.error("Error fetching reciter data", fetchError);
       setError(
         fetchError instanceof Error
           ? fetchError.message
@@ -647,13 +649,7 @@ export default function ReciterDetailsScreen() {
       playbackTrackingRef.current[currentTrack.id] = trackingState;
       void syncPlaybackEvent("completed");
     }
-  }, [
-    content_type,
-    currentTrack?.id,
-    didJustFinish,
-    listenedMillis,
-    reciter,
-  ]);
+  }, [content_type, currentTrack?.id, didJustFinish, listenedMillis, reciter]);
 
   if (error) {
     return <ShowError message={error} />;

@@ -1,44 +1,55 @@
-import { View, Text, FlatList } from "react-native";
+import React from "react";
+import { Text, FlatList } from "react-native";
+import { useRouter } from "expo-router";
+
 import { FeaturedItem } from "../types/featured";
 import FeaturedCard from "./FeaturedCard";
 import FeaturedCardSkeleton from "./FeaturedCardSkeleton";
-import { useRouter } from "expo-router";
+import HomeSectionShell from "./HomeSectionShell";
 
 interface FeaturedListProps {
   featuredItems: FeaturedItem[];
+  isLoading?: boolean;
+  title?: string;
+  className?: string;
 }
 
-const FeaturedList = ({ featuredItems }: FeaturedListProps) => {
+function FeaturedList({
+  featuredItems,
+  isLoading,
+  title = "Featured",
+  className = "",
+}: FeaturedListProps) {
   const router = useRouter();
 
   return (
-    <View className="flex-1 px-4 py-6">
-      <View className="mb-5">
-        <Text className="mt-1 text-qasid-white text-2xl font-bold">
-          Featured
-        </Text>
-      </View>
+    <HomeSectionShell title={title} className={className}>
+      <Text className="mb-5 -mt-1 text-white/45 text-sm">
+        Curated recitations and collections
+      </Text>
 
       <FlatList
-        data={featuredItems}
+        data={isLoading ? Array(5).fill(null) : featuredItems}
         horizontal
         showsHorizontalScrollIndicator={false}
+        className="-mx-4"
         contentContainerStyle={{
-          paddingRight: 20,
+          paddingLeft: 16,
+          paddingRight: 0,
         }}
         keyExtractor={(item, index) =>
           item ? item.id.toString() : `featured-skeleton-${index}`
         }
         renderItem={({ item }) =>
-          item === null ? (
-            <FeaturedCardSkeleton className="mr-4" />
+          isLoading ? (
+            <FeaturedCardSkeleton className="mr-5" />
           ) : (
             <FeaturedCard
               title={item.title_en}
               subtitle={item.title_ar}
               imageUrl={item.image_path}
               playing={false}
-              className="mr-4"
+              className="mr-5"
               onPress={() =>
                 router.push({
                   pathname: "/(tabs)/quran/reciter/[id]",
@@ -53,8 +64,8 @@ const FeaturedList = ({ featuredItems }: FeaturedListProps) => {
           )
         }
       />
-    </View>
+    </HomeSectionShell>
   );
-};
+}
 
-export default FeaturedList;
+export default React.memo(FeaturedList);

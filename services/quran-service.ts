@@ -174,16 +174,17 @@ export async function fetchPopularReciters(
   const q = query(
     collection(db, "reciters"),
     orderBy("popularity_score", "desc"),
-    orderBy("publishedAt", "desc"),
     limit(pageSize),
   );
 
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map(
-    (docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>) =>
-      mapReciterDoc(docSnap),
-  );
+  return snapshot.docs
+    .map(
+      (docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>) =>
+        mapReciterDoc(docSnap),
+    )
+    .filter((reciter: FirebaseReciter) => (reciter.popularity_score ?? 0) > 0);
 }
 
 export async function fetchNewReciters(
