@@ -49,7 +49,7 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
       </View>
       <View className="flex-1">
         <Text className="text-qasid-white font-semibold text-lg">
-          {reciter.name_en}
+          {getReciterDisplayName(reciter)}
         </Text>
         <Text className="text-qasid-gold font-light text-base opacity-[0.8]">
           {reciter.name_ar}
@@ -62,6 +62,9 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
 interface CompactReciterCardProps {
   reciter: FirebaseReciter;
 }
+
+const getReciterDisplayName = (reciter: FirebaseReciter) =>
+  reciter.name_en.trim();
 
 export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
   const router = useRouter();
@@ -94,8 +97,8 @@ export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
           source={imageSource}
         />
       </View>
-      <Text className="text-qasid-white text-center text-sm">
-        {reciter.name_en}
+      <Text className="text-qasid-white text-center text-sm leading-4" numberOfLines={2}>
+        {getReciterDisplayName(reciter)}
       </Text>
     </Pressable>
   );

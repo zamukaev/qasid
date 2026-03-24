@@ -1,4 +1,5 @@
 import { getApp } from "@react-native-firebase/app";
+import { getAuth } from "@react-native-firebase/auth";
 import {
   getFirestore,
   collection,
@@ -9,10 +10,13 @@ import {
   startAfter,
   doc,
   getDoc,
+  addDoc,
+  serverTimestamp,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
 import {
   FirebaseReciter,
+  ReciterPlaybackEventType,
   ReciterCursor,
   ResponseReciters,
   ResponseSurah,
@@ -31,8 +35,79 @@ const SEARCH_RECITERS_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfun
 const SEARCH_SURAHS_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunctions.net/searchSurahs`;
 const SEARCH_BATCH_SIZE = 50;
 const MAX_SEARCH_SCAN_PAGES = 10;
+const NEW_RECITER_WINDOW_DAYS = 30;
+const NEW_RECITER_WINDOW_MS =
+  NEW_RECITER_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 const normalizeSearchText = (value: string) => value.trim().toLowerCase();
+
+const toMillis = (value: unknown): number | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { toDate?: () => Date }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate().getTime();
+  }
+
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  return undefined;
+};
+
+const getReciterPublishedAtMillis = (data: {
+  publishedAt?: unknown;
+  createdAt?: unknown;
+}) => toMillis(data.publishedAt ?? data.createdAt);
+
+const isRecentReciter = (data: {
+  publishedAt?: unknown;
+  createdAt?: unknown;
+}) => {
+  const reciterTime = getReciterPublishedAtMillis(data);
+
+  if (reciterTime === undefined) {
+    return false;
+  }
+
+  return Date.now() - reciterTime <= NEW_RECITER_WINDOW_MS;
+};
+
+const mapReciterDoc = (
+  docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>,
+): FirebaseReciter => {
+  const data = docSnap.data() as any;
+
+  return {
+    id: docSnap.id,
+    name_en: data.name_en,
+    name_ar: data.name_ar,
+    image_path: data.image_path,
+    is_active: data.is_active,
+    desc: data.desc,
+    popularity_score: data.popularity_score ?? 0,
+    play_count: data.play_count ?? 0,
+    qualified_play_count: data.qualified_play_count ?? 0,
+    completed_play_count: data.completed_play_count ?? 0,
+    publishedAt: data.publishedAt,
+    createdAt: data.createdAt,
+  };
+};
 
 const matchesSurahSearch = (surah: Surah, search: string) => {
   const normalizedSearch = normalizeSearchText(search);
@@ -79,27 +154,86 @@ export async function fetchReciters(
 
   const snapshot = await getDocs(q);
   const docs = snapshot.docs;
-  const reciters: FirebaseReciter[] = docs.map(
-    (
-      docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>,
-    ) => {
-      const data = docSnap.data() as any;
-
-      return {
-        id: docSnap.id,
-        name_en: data.name_en,
-        name_ar: data.name_ar,
-        image_path: data.image_path,
-        is_active: data.is_active,
-        desc: data.desc,
-      };
-    },
-  );
+  const reciters: FirebaseReciter[] = docs.map(mapReciterDoc);
 
   const lastDoc = docs.length ? docs[docs.length - 1] : undefined;
   const nextCursor = lastDoc
     ? { name_en: lastDoc.data().name_en, id: lastDoc.id }
     : undefined;
+
+  return {
+    reciters,
+    nextCursor,
+  };
+}
+
+export async function fetchPopularReciters(
+  pageSize: number = 10,
+): Promise<FirebaseReciter[]> {
+  const db = getFirestore(getApp());
+  const q = query(
+    collection(db, "reciters"),
+    orderBy("popularity_score", "desc"),
+    limit(pageSize),
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs
+    .map(
+      (docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>) =>
+        mapReciterDoc(docSnap),
+    )
+    .filter((reciter: FirebaseReciter) => (reciter.popularity_score ?? 0) > 0);
+}
+
+export async function fetchNewReciters(
+  pageSize: number = 10,
+  cursor?: ReciterCursor,
+): Promise<ResponseReciters> {
+  const db = getFirestore(getApp());
+  const base = [
+    collection(db, "reciters"),
+    orderBy("publishedAt", "desc"),
+    orderBy("__name__", "desc"),
+    limit(pageSize),
+  ] as const;
+
+  let q;
+  if (cursor) {
+    if (
+      cursor.id &&
+      cursor.publishedAt !== undefined &&
+      !cursor.data
+    ) {
+      q = query(...base, startAfter(cursor.publishedAt, cursor.id));
+    } else {
+      q = query(...base, startAfter(cursor));
+    }
+  } else {
+    q = query(...base);
+  }
+
+  const snapshot = await getDocs(q);
+  const docs = snapshot.docs;
+  const reciters: FirebaseReciter[] = docs
+    .map(mapReciterDoc)
+    .filter((reciter: FirebaseReciter) =>
+      isRecentReciter({
+        publishedAt: reciter.publishedAt,
+        createdAt: reciter.createdAt,
+      }),
+    );
+
+  const lastDoc = docs.length ? docs[docs.length - 1] : undefined;
+  const nextCursor =
+    lastDoc &&
+    isRecentReciter({
+      publishedAt: lastDoc.data().publishedAt,
+      createdAt: lastDoc.data().createdAt,
+    })
+      ? { publishedAt: lastDoc.data().publishedAt, id: lastDoc.id }
+      : undefined;
 
   return {
     reciters,
@@ -190,13 +324,40 @@ export async function fetchReciterById(id: string): Promise<FirebaseReciter> {
   const data = docSnap.data() as any;
   const imageUrl = await getDownloadURL(ref(storage, data.image_path));
   return {
-    id: docSnap.id,
-    name_en: data.name_en,
-    name_ar: data.name_ar,
+    ...mapReciterDoc(
+      docSnap as FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>,
+    ),
     image_path: imageUrl,
-    is_active: data.is_active,
-    desc: data.desc,
   };
+}
+
+export async function trackReciterPlayback({
+  reciterId,
+  surahId,
+  eventType,
+  playedSeconds,
+}: {
+  reciterId: string;
+  surahId: string;
+  eventType: ReciterPlaybackEventType;
+  playedSeconds: number;
+}) {
+  const db = getFirestore(getApp());
+  const userId = getAuth().currentUser?.uid;
+
+  if (!userId) {
+    throw new Error("User must be signed in to track playback.");
+  }
+
+  await addDoc(collection(db, "reciter_plays"), {
+    reciterId,
+    surahId,
+    userId,
+    eventType,
+    playedSeconds,
+    completed: eventType === "completed",
+    createdAt: serverTimestamp(),
+  });
 }
 
 export async function fetchSurahs(
@@ -303,7 +464,11 @@ async function fetchFilteredSurahsFallback(
     hasMore &&
     pagesScanned < MAX_SEARCH_SCAN_PAGES
   ) {
-    const response = await fetchSurahs(target, SEARCH_BATCH_SIZE, currentCursor);
+    const response = await fetchSurahs(
+      target,
+      SEARCH_BATCH_SIZE,
+      currentCursor,
+    );
 
     const matchingSurahs = response.surahs.filter((surah) =>
       matchesSurahSearch(surah, search),

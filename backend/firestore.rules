@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /reciter_plays/{playId} {
+      allow create: if request.auth != null &&
+        request.resource.data.keys().hasOnly([
+          'reciterId',
+          'surahId',
+          'userId',
+          'eventType',
+          'playedSeconds',
+          'completed',
+          'createdAt'
+        ]) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.reciterId is string &&
+        request.resource.data.surahId is string &&
+        request.resource.data.eventType in ['started', 'qualified', 'completed'] &&
+        request.resource.data.playedSeconds is number &&
+        request.resource.data.completed is bool;
+
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

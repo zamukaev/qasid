@@ -1,8 +1,9 @@
 import * as admin from "firebase-admin";
-import { setGlobalOptions } from "firebase-functions";
-import { onRequest } from "firebase-functions/v2/https";
+import {setGlobalOptions} from "firebase-functions";
+import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onRequest} from "firebase-functions/v2/https";
 
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({maxInstances: 10});
 
 admin.initializeApp();
 
@@ -51,6 +52,53 @@ const parsePageSize = (value: string | undefined) => {
 const parseNumber = (value: string | undefined) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const getPlaybackScoreIncrement = (eventType: unknown) => {
+  switch (eventType) {
+  case "completed":
+    return 5;
+  case "qualified":
+    return 2;
+  case "started":
+    return 1;
+  default:
+    return 0;
+  }
+};
+
+const getTimestampDate = (value: unknown) => {
+  if (value instanceof admin.firestore.Timestamp) {
+    return value.toDate();
+  }
+
+  return new Date();
+};
+
+const getPlaybackLockId = ({
+  userId,
+  reciterId,
+  surahId,
+  eventType,
+  createdAt,
+}: {
+  userId: string;
+  reciterId: string;
+  surahId: string;
+  eventType: string;
+  createdAt: unknown;
+}) => {
+  const createdAtDate = getTimestampDate(createdAt);
+  const bucketMinute = Math.floor(createdAtDate.getUTCMinutes() / 30) * 30;
+  const bucketKey = [
+    createdAtDate.getUTCFullYear(),
+    String(createdAtDate.getUTCMonth() + 1).padStart(2, "0"),
+    String(createdAtDate.getUTCDate()).padStart(2, "0"),
+    String(createdAtDate.getUTCHours()).padStart(2, "0"),
+    String(bucketMinute).padStart(2, "0"),
+  ].join("");
+
+  return [userId, reciterId, surahId, eventType, bucketKey].join("_");
 };
 
 const matchesSurahSearch = (
@@ -136,9 +184,9 @@ const mapSurah = (doc: admin.firestore.QueryDocumentSnapshot) => {
   };
 };
 
-export const searchReciters = onRequest({ cors: true }, async (req, res) => {
+export const searchReciters = onRequest({cors: true}, async (req, res) => {
   if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({error: "Method not allowed"});
     return;
   }
 
@@ -236,13 +284,13 @@ export const searchReciters = onRequest({ cors: true }, async (req, res) => {
     });
   } catch (error) {
     console.error("searchReciters failed", error);
-    res.status(500).json({ error: "Failed to load reciters" });
+    res.status(500).json({error: "Failed to load reciters"});
   }
 });
 
-export const searchSurahs = onRequest({ cors: true }, async (req, res) => {
+export const searchSurahs = onRequest({cors: true}, async (req, res) => {
   if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({error: "Method not allowed"});
     return;
   }
 
@@ -260,7 +308,7 @@ export const searchSurahs = onRequest({ cors: true }, async (req, res) => {
     const cursorOrder = parseNumber(getSingleQueryValue(req.query.cursorOrder));
 
     if (!target) {
-      res.status(400).json({ error: "Missing target" });
+      res.status(400).json({error: "Missing target"});
       return;
     }
 
@@ -274,8 +322,8 @@ export const searchSurahs = onRequest({ cors: true }, async (req, res) => {
             id: cursorId,
             surah_number: cursorSurahNumber,
             order: cursorOrder,
-          }
-        : undefined,
+          } :
+          undefined,
     });
 
     const surahs: Array<Record<string, unknown>> = [];
@@ -315,8 +363,8 @@ export const searchSurahs = onRequest({ cors: true }, async (req, res) => {
               {
                 id: lastVisible?.id ?? "",
                 order: Number(lastVisible?.get("order") ?? 0),
-              }
-            : {
+              } :
+              {
                 id: lastVisible?.id ?? "",
                 surah_number: Number(lastVisible?.get("surah_number") ?? 0),
               },
@@ -336,8 +384,8 @@ export const searchSurahs = onRequest({ cors: true }, async (req, res) => {
             {
               id: nextStartAfter.id,
               order: Number(nextStartAfter.get("order") ?? 0),
-            }
-          : {
+            } :
+            {
               id: nextStartAfter.id,
               surah_number: Number(nextStartAfter.get("surah_number") ?? 0),
             },
@@ -350,12 +398,12 @@ export const searchSurahs = onRequest({ cors: true }, async (req, res) => {
           {
             id: lastVisible.id,
             order: Number(lastVisible.get("order") ?? 0),
-          }
-        : {
+          } :
+          {
             id: lastVisible.id,
             surah_number: Number(lastVisible.get("surah_number") ?? 0),
-          }
-      : undefined;
+          } :
+        undefined;
 
     res.status(200).json({
       surahs,
@@ -363,6 +411,85 @@ export const searchSurahs = onRequest({ cors: true }, async (req, res) => {
     });
   } catch (error) {
     console.error("searchSurahs failed", error);
-    res.status(500).json({ error: "Failed to load surahs" });
+    res.status(500).json({error: "Failed to load surahs"});
   }
 });
+
+export const onReciterPlaybackCreated = onDocumentCreated(
+  "reciter_plays/{playId}",
+  async (event) => {
+    const snapshot = event.data;
+
+    if (!snapshot) {
+      return;
+    }
+
+    const data = snapshot.data();
+    const reciterId = typeof data.reciterId === "string" ? data.reciterId : "";
+    const surahId = typeof data.surahId === "string" ? data.surahId : "";
+    const userId = typeof data.userId === "string" ? data.userId : "";
+    const eventType = data.eventType;
+    const scoreIncrement = getPlaybackScoreIncrement(eventType);
+
+    if (!reciterId || !surahId || !userId || scoreIncrement === 0) {
+      console.warn("Skipping reciter playback event with invalid payload", {
+        playId: snapshot.id,
+        reciterId,
+        surahId,
+        userId,
+        eventType,
+      });
+      return;
+    }
+
+    const reciterRef = admin.firestore().collection("reciters").doc(reciterId);
+    const lockId = getPlaybackLockId({
+      userId,
+      reciterId,
+      surahId,
+      eventType,
+      createdAt: data.createdAt,
+    });
+    const lockRef = admin
+      .firestore()
+      .collection("reciter_playback_locks")
+      .doc(lockId);
+
+    await admin.firestore().runTransaction(async (transaction) => {
+      const lockSnapshot = await transaction.get(lockRef);
+
+      if (lockSnapshot.exists) {
+        return;
+      }
+
+      transaction.set(
+        reciterRef,
+        {
+          popularity_score: admin.firestore.FieldValue.increment(
+            scoreIncrement,
+          ),
+          play_count: admin.firestore.FieldValue.increment(
+            eventType === "started" ? 1 : 0,
+          ),
+          qualified_play_count: admin.firestore.FieldValue.increment(
+            eventType === "qualified" ? 1 : 0,
+          ),
+          completed_play_count: admin.firestore.FieldValue.increment(
+            eventType === "completed" ? 1 : 0,
+          ),
+        },
+        {merge: true},
+      );
+
+      transaction.set(lockRef, {
+        playId: snapshot.id,
+        reciterId,
+        surahId,
+        userId,
+        eventType,
+        createdAt:
+          data.createdAt ?? admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  },
+);

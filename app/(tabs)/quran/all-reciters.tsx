@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Text, View, Pressable, FlatList } from "react-native";
 import { FirebaseReciter, ResponseReciters } from "../../../types/quran";
 import { Image } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import {
   Search,
   ShowError,
@@ -10,6 +10,8 @@ import {
 } from "../../../components";
 import {
   fetchFilteredReciters,
+  fetchNewReciters,
+  fetchPopularReciters,
   fetchReciters,
 } from "../../../services/quran-service";
 import { useReciterImageSource } from "../../../hooks/useReciterImageSource";
@@ -54,7 +56,12 @@ function ReciterGridItem({ reciter, onPress }: ReciterGridItemProps) {
 
 export default function AllReciters() {
   const PAGE_SIZE = 24;
+  const POPULAR_PAGE_SIZE = 1000;
   const router = useRouter();
+  const navigation = useNavigation();
+  const { sort } = useLocalSearchParams<{ sort?: string }>();
+  const isPopularMode = sort === "popular";
+  const isNewMode = sort === "new";
   const [reciters, setReciters] = useState<FirebaseReciter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,6 +75,18 @@ export default function AllReciters() {
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const latestSearchRef = useRef("");
   const hasInitializedRef = useRef(false);
+  const skippedInitialSearchRef = useRef(false);
+  const screenTitle = isPopularMode
+    ? "Popular Reciters"
+    : isNewMode
+      ? "New Reciters"
+      : "All Reciters";
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: screenTitle,
+    });
+  }, [navigation, screenTitle]);
 
   const loadReciters = async (loadMore = false, query = "") => {
     const trimmedQuery = query.trim();
@@ -75,6 +94,9 @@ export default function AllReciters() {
     const isInitialLoad = !loadMore && reciters.length === 0 && !isSearchMode;
 
     if (loadMore) {
+      if (isPopularMode) {
+        return;
+      }
       if (loading || loadingMore || !hasMore || !nextCursor) {
         return;
       }
@@ -91,13 +113,32 @@ export default function AllReciters() {
     }
 
     try {
-      const response = isSearchMode
-        ? await fetchFilteredReciters(
-            trimmedQuery,
-            PAGE_SIZE,
-            loadMore ? nextCursor : undefined,
-          )
-        : await fetchReciters(PAGE_SIZE, loadMore ? nextCursor : undefined);
+      let responseReciters: FirebaseReciter[] = [];
+      let responseNextCursor: ResponseReciters["nextCursor"];
+
+      if (isPopularMode && !isSearchMode) {
+        responseReciters = await fetchPopularReciters(POPULAR_PAGE_SIZE);
+        responseNextCursor = undefined;
+      } else if (isNewMode && !isSearchMode) {
+        const response = await fetchNewReciters(PAGE_SIZE, loadMore ? nextCursor : undefined);
+        responseReciters = response.reciters;
+        responseNextCursor = response.nextCursor;
+      } else if (isSearchMode) {
+        const response = await fetchFilteredReciters(
+          trimmedQuery,
+          PAGE_SIZE,
+          loadMore ? nextCursor : undefined,
+        );
+        responseReciters = response.reciters;
+        responseNextCursor = response.nextCursor;
+      } else {
+        const response = await fetchReciters(
+          PAGE_SIZE,
+          loadMore ? nextCursor : undefined,
+        );
+        responseReciters = response.reciters;
+        responseNextCursor = response.nextCursor;
+      }
 
       if (latestSearchRef.current !== trimmedQuery) {
         return;
@@ -105,18 +146,18 @@ export default function AllReciters() {
 
       setReciters((prev) => {
         if (!loadMore) {
-          return response.reciters;
+          return responseReciters;
         }
 
         const existingIds = new Set(prev.map((item) => item.id));
-        const newItems = response.reciters.filter(
+        const newItems = responseReciters.filter(
           (item) => !existingIds.has(item.id),
         );
         return [...prev, ...newItems];
       });
 
-      setNextCursor(response.nextCursor);
-      setHasMore(Boolean(response.nextCursor));
+      setNextCursor(responseNextCursor);
+      setHasMore(Boolean(responseNextCursor));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -141,6 +182,11 @@ export default function AllReciters() {
 
   useEffect(() => {
     if (!hasInitializedRef.current) {
+      return;
+    }
+
+    if (!skippedInitialSearchRef.current) {
+      skippedInitialSearchRef.current = true;
       return;
     }
 
@@ -200,13 +246,20 @@ export default function AllReciters() {
               <Text className="text-qasid-white/70 text-sm">
                 {searchQuery.trim()
                   ? "No reciters found for this search."
-                  : "No reciters available right now."}
+                  : isPopularMode
+                    ? "No popular reciters available right now."
+                    : isNewMode
+                      ? "No new reciters available right now."
+                    : "No reciters available right now."}
               </Text>
             </View>
           ) : null
         }
         onEndReachedThreshold={0.4}
         onEndReached={() => {
+          if (isPopularMode) {
+            return;
+          }
           loadReciters(true, latestSearchRef.current);
         }}
         renderItem={({ item }: { item: FirebaseReciter | number }) => {

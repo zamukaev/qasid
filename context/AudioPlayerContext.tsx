@@ -40,6 +40,8 @@ type AudioPlayerContextValue = {
   isPlaying: boolean;
   positionMillis: number;
   durationMillis: number;
+  listenedMillis: number;
+  didJustFinish: boolean;
   viewMode: PlayerViewMode;
   queue: Track[];
   repeatMode: RepeatMode;
@@ -72,6 +74,8 @@ export function AudioPlayerProvider({
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
   const [durationMillis, setDurationMillis] = useState(0);
+  const [listenedMillis, setListenedMillis] = useState(0);
+  const [didJustFinish, setDidJustFinish] = useState(false);
   const [viewMode, setViewMode] = useState<PlayerViewMode>("hidden");
   const [queue, setQueue] = useState<Track[]>([]);
   const queueRef = useRef<Track[]>([]);
@@ -81,6 +85,8 @@ export function AudioPlayerProvider({
   const lastPersistRef = useRef(0);
   const hasFinishedRef = useRef(false);
   const statusListenerRef = useRef<any>(null);
+  const listenedMillisRef = useRef(0);
+  const lastReportedPositionRef = useRef(0);
 
   const PROGRESS_STORAGE_KEY = "@qasid-reciter-progress";
 
@@ -108,13 +114,36 @@ export function AudioPlayerProvider({
 
   const onStatusUpdate = useCallback(async (status: any) => {
     if (status.isLoaded) {
-      setIsPlaying(status.playing);
-      setPositionMillis(status.currentTime * 1000);
-      setDurationMillis(status.duration * 1000);
+      const currentTimeMillis = Math.max(
+        0,
+        Math.floor((status.currentTime ?? 0) * 1000),
+      );
+      const duration = Math.max(
+        0,
+        Math.floor((status.duration ?? 0) * 1000),
+      );
+
+      setIsPlaying(Boolean(status.playing));
+      setPositionMillis(currentTimeMillis);
+      setDurationMillis(duration);
+
+      if (status.playing) {
+        const lastPosition = lastReportedPositionRef.current;
+        const deltaMillis = currentTimeMillis - lastPosition;
+
+        if (deltaMillis > 0) {
+          // Count listen time conservatively so seek jumps do not fake engagement.
+          listenedMillisRef.current += Math.min(deltaMillis, 4000);
+          setListenedMillis(listenedMillisRef.current);
+        }
+      }
+
+      lastReportedPositionRef.current = currentTimeMillis;
 
       // Handle track finish
       if (status.didJustFinish && !hasFinishedRef.current) {
         hasFinishedRef.current = true;
+        setDidJustFinish(true);
         setTimeout(async () => {
           await handleTrackFinish();
           hasFinishedRef.current = false;
@@ -239,6 +268,10 @@ export function AudioPlayerProvider({
 
     if (currentRepeatMode === "repeat-one") {
       // Replay the same track
+      listenedMillisRef.current = 0;
+      lastReportedPositionRef.current = 0;
+      setListenedMillis(0);
+      setDidJustFinish(false);
       if (playerRef.current) {
         playerRef.current.seekTo(0);
         playerRef.current.play();
@@ -271,6 +304,10 @@ export function AudioPlayerProvider({
     async (track: Track, startPositionMillis?: number) => {
       unload();
       hasFinishedRef.current = false;
+      listenedMillisRef.current = 0;
+      lastReportedPositionRef.current = startPositionMillis ?? 0;
+      setListenedMillis(0);
+      setDidJustFinish(false);
       try {
         let source = track.uri;
         if (
@@ -418,6 +455,8 @@ export function AudioPlayerProvider({
       isPlaying,
       positionMillis,
       durationMillis,
+      listenedMillis,
+      didJustFinish,
       viewMode,
       queue,
       repeatMode,
@@ -439,6 +478,8 @@ export function AudioPlayerProvider({
       isPlaying,
       positionMillis,
       durationMillis,
+      listenedMillis,
+      didJustFinish,
       viewMode,
       queue,
       repeatMode,

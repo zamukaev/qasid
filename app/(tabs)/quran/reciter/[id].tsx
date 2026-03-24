@@ -46,6 +46,7 @@ import {
   fetchReciterById,
   fetchFilteredSurahs,
   fetchSurahs,
+  trackReciterPlayback,
 } from "../../../../services/quran-service";
 
 interface SurahListItem {
@@ -79,6 +80,16 @@ export default function ReciterDetailsScreen() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const playbackTrackingRef = useRef<
+    Record<
+      string,
+      {
+        started: boolean;
+        qualified: boolean;
+        completed: boolean;
+      }
+    >
+  >({});
   const durationMapRef = useRef<Record<string, number>>({});
   const durationInFlightRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
@@ -95,6 +106,8 @@ export default function ReciterDetailsScreen() {
     progressMap,
     positionMillis,
     durationMillis,
+    listenedMillis,
+    didJustFinish,
   } = useAudioPlayer();
 
   const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
@@ -327,6 +340,7 @@ export default function ReciterDetailsScreen() {
   };
 
   const fetchReciter = async () => {
+    console.log("Fetching reciter with params", { id, content_type, target });
     if (!id) {
       setError("Reciter is not specified.");
       return;
@@ -379,6 +393,7 @@ export default function ReciterDetailsScreen() {
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
     } catch (fetchError) {
+      console.error("Error fetching reciter data", fetchError);
       setError(
         fetchError instanceof Error
           ? fetchError.message
@@ -535,6 +550,7 @@ export default function ReciterDetailsScreen() {
   useEffect(() => {
     setSearchQuery("");
     setDurationMap({});
+    playbackTrackingRef.current = {};
     durationMapRef.current = {};
   }, [reciter?.id]);
 
@@ -585,6 +601,55 @@ export default function ReciterDetailsScreen() {
       cancelled = true;
     };
   }, [filteredSurahItems, reciter, loading]);
+
+  useEffect(() => {
+    if (!reciter || content_type === "collection" || !currentTrack?.id) return;
+
+    const trackPrefix = `${reciter.id}-`;
+    if (!currentTrack.id.startsWith(trackPrefix)) return;
+
+    const surahId = currentTrack.id.slice(trackPrefix.length);
+    if (!surahId) return;
+
+    const trackingState = playbackTrackingRef.current[currentTrack.id] ?? {
+      started: false,
+      qualified: false,
+      completed: false,
+    };
+
+    const syncPlaybackEvent = async (
+      eventType: "started" | "qualified" | "completed",
+    ) => {
+      try {
+        await trackReciterPlayback({
+          reciterId: reciter.id,
+          surahId,
+          eventType,
+          playedSeconds: Math.floor(listenedMillis / 1000),
+        });
+      } catch (trackingError) {
+        console.warn("Failed to track reciter playback", trackingError);
+      }
+    };
+
+    if (!trackingState.started && listenedMillis >= 10000) {
+      trackingState.started = true;
+      playbackTrackingRef.current[currentTrack.id] = trackingState;
+      void syncPlaybackEvent("started");
+    }
+
+    if (!trackingState.qualified && listenedMillis >= 30000) {
+      trackingState.qualified = true;
+      playbackTrackingRef.current[currentTrack.id] = trackingState;
+      void syncPlaybackEvent("qualified");
+    }
+
+    if (!trackingState.completed && didJustFinish) {
+      trackingState.completed = true;
+      playbackTrackingRef.current[currentTrack.id] = trackingState;
+      void syncPlaybackEvent("completed");
+    }
+  }, [content_type, currentTrack?.id, didJustFinish, listenedMillis, reciter]);
 
   if (error) {
     return <ShowError message={error} />;
