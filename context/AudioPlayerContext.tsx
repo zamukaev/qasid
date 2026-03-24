@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApp } from "@react-native-firebase/app";
 import {
   getStorage,
   ref,
@@ -280,7 +281,7 @@ export function AudioPlayerProvider({
           !source.uri.startsWith("file")
         ) {
           try {
-            const storage = getStorage();
+            const storage = getStorage(getApp());
             const url = await getDownloadURL(ref(storage, source.uri));
             source = { uri: url };
           } catch (e) {

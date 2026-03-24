@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { getApp } from "@react-native-firebase/app";
 import {
   getStorage,
   ref,
@@ -26,6 +27,7 @@ import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
 import { formatMillis } from "../../../../utils/formatMillis";
 import {
   fetchBeautifulCollectionPage,
+  fetchFilteredCollectionSurahs,
   fetchFeaturedSurahs,
   getFeaturedItemById,
 } from "../../../../services/featured-service";
@@ -42,6 +44,7 @@ import {
 } from "../../../../components/PlayButton";
 import {
   fetchReciterById,
+  fetchFilteredSurahs,
   fetchSurahs,
 } from "../../../../services/quran-service";
 
@@ -70,13 +73,16 @@ export default function ReciterDetailsScreen() {
   const [lastDoc, setLastDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [durationMap, setDurationMap] = useState<Record<string, number>>({});
   const [surahs, setSurahs] = useState<Surah[]>([]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const durationMapRef = useRef<Record<string, number>>({});
   const durationInFlightRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
+  const requestIdRef = useRef(0);
   const {
     playTrack,
     setQueue,
@@ -92,10 +98,11 @@ export default function ReciterDetailsScreen() {
   } = useAudioPlayer();
 
   const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
+  const backendSearchQuery = debouncedSearchQuery.trim();
 
   const resolveAudioUrl = async (audioUrl: string) => {
     if (audioUrl.startsWith("http")) return audioUrl;
-    const storage = getStorage();
+    const storage = getStorage(getApp());
     return getDownloadURL(ref(storage, audioUrl));
   };
 
@@ -163,22 +170,33 @@ export default function ReciterDetailsScreen() {
     }
   };
 
-  const getFeaturedCollection = async (target: string, id: string) => {
+  const getFeaturedCollection = async (
+    target: string,
+    id: string,
+    requestId: number,
+    showInitialLoader: boolean,
+    search: string = "",
+  ) => {
     try {
-      setLoading(true);
+      if (showInitialLoader) {
+        setLoading(true);
+      } else {
+        setSearchLoading(true);
+      }
       const data = await getFeaturedItemById(id);
-      const { surahs: beautifulRecitations, nextCursor } =
-        await fetchBeautifulCollectionPage(target);
+      const { surahs: beautifulRecitations, nextCursor } = search
+        ? await fetchFilteredCollectionSurahs(target, search)
+        : await fetchBeautifulCollectionPage(target);
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
 
       if (!data) {
         setError("Featured reciter was not found.");
-        return;
-      }
-      if (beautifulRecitations.length === 0) {
-        setError("No beautiful recitations found for this reciter.");
         return;
       }
 
@@ -190,6 +208,7 @@ export default function ReciterDetailsScreen() {
         is_active: true,
         desc: data.description,
       });
+      setError(null);
       setSurahs(beautifulRecitations as Surah[]);
     } catch (fetchError) {
       setError(
@@ -198,21 +217,38 @@ export default function ReciterDetailsScreen() {
           : "Unable to load the reciter data.",
       );
     } finally {
-      setLoading(false);
+      if (showInitialLoader) {
+        setLoading(false);
+      } else {
+        setSearchLoading(false);
+      }
     }
   };
 
-  const getFeaturedReciter = async (target: string, id: string) => {
+  const getFeaturedReciter = async (
+    target: string,
+    id: string,
+    requestId: number,
+    showInitialLoader: boolean,
+    search: string = "",
+  ) => {
     try {
-      setLoading(true);
+      if (showInitialLoader) {
+        setLoading(true);
+      } else {
+        setSearchLoading(true);
+      }
       const data = await getFeaturedItemById(id);
-      const { surahs, nextCursor } = await fetchFeaturedSurahs(target);
-      setLastDoc(nextCursor);
-      setHasMore(!!nextCursor);
-      if (!surahs || surahs.length === 0) {
-        setError("No surahs found for this reciter.");
+      const { surahs, nextCursor } = search
+        ? await fetchFilteredSurahs(target, search)
+        : await fetchFeaturedSurahs(target);
+
+      if (requestId !== requestIdRef.current) {
         return;
       }
+
+      setLastDoc(nextCursor);
+      setHasMore(!!nextCursor);
       if (!data) {
         setError("Featured reciter was not found.");
         return;
@@ -226,6 +262,7 @@ export default function ReciterDetailsScreen() {
         is_active: true,
         desc: data.description,
       });
+      setError(null);
       setSurahs(surahs);
     } catch (fetchError) {
       setError(
@@ -234,7 +271,11 @@ export default function ReciterDetailsScreen() {
           : "Unable to load the reciter data.",
       );
     } finally {
-      setLoading(false);
+      if (showInitialLoader) {
+        setLoading(false);
+      } else {
+        setSearchLoading(false);
+      }
     }
   };
 
@@ -245,10 +286,31 @@ export default function ReciterDetailsScreen() {
     try {
       const { surahs: newItems, nextCursor } =
         content_type === "collection"
-          ? await fetchBeautifulCollectionPage(sourceTarget, 20, lastDoc)
+          ? backendSearchQuery
+            ? await fetchFilteredCollectionSurahs(
+                sourceTarget,
+                backendSearchQuery,
+                20,
+                lastDoc,
+              )
+            : await fetchBeautifulCollectionPage(sourceTarget, 20, lastDoc)
           : content_type === "reciter"
-            ? await fetchFeaturedSurahs(sourceTarget, 20, lastDoc)
-            : await fetchSurahs(sourceTarget, 20, lastDoc);
+            ? backendSearchQuery
+              ? await fetchFilteredSurahs(
+                  sourceTarget,
+                  backendSearchQuery,
+                  20,
+                  lastDoc,
+                )
+              : await fetchFeaturedSurahs(sourceTarget, 20, lastDoc)
+            : backendSearchQuery
+              ? await fetchFilteredSurahs(
+                  sourceTarget,
+                  backendSearchQuery,
+                  20,
+                  lastDoc,
+                )
+              : await fetchSurahs(sourceTarget, 20, lastDoc);
 
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
@@ -270,23 +332,49 @@ export default function ReciterDetailsScreen() {
       return;
     }
 
+    const requestId = ++requestIdRef.current;
+    const showInitialLoader = reciter?.id !== id && !backendSearchQuery;
+
     if (!!content_type && !!target) {
       if (content_type === "collection") {
-        await getFeaturedCollection(target, id);
+        await getFeaturedCollection(
+          target,
+          id,
+          requestId,
+          showInitialLoader,
+          backendSearchQuery,
+        );
       }
 
       if (content_type === "reciter") {
-        await getFeaturedReciter(target, id);
+        await getFeaturedReciter(
+          target,
+          id,
+          requestId,
+          showInitialLoader,
+          backendSearchQuery,
+        );
       }
       return;
     }
 
     try {
-      setLoading(true);
-      const loadedReciter = await fetchReciterById(id);
-      const { surahs: loadedSurahs, nextCursor } = await fetchSurahs(id);
+      if (showInitialLoader) {
+        setLoading(true);
+      } else {
+        setSearchLoading(true);
+      }
+      const loadedReciter = reciter ?? (await fetchReciterById(id));
+      const { surahs: loadedSurahs, nextCursor } = backendSearchQuery
+        ? await fetchFilteredSurahs(id, backendSearchQuery)
+        : await fetchSurahs(id);
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       setReciter(loadedReciter);
+      setError(null);
       setSurahs(loadedSurahs);
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
@@ -297,7 +385,11 @@ export default function ReciterDetailsScreen() {
           : "Unable to load the reciter data.",
       );
     } finally {
-      setLoading(false);
+      if (showInitialLoader) {
+        setLoading(false);
+      } else {
+        setSearchLoading(false);
+      }
     }
   };
 
@@ -314,21 +406,7 @@ export default function ReciterDetailsScreen() {
       }));
   }, [surahs]);
 
-  const filteredSurahItems = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return surahItems;
-    }
-    const query = searchQuery.trim().toLowerCase();
-    return surahItems.filter((item) => {
-      if (item.englishName.toLowerCase().includes(query)) {
-        return true;
-      }
-      if (item.arabicName && item.arabicName.toLowerCase().includes(query)) {
-        return true;
-      }
-      return item.surahNumber.toString().padStart(3, "0").includes(query);
-    });
-  }, [searchQuery, surahItems]);
+  const filteredSurahItems = surahItems;
 
   const handlePlaySurah = async (surah: SurahListItem) => {
     if (!reciter || !surah.audioUrl) return;
@@ -336,7 +414,7 @@ export default function ReciterDetailsScreen() {
     let audioUrl = surah.audioUrl;
     if (!audioUrl.startsWith("http")) {
       try {
-        const storage = getStorage();
+        const storage = getStorage(getApp());
         audioUrl = await getDownloadURL(ref(storage, audioUrl));
       } catch (e) {
         setError("Unable to load audio URL.");
@@ -461,8 +539,18 @@ export default function ReciterDetailsScreen() {
   }, [reciter?.id]);
 
   useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [searchQuery]);
+
+  useEffect(() => {
     fetchReciter();
-  }, [id, content_type, target]);
+  }, [id, content_type, target, debouncedSearchQuery]);
 
   useEffect(() => {
     if (loading || !reciter) return;
@@ -593,7 +681,7 @@ export default function ReciterDetailsScreen() {
             </Text>
           </View>
 
-          {loading ? (
+          {loading || searchLoading ? (
             // Show skeleton loaders while loading
             Array.from({ length: 8 }).map((_, index) => (
               <View key={`skeleton-${index}`} className="mb-1">
@@ -633,11 +721,15 @@ export default function ReciterDetailsScreen() {
                 );
               })}
 
-              {filteredSurahItems.length === 0 && !loading && (
-                <Text className="text-qasid-white/70 text-base">
-                  There are no recordings available for this reciter yet.
-                </Text>
-              )}
+              {filteredSurahItems.length === 0 &&
+                !loading &&
+                !searchLoading && (
+                  <Text className="text-qasid-white/70 text-base">
+                    {searchQuery.trim()
+                      ? "No surahs found for this search."
+                      : "There are no recordings available for this reciter yet."}
+                  </Text>
+                )}
             </>
           )}
         </View>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getApp } from "@react-native-firebase/app";
 import {
   SafeAreaView,
   ScrollView,
@@ -69,7 +70,7 @@ export default function Nasheeds() {
     let audioUrl = nasheed.audio_path;
     if (!audioUrl.startsWith("http")) {
       try {
-        const storage = getStorage();
+        const storage = getStorage(getApp());
         audioUrl = await getDownloadURL(ref(storage, audioUrl));
       } catch (e) {
         setError("Unable to load audio URL.");
