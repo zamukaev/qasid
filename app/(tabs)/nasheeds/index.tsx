@@ -62,7 +62,7 @@ export default function Nasheeds() {
   const titleOpacity = useRef(new Animated.Value(1)).current;
   const chipScale = useRef(new Animated.Value(1)).current;
 
-  const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
+  const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
 
   const handlePlayNasheed = async (nasheed: Nasheed) => {
     if (!nasheed.audio_path) return;

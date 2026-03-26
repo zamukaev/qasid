@@ -137,7 +137,7 @@ export default function ReciterDetailsScreen() {
     didJustFinish,
   } = useAudioPlayer();
 
-  const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
+  const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
   const backendSearchQuery = debouncedSearchQuery.trim();
 
   const resolveAudioUrl = async (audioUrl: string) => {
@@ -834,7 +834,7 @@ export default function ReciterDetailsScreen() {
         style={{
           position: "absolute",
           right: 20,
-          bottom: viewMode === "hidden" ? 40 : 100,
+          bottom: viewMode === "hidden" ? 40 : 128,
           backgroundColor: "rgba(231, 193, 28, 0.7)",
           borderRadius: 999,
           width: 52,
