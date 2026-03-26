@@ -11,6 +11,7 @@ export interface BeautifulRecitation {
   is_active: boolean;
   image_path: string;
   description?: string;
+  surah_count?: number;
 }
 
 export interface FeaturedItem {
@@ -25,4 +26,5 @@ export interface FeaturedItem {
   order: number;
   featured: boolean;
   description: string;
+  surah_count?: number;
 }

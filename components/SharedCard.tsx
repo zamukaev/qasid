@@ -99,7 +99,7 @@ export const SharedCard = ({
                 className="mt-0.5 text-[13px] text-white/55"
                 numberOfLines={1}
               >
-                {track?.artist ? track?.artist : subtitle}
+                {subtitle}
               </Text>
             )}
           </View>

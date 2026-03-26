@@ -14,13 +14,14 @@ import {
   serverTimestamp,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
+import { surahMetadata } from "../constants/surahMetadata";
 import {
   FirebaseReciter,
+  FirebaseSurah,
   ReciterPlaybackEventType,
   ReciterCursor,
   ResponseReciters,
   ResponseSurah,
-  Surah,
   SurahCursor,
 } from "../types/quran";
 
@@ -36,8 +37,7 @@ const SEARCH_SURAHS_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunct
 const SEARCH_BATCH_SIZE = 50;
 const MAX_SEARCH_SCAN_PAGES = 10;
 const NEW_RECITER_WINDOW_DAYS = 30;
-const NEW_RECITER_WINDOW_MS =
-  NEW_RECITER_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+const NEW_RECITER_WINDOW_MS = NEW_RECITER_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 const normalizeSearchText = (value: string) => value.trim().toLowerCase();
 
@@ -106,18 +106,20 @@ const mapReciterDoc = (
     completed_play_count: data.completed_play_count ?? 0,
     publishedAt: data.publishedAt,
     createdAt: data.createdAt,
+    surah_count: data.surah_count,
   };
 };
 
-const matchesSurahSearch = (surah: Surah, search: string) => {
+const matchesSurahSearch = (surah: FirebaseSurah, search: string) => {
   const normalizedSearch = normalizeSearchText(search);
 
   if (!normalizedSearch) {
     return true;
   }
 
-  const englishName = normalizeSearchText(surah.title_en ?? "");
-  const arabicName = normalizeSearchText(surah.title_ar ?? "");
+  const metadata = surahMetadata.find((m) => m.number === surah.surah_number);
+  const englishName = normalizeSearchText(metadata?.englishName ?? "");
+  const arabicName = normalizeSearchText(metadata?.arabicName ?? "");
   const surahNumber = String(surah.surah_number ?? "");
   const paddedSurahNumber = surahNumber.padStart(3, "0");
 
@@ -181,8 +183,9 @@ export async function fetchPopularReciters(
 
   return snapshot.docs
     .map(
-      (docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>) =>
-        mapReciterDoc(docSnap),
+      (
+        docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot<FirebaseReciter>,
+      ) => mapReciterDoc(docSnap),
     )
     .filter((reciter: FirebaseReciter) => (reciter.popularity_score ?? 0) > 0);
 }
@@ -201,11 +204,7 @@ export async function fetchNewReciters(
 
   let q;
   if (cursor) {
-    if (
-      cursor.id &&
-      cursor.publishedAt !== undefined &&
-      !cursor.data
-    ) {
+    if (cursor.id && cursor.publishedAt !== undefined && !cursor.data) {
       q = query(...base, startAfter(cursor.publishedAt, cursor.id));
     } else {
       q = query(...base, startAfter(cursor));
@@ -386,14 +385,11 @@ export async function fetchSurahs(
 
   const snapshot = await getDocs(q);
   const docs = snapshot.docs;
-  const surahs: Surah[] = await Promise.all(
+  const surahs: FirebaseSurah[] = await Promise.all(
     snapshot.docs.map(async (docSnap: any) => {
       const data = docSnap.data() as any;
 
       return {
-        id: docSnap.id,
-        title_en: data.title_en,
-        title_ar: data.title_ar,
         audio_path: data.audio_path,
         surah_number: data.surah_number,
       };
@@ -425,8 +421,8 @@ export async function fetchFilteredSurahs(
     sourceType: "reciter",
   });
 
-  if (cursor?.id) {
-    params.set("cursorId", cursor.id);
+  if (cursor?.surah_number) {
+    params.set("cursorId", cursor.surah_number.toString());
   }
   if (cursor?.surah_number !== undefined) {
     params.set("cursorSurahNumber", String(cursor.surah_number));
@@ -454,7 +450,7 @@ async function fetchFilteredSurahsFallback(
   pageSize: number = 20,
   cursor?: SurahCursor,
 ): Promise<ResponseSurah> {
-  const surahs: Surah[] = [];
+  const surahs: FirebaseSurah[] = [];
   let currentCursor = cursor;
   let pagesScanned = 0;
   let hasMore = true;

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getApp } from "@react-native-firebase/app";
 import {
   getStorage,
@@ -20,7 +20,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { createAudioPlayer } from "expo-audio";
 
-import { FirebaseReciter, Surah } from "../../../../types/quran";
+import { FirebaseReciter } from "../../../../types/quran";
 
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
 import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
@@ -31,6 +31,7 @@ import {
   fetchFeaturedSurahs,
   getFeaturedItemById,
 } from "../../../../services/featured-service";
+import { getSurahMetadata } from "../../../../constants/surahMetadata";
 import {
   Search,
   SharedCard,
@@ -52,11 +53,37 @@ import {
 interface SurahListItem {
   id: string;
   surahNumber: number;
-  reciter_name?: string;
   englishName: string;
   arabicName: string;
+  reciterName?: string;
   audioUrl: string | null;
 }
+
+type SourceSurahItem = {
+  id: string;
+  title_en?: string;
+  title_ar?: string;
+  surah_number: number;
+  audio_path?: string;
+  name_en?: string;
+  name_ar?: string;
+};
+
+const normalizeSurahItems = (items: SourceSurahItem[]): SurahListItem[] =>
+  items
+    .filter((surah) => !!surah.surah_number)
+    .map((surah) => {
+      const metadata = getSurahMetadata(surah.surah_number);
+
+      return {
+        id: surah.id,
+        surahNumber: surah.surah_number,
+        englishName: `${metadata?.transliteration} ( ${metadata?.englishName} )`,
+        arabicName: metadata?.arabicName ?? "",
+        reciterName: surah.name_en?.trim() || undefined,
+        audioUrl: surah.audio_path ?? null,
+      };
+    });
 
 export default function ReciterDetailsScreen() {
   const { id, content_type, target } = useLocalSearchParams<{
@@ -76,7 +103,7 @@ export default function ReciterDetailsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [durationMap, setDurationMap] = useState<Record<string, number>>({});
-  const [surahs, setSurahs] = useState<Surah[]>([]);
+  const [surahs, setSurahs] = useState<SurahListItem[]>([]);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -220,9 +247,14 @@ export default function ReciterDetailsScreen() {
         image_path: data.image_path,
         is_active: true,
         desc: data.description,
+        surah_count: data.surah_count ?? beautifulRecitations?.length ?? 0,
       });
       setError(null);
-      setSurahs(beautifulRecitations as Surah[]);
+      setSurahs(
+        normalizeSurahItems(
+          beautifulRecitations as unknown as SourceSurahItem[],
+        ),
+      );
     } catch (fetchError) {
       setError(
         fetchError instanceof Error
@@ -274,9 +306,10 @@ export default function ReciterDetailsScreen() {
         image_path: data.image_path,
         is_active: true,
         desc: data.description,
+        surah_count: data.surah_count ?? surahs?.length ?? 0,
       });
       setError(null);
-      setSurahs(surahs);
+      setSurahs(normalizeSurahItems(surahs as unknown as SourceSurahItem[]));
     } catch (fetchError) {
       setError(
         fetchError instanceof Error
@@ -329,7 +362,10 @@ export default function ReciterDetailsScreen() {
       setHasMore(!!nextCursor);
 
       if (newItems.length > 0) {
-        setSurahs((prev) => [...prev, ...(newItems as Surah[])]);
+        setSurahs((prev) => [
+          ...prev,
+          ...normalizeSurahItems(newItems as unknown as SourceSurahItem[]),
+        ]);
       }
     } catch (error) {
       setError("Unable to load more items.");
@@ -340,7 +376,6 @@ export default function ReciterDetailsScreen() {
   };
 
   const fetchReciter = async () => {
-    console.log("Fetching reciter with params", { id, content_type, target });
     if (!id) {
       setError("Reciter is not specified.");
       return;
@@ -389,7 +424,9 @@ export default function ReciterDetailsScreen() {
 
       setReciter(loadedReciter);
       setError(null);
-      setSurahs(loadedSurahs);
+      setSurahs(
+        normalizeSurahItems(loadedSurahs as unknown as SourceSurahItem[]),
+      );
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
     } catch (fetchError) {
@@ -408,20 +445,7 @@ export default function ReciterDetailsScreen() {
     }
   };
 
-  const surahItems: SurahListItem[] = useMemo(() => {
-    return surahs
-      .filter((surah) => !!surah.title_en && !!surah.surah_number)
-      .map((surah) => ({
-        id: surah.id,
-        surahNumber: surah.surah_number,
-        reciter_name: (surah as any).name_en,
-        englishName: surah.title_en,
-        arabicName: surah.title_ar,
-        audioUrl: surah.audio_path ?? null,
-      }));
-  }, [surahs]);
-
-  const filteredSurahItems = surahItems;
+  const filteredSurahItems = surahs;
 
   const handlePlaySurah = async (surah: SurahListItem) => {
     if (!reciter || !surah.audioUrl) return;
@@ -472,7 +496,7 @@ export default function ReciterDetailsScreen() {
           const track = {
             id: trackId,
             title: surah.englishName,
-            artist: reciter.name_en,
+            artist: surah.reciterName ?? reciter.name_en,
             artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
             uri: { uri: audioUrl },
           };
@@ -488,12 +512,12 @@ export default function ReciterDetailsScreen() {
       return;
     }
 
-    const queueTracks = surahItems
+    const queueTracks = filteredSurahItems
       .filter((item) => !!item.audioUrl)
       .map((item) => ({
         id: `${reciter.id}-${item.id}`,
         title: item.englishName,
-        artist: reciter.name_en,
+        artist: item.reciterName ?? reciter.name_en,
         artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
         uri: { uri: item.audioUrl as string },
       }));
@@ -502,7 +526,7 @@ export default function ReciterDetailsScreen() {
     const track = {
       id: trackId,
       title: surah.englishName,
-      artist: reciter.name_en,
+      artist: surah.reciterName ?? reciter.name_en,
       artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
       uri: { uri: audioUrl },
     };
@@ -715,9 +739,9 @@ export default function ReciterDetailsScreen() {
               </View>
               <View className="flex-row items-center gap-2">
                 <FontAwesome6 name="list-ul" size={14} color="#E7C11C" />
-                {surahItems.length > 0 && (
+                {reciter?.surah_count && (
                   <Text className="text-m text-qasid-white">
-                    {surahItems.length} Surahs
+                    {reciter?.surah_count} Surahs
                   </Text>
                 )}
               </View>
@@ -756,7 +780,7 @@ export default function ReciterDetailsScreen() {
           ) : (
             <>
               {filteredSurahItems.map((surah) => {
-                const trackKey = `${reciter?.id}-${surah.id}`;
+                const trackKey = `${reciter?.id}-${surah.surahNumber}`;
                 const isActive = currentTrack?.id === trackKey;
                 const progressEntry = progressMap[trackKey];
                 const knownDurationMillis =
@@ -773,12 +797,16 @@ export default function ReciterDetailsScreen() {
                     isPaused={isActive}
                     title={surah.englishName}
                     order={surah.surahNumber}
-                    subtitle={surah.arabicName}
+                    subtitle={
+                      content_type === "collection"
+                        ? (surah.reciterName ?? surah.arabicName)
+                        : surah.arabicName
+                    }
                     duration={durationLabel}
                     track={{
-                      id: surah.id,
+                      id: trackKey,
                       surahNumber: surah.surahNumber,
-                      artist: surah?.reciter_name,
+                      artist: surah.reciterName ?? reciter?.name_en,
                       title: surah.englishName,
                       uri: surah.audioUrl,
                     }}
