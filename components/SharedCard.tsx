@@ -63,19 +63,11 @@ export const SharedCard = ({
         />
         <View className="absolute inset-0 rounded-2xl border border-white/10" />
         <View className="flex-row items-center px-3 py-3">
-          {true ? (
-            <Image
-              source={image ? image : PlaceholderCover}
-              className="h-12 w-12 rounded-xl"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="h-12 w-12 rounded-xl bg-qasid-gray/30 items-center justify-center">
-              <Text className="text-qasid-white font-semibold">
-                {track.surahNumber?.toString()}
-              </Text>
-            </View>
-          )}
+          <Image
+            source={image ? { uri: image } : PlaceholderCover}
+            className="h-12 w-12 rounded-full"
+            resizeMode="cover"
+          />
           <View className="ml-3 flex-1">
             <View className="flex-row items-center">
               {isPaused && (

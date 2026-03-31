@@ -57,6 +57,7 @@ interface SurahListItem {
   arabicName: string;
   reciterName?: string;
   audioUrl: string | null;
+  imageUrl: string | null;
 }
 
 type SourceSurahItem = {
@@ -67,6 +68,7 @@ type SourceSurahItem = {
   audio_path?: string;
   name_en?: string;
   name_ar?: string;
+  image_path?: string;
 };
 
 const normalizeSurahItems = (items: SourceSurahItem[]): SurahListItem[] =>
@@ -82,6 +84,7 @@ const normalizeSurahItems = (items: SourceSurahItem[]): SurahListItem[] =>
         arabicName: metadata?.arabicName ?? "",
         reciterName: surah.name_en?.trim() || undefined,
         audioUrl: surah.audio_path ?? null,
+        imageUrl: surah.image_path ?? null,
       };
     });
 
@@ -462,7 +465,7 @@ export default function ReciterDetailsScreen() {
       }
     }
 
-    const trackId = `${reciter.id}-${surah.id}`;
+    const trackId = `${reciter.id}-${surah.surahNumber}`;
     const savedProgress = progressMap[trackId];
     const hasSavedPosition =
       savedProgress &&
@@ -515,7 +518,7 @@ export default function ReciterDetailsScreen() {
     const queueTracks = filteredSurahItems
       .filter((item) => !!item.audioUrl)
       .map((item) => ({
-        id: `${reciter.id}-${item.id}`,
+        id: `${reciter.id}-${item.surahNumber}`,
         title: item.englishName,
         artist: item.reciterName ?? reciter.name_en,
         artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
@@ -597,7 +600,7 @@ export default function ReciterDetailsScreen() {
     const queue = filteredSurahItems
       .filter((item) => item.audioUrl)
       .map((item) => ({
-        key: `${reciter?.id}-${item.id}`,
+        key: `${reciter?.id}-${item.surahNumber}`,
         url: item.audioUrl,
       }))
       .filter((item) => !durationMapRef.current[item.key]);
@@ -780,6 +783,7 @@ export default function ReciterDetailsScreen() {
           ) : (
             <>
               {filteredSurahItems.map((surah) => {
+                const key = `${surah?.reciterName}-${surah.surahNumber}`;
                 const trackKey = `${reciter?.id}-${surah.surahNumber}`;
                 const isActive = currentTrack?.id === trackKey;
                 const progressEntry = progressMap[trackKey];
@@ -791,12 +795,13 @@ export default function ReciterDetailsScreen() {
                 return (
                   <SharedCard
                     className="mb-1"
-                    key={trackKey}
+                    key={key}
                     handlePlayTrack={() => handlePlaySurah(surah)}
-                    isPlaying={isPlaying}
+                    isPlaying={isPlaying && isActive}
                     isPaused={isActive}
                     title={surah.englishName}
                     order={surah.surahNumber}
+                    image={surah.imageUrl ?? undefined}
                     subtitle={
                       content_type === "collection"
                         ? (surah.reciterName ?? surah.arabicName)

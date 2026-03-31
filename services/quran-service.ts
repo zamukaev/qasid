@@ -384,14 +384,19 @@ export async function fetchSurahs(
   }
 
   const snapshot = await getDocs(q);
+  const app = getApp();
   const docs = snapshot.docs;
   const surahs: FirebaseSurah[] = await Promise.all(
     snapshot.docs.map(async (docSnap: any) => {
       const data = docSnap.data() as any;
-
+      const storage = getStorage(app);
+      const imageUrl = data.image_path
+        ? await getDownloadURL(ref(storage, data.image_path))
+        : undefined;
       return {
         audio_path: data.audio_path,
         surah_number: data.surah_number,
+        image_path: imageUrl,
       };
     }),
   );

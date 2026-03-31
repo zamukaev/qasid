@@ -17,11 +17,7 @@ import {
   getDownloadURL,
 } from "@react-native-firebase/storage";
 import { BeautifulRecitation, FeaturedItem } from "../types/featured";
-import {
-  FirebaseSurah,
-  ResponseSurah,
-  SurahCursor,
-} from "../types/quran";
+import { FirebaseSurah, ResponseSurah, SurahCursor } from "../types/quran";
 import { surahMetadata } from "../constants/surahMetadata";
 
 const FIREBASE_PROJECT_ID = "qasid-fd80d";
@@ -148,6 +144,7 @@ export async function fetchBeautifulCollection(
       surah_count: data.surah_count,
     });
   }
+
   return items;
 }
 
@@ -156,7 +153,9 @@ export async function fetchFeaturedSurahs(
   pageSize = 20,
   cursor?: any,
 ): Promise<ResponseSurah> {
-  const db = getFirestore(getApp());
+  const app = getApp();
+  const db = getFirestore(app);
+  const storage = getStorage(app);
   const base = [
     collection(db, "reciters", target, "surahs"),
     orderBy("surah_number"),
@@ -180,7 +179,10 @@ export async function fetchFeaturedSurahs(
   const surahs: FirebaseSurah[] = await Promise.all(
     snapshot.docs.map(async (docSnap: any) => {
       const data = docSnap.data() as any;
-
+      const imageUrl = data.image_path
+        ? await getDownloadURL(ref(storage, data.image_path))
+        : "";
+      console.log("Fetched featured surah:", imageUrl);
       return {
         id: docSnap.id,
         title_en: data.title_en,
@@ -188,6 +190,7 @@ export async function fetchFeaturedSurahs(
         order: data.order,
         audio_path: data.audio_path,
         surah_number: data.surah_number,
+        image_path: imageUrl,
       };
     }),
   );
@@ -208,8 +211,9 @@ export async function fetchBeautifulCollectionPage(
   pageSize = 20,
   cursor?: any, // QueryDocumentSnapshot
 ): Promise<ResponseSurah> {
-  const db = getFirestore(getApp());
-
+  const app = getApp();
+  const db = getFirestore(app);
+  const storage = getStorage(app);
   const base = [
     collection(db, target),
     where("is_active", "==", true),
@@ -232,25 +236,29 @@ export async function fetchBeautifulCollectionPage(
 
   const docs = snapshot.docs;
 
-  // URLs erstmal NICHT ziehen → nur Pfade returnen (siehe Punkt 2)
-  const surahs = docs.map((docSnap: any) => {
-    const data = docSnap.data() as any;
-    return {
-      id: docSnap.id,
-      title_en: data.title_en,
-      title_ar: data.title_ar,
-      surah_number: data.surah_number,
-      name_en: data.name_en,
-      name_ar: data.name_ar,
-      // erst mal nur paths
-      image_path: data.image_path,
-      audio_path: data.audio_path,
-      order: data.order,
-      tags: data.tags ?? [],
-      is_active: data.is_active,
-      description: data.description,
-    } as BeautifulRecitation;
-  });
+  const surahs: BeautifulRecitation[] = await Promise.all(
+    docs.map(async (docSnap: any) => {
+      const data = docSnap.data() as any;
+      const imageUrl = data.image_path
+        ? await getDownloadURL(ref(storage, data.image_path))
+        : "";
+
+      return {
+        id: docSnap.id,
+        title_en: data.title_en,
+        title_ar: data.title_ar,
+        surah_number: data.surah_number,
+        name_en: data.name_en,
+        name_ar: data.name_ar,
+        image_path: imageUrl,
+        audio_path: data.audio_path,
+        order: data.order,
+        tags: data.tags ?? [],
+        is_active: data.is_active,
+        description: data.description,
+      };
+    }),
+  );
 
   const lastDoc = docs.length ? docs[docs.length - 1] : undefined;
   const nextCursor = lastDoc

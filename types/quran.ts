@@ -35,6 +35,7 @@ export interface ResponseReciters {
 export interface FirebaseSurah {
   audio_path: string;
   surah_number: number;
+  image_path?: string;
 }
 
 export interface Surah {

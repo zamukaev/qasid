@@ -5,7 +5,6 @@ import { LayoutChangeEvent, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAudioPlayer } from "../context/AudioPlayerContext";
-import { QasidLiveEqualizer } from "./QasidLiveEqualizer";
 
 export default function NowPlayingBar() {
   const insets = useSafeAreaInsets();
@@ -85,42 +84,6 @@ export default function NowPlayingBar() {
             }}
           >
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: "rgba(231, 193, 28, 0.14)",
-                  backgroundColor: "rgba(231, 193, 28, 0.08)",
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  marginBottom: 10,
-                }}
-              >
-                <QasidLiveEqualizer
-                  status={isPlaying ? "playing" : "paused"}
-                  minHeight={5}
-                  maxHeight={12}
-                  barWidth={3}
-                  gap={3}
-                  className="mr-1"
-                />
-                <Text
-                  style={{
-                    color: "#E7C11C",
-                    fontSize: 10,
-                    fontWeight: "700",
-                    letterSpacing: 1.2,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Now Playing
-                </Text>
-              </View>
-
               <Text
                 numberOfLines={1}
                 style={{
@@ -202,7 +165,7 @@ export default function NowPlayingBar() {
               }}
               style={{
                 height: 4,
-                  backgroundColor: "rgba(231, 193, 28, 0.14)",
+                backgroundColor: "rgba(231, 193, 28, 0.14)",
                 borderRadius: 999,
                 overflow: "hidden",
               }}
