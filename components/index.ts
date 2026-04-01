@@ -1,4 +1,3 @@
-export { default as ScreenLayout } from "./ScreenLayout";
 export { default as ErrorAlert } from "./errorAlert/ErrorAlert";
 export { default as NowPlayingBar } from "./NowPlayingBar";
 export { default as FullScreenPlayer } from "./FullScreenPlayer";
@@ -8,7 +7,6 @@ export { default as CompactReciterCardSkeleton } from "./CompactReciterCardSkele
 export { default as ReciterGridCardSkeleton } from "./ReciterGridCardSkeleton";
 export { default as FeaturedCardSkeleton } from "./FeaturedCardSkeleton";
 export { default as FeaturedCard } from "./FeaturedCard";
-export { Loader } from "./Loader";
 export { default as ShowError } from "./ShowError";
 export { default as Search } from "./Search";
 export { default as FeaturedList } from "./FeaturedList";

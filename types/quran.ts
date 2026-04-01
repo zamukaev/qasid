@@ -11,6 +11,7 @@ export interface FirebaseReciter {
   completed_play_count?: number;
   publishedAt?: unknown;
   createdAt?: unknown;
+  surah_count: number;
 }
 
 export type ReciterPlaybackEventType = "started" | "qualified" | "completed";
@@ -23,9 +24,7 @@ export interface ReciterCursor {
 }
 
 export interface SurahCursor {
-  id: string;
-  surah_number?: number;
-  order?: number;
+  surah_number: number;
 }
 
 export interface ResponseReciters {
@@ -33,15 +32,22 @@ export interface ResponseReciters {
   nextCursor?: ReciterCursor;
 }
 
-export interface Surah {
-  id: string;
-  title_en: string;
-  title_ar: string;
+export interface FirebaseSurah {
   audio_path: string;
   surah_number: number;
   image_path?: string;
 }
+
+export interface Surah {
+  audioPath: string;
+  surahNumber: number;
+  titleEn: string;
+  titleAr: string;
+  titleTranslation: string;
+  artist?: string;
+}
+
 export interface ResponseSurah {
-  surahs: Surah[];
+  surahs: FirebaseSurah[];
   nextCursor?: SurahCursor;
 }

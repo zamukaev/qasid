@@ -8,9 +8,13 @@ interface ReciterCardProps {
   reciter: FirebaseReciter;
 }
 
+const getReciterDisplayName = (reciter: FirebaseReciter) =>
+  reciter.name_en?.trim() || reciter.name_ar?.trim() || "Unknown reciter";
+
 export default function ReciterCard({ reciter }: ReciterCardProps) {
   const router = useRouter();
   const imageSource = useReciterImageSource(reciter.image_path);
+  const displayName = getReciterDisplayName(reciter);
   const handlePress = () => {
     router.push({
       pathname: "/(tabs)/quran/reciter/[id]",
@@ -34,7 +38,7 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
           elevation: 8,
         }}
       >
-        {true ? (
+        {imageSource ? (
           <Image
             className="h-16 w-16 rounded-full  border border-qasid-gold/25 "
             source={imageSource}
@@ -42,14 +46,14 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
         ) : (
           <View className="flex-1 border bg-qasid-gray border-qasid-gold/25 items-center justify-center h-16 w-16 rounded-full">
             <Text className="text-qasid-gold font-semibold text-3xl">
-              {reciter.name_en.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </Text>
           </View>
         )}
       </View>
       <View className="flex-1">
         <Text className="text-qasid-white font-semibold text-lg">
-          {getReciterDisplayName(reciter)}
+          {displayName}
         </Text>
         <Text className="text-qasid-gold font-light text-base opacity-[0.8]">
           {reciter.name_ar}
@@ -63,12 +67,10 @@ interface CompactReciterCardProps {
   reciter: FirebaseReciter;
 }
 
-const getReciterDisplayName = (reciter: FirebaseReciter) =>
-  reciter.name_en.trim();
-
 export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
   const router = useRouter();
   const imageSource = useReciterImageSource(reciter.image_path);
+  const displayName = getReciterDisplayName(reciter);
   const handlePress = () => {
     router.push({
       pathname: "/(tabs)/quran/reciter/[id]",
@@ -97,8 +99,11 @@ export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
           source={imageSource}
         />
       </View>
-      <Text className="text-qasid-white text-center text-sm leading-4" numberOfLines={2}>
-        {getReciterDisplayName(reciter)}
+      <Text
+        className="text-qasid-white text-center text-sm leading-4"
+        numberOfLines={2}
+      >
+        {displayName}
       </Text>
     </Pressable>
   );
