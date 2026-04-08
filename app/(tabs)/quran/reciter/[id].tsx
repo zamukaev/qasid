@@ -500,7 +500,7 @@ export default function ReciterDetailsScreen() {
             id: trackId,
             title: surah.englishName,
             artist: surah.reciterName ?? reciter.name_en,
-            artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
+            artworkUri: surah.imageUrl ?? PlaceholderAvatar,
             uri: { uri: audioUrl },
           };
           await playTrack(track);
@@ -521,7 +521,7 @@ export default function ReciterDetailsScreen() {
         id: `${reciter.id}-${item.surahNumber}`,
         title: item.englishName,
         artist: item.reciterName ?? reciter.name_en,
-        artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
+        artworkUri: item.imageUrl ?? PlaceholderAvatar,
         uri: { uri: item.audioUrl as string },
       }));
     setQueue(queueTracks);
@@ -530,7 +530,7 @@ export default function ReciterDetailsScreen() {
       id: trackId,
       title: surah.englishName,
       artist: surah.reciterName ?? reciter.name_en,
-      artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
+      artworkUri: surah.imageUrl ?? PlaceholderAvatar,
       uri: { uri: audioUrl },
     };
     await playTrack(track, resumePosition);

@@ -18,7 +18,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.abusafiia.qasid.dev",
       "buildNumber": "1.0.0",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "versionCode": 1,
@@ -42,7 +47,14 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "android": {
+            "canRecordInBackground": true
+          }
+        }
+      ],
       "expo-asset"
     ],
     "web": {

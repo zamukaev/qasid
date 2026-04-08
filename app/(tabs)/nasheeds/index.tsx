@@ -63,6 +63,10 @@ export default function Nasheeds() {
   const chipScale = useRef(new Animated.Value(1)).current;
 
   const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
+  const playTransitionRef = useRef<{
+    trackId: string;
+    startedAt: number;
+  } | null>(null);
 
   const handlePlayNasheed = async (nasheed: Nasheed) => {
     if (!nasheed.audio_path) return;
@@ -80,6 +84,16 @@ export default function Nasheeds() {
     }
 
     const trackId = nasheed.id;
+    const now = Date.now();
+    const pendingTransition = playTransitionRef.current;
+    if (
+      pendingTransition?.trackId === trackId &&
+      now - pendingTransition.startedAt < 600
+    ) {
+      return;
+    }
+    playTransitionRef.current = { trackId, startedAt: now };
+
     const savedProgress = progressMap[trackId];
     const hasSavedPosition =
       savedProgress &&
@@ -91,62 +105,68 @@ export default function Nasheeds() {
       ? savedProgress.positionMillis
       : undefined;
 
-    // If track is already active
-    if (currentTrack?.id === trackId) {
-      if (isPlaying) {
-        // If playing, pause
-        await pause();
-      } else {
-        // If not playing, check if track has finished
-        const isFinished =
-          (durationMillis > 0 &&
-            positionMillis > 0 &&
-            positionMillis >= durationMillis - 100) ||
-          (savedProgress &&
-            savedProgress.durationMillis > 0 &&
-            savedProgress.positionMillis >= savedProgress.durationMillis - 100);
-
-        if (isFinished && !hasSavedPosition) {
-          // Track finished and no saved position - restart from beginning
-          const track = {
-            id: trackId,
-            title: nasheed.title_en,
-            artist: nasheed.title_ar || "Nasheed",
-            artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
-            uri: { uri: audioUrl },
-          };
-          await playTrack(track);
+    try {
+      // If track is already active
+      if (currentTrack?.id === trackId) {
+        if (isPlaying) {
+          // If playing, pause
+          await pause();
         } else {
-          // Track not finished or has saved position - resume
-          if (resumePosition) {
-            await seekTo(resumePosition);
+          // If not playing, check if track has finished
+          const isFinished =
+            (durationMillis > 0 &&
+              positionMillis > 0 &&
+              positionMillis >= durationMillis - 100) ||
+            (savedProgress &&
+              savedProgress.durationMillis > 0 &&
+              savedProgress.positionMillis >= savedProgress.durationMillis - 100);
+
+          if (isFinished && !hasSavedPosition) {
+            // Track finished and no saved position - restart from beginning
+            const track = {
+              id: trackId,
+              title: nasheed.title_en,
+              artist: nasheed.title_ar || "Nasheed",
+              artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
+              uri: { uri: audioUrl },
+            };
+            await playTrack(track);
+          } else {
+            // Track not finished or has saved position - resume
+            if (resumePosition) {
+              await seekTo(resumePosition);
+            }
+            await resume();
           }
-          await resume();
         }
+        return;
       }
-      return;
-    }
 
-    // Set queue with all nasheeds
-    const queueTracks = nasheeds
-      .filter((item) => !!item.audio_path)
-      .map((item) => ({
-        id: item.id,
-        title: item.title_en,
-        artist: item.title_ar || "Nasheed",
+      // Set queue with all nasheeds
+      const queueTracks = nasheeds
+        .filter((item) => !!item.audio_path)
+        .map((item) => ({
+          id: item.id,
+          title: item.title_en,
+          artist: item.title_ar || "Nasheed",
+          artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
+          uri: { uri: item.audio_path },
+        }));
+      setQueue(queueTracks);
+
+      const track = {
+        id: trackId,
+        title: nasheed.title_en,
+        artist: nasheed.title_ar || "Nasheed",
         artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
-        uri: { uri: item.audio_path },
-      }));
-    setQueue(queueTracks);
-
-    const track = {
-      id: trackId,
-      title: nasheed.title_en,
-      artist: nasheed.title_ar || "Nasheed",
-      artworkUri: "https://via.placeholder.com/300x300.png?text=Qasid",
-      uri: { uri: audioUrl },
-    };
-    await playTrack(track, resumePosition);
+        uri: { uri: audioUrl },
+      };
+      await playTrack(track, resumePosition);
+    } finally {
+      if (playTransitionRef.current?.trackId === trackId) {
+        playTransitionRef.current = null;
+      }
+    }
   };
 
   const handlePlayAll = async () => {

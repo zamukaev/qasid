@@ -182,7 +182,7 @@ export async function fetchFeaturedSurahs(
       const imageUrl = data.image_path
         ? await getDownloadURL(ref(storage, data.image_path))
         : "";
-      console.log("Fetched featured surah:", imageUrl);
+
       return {
         id: docSnap.id,
         title_en: data.title_en,
