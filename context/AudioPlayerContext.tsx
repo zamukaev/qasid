@@ -21,7 +21,11 @@ import TrackPlayer, {
 } from "react-native-track-player";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp } from "@react-native-firebase/app";
-import { getStorage, ref, getDownloadURL } from "@react-native-firebase/storage";
+import {
+  getStorage,
+  ref,
+  getDownloadURL,
+} from "@react-native-firebase/storage";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
 type RepeatMode = "sequential" | "shuffle" | "repeat-one";
@@ -135,14 +139,18 @@ export function AudioPlayerProvider({
   // Debounce isPlaying to suppress rapid state oscillations during track
   // loading (reset → add → skip → play emits multiple intermediate events).
   const [isPlaying, setIsPlaying] = useState(false);
-  const isPlayingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isPlayingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   useEffect(() => {
-    if (isPlayingDebounceRef.current) clearTimeout(isPlayingDebounceRef.current);
+    if (isPlayingDebounceRef.current)
+      clearTimeout(isPlayingDebounceRef.current);
     isPlayingDebounceRef.current = setTimeout(() => {
       setIsPlaying(isPlayingRaw);
     }, 150);
     return () => {
-      if (isPlayingDebounceRef.current) clearTimeout(isPlayingDebounceRef.current);
+      if (isPlayingDebounceRef.current)
+        clearTimeout(isPlayingDebounceRef.current);
     };
   }, [isPlayingRaw]);
 
@@ -186,6 +194,11 @@ export function AudioPlayerProvider({
             IOSCategoryOptions.AllowAirPlay,
           ],
           autoHandleInterruptions: true,
+          // Buffer configuration to prevent audio artifacts
+          minBuffer: 15, // Minimum buffer before playback starts (seconds)
+          maxBuffer: 50, // Maximum buffer size (seconds)
+          playBuffer: 2.5, // Buffer needed to resume after buffering (seconds)
+          backBuffer: 10, // Buffer behind current position (seconds)
         });
       } catch {
         // already initialized — continue to updateOptions
@@ -371,13 +384,15 @@ export function AudioPlayerProvider({
         await TrackPlayer.reset();
 
         if (resolvedItems) {
-          await TrackPlayer.add(resolvedItems);
-
-          // Skip to the tapped track (RNTP starts at index 0 after add).
+          // Reorder the queue so the tapped track is at index 0.
+          // This prevents RNTP from briefly activating track 0 before skip().
           const idx = resolvedItems.findIndex((t) => t.id === track.id);
-          if (idx > 0) {
-            await TrackPlayer.skip(idx);
-          }
+          const reorderedItems =
+            idx > 0
+              ? [...resolvedItems.slice(idx), ...resolvedItems.slice(0, idx)]
+              : resolvedItems;
+
+          await TrackPlayer.add(reorderedItems);
         } else {
           // No queue — play standalone.
           await TrackPlayer.add(toRNTPTrack(track, url));
@@ -459,7 +474,8 @@ export function AudioPlayerProvider({
   });
 
   // ── Next / Prev ───────────────────────────────────────────────────────────
-  // For UI buttons. Remote controls are handled natively in PlaybackService.
+  // Always use playTrack to re-rotate the queue correctly.
+  // Remote controls in PlaybackService use RNTP's rotated queue directly.
   const next = useCallback(async () => {
     const track = currentTrackRef.current;
     const currentQueue = queueRef.current;
@@ -469,21 +485,16 @@ export function AudioPlayerProvider({
     if (repeatModeRef.current === "shuffle") {
       const available = currentQueue.filter((t) => t.id !== track.id);
       if (available.length > 0) {
-        await playTrack(available[Math.floor(Math.random() * available.length)]);
+        await playTrack(
+          available[Math.floor(Math.random() * available.length)],
+        );
       }
       return;
     }
 
     const idx = currentQueue.findIndex((t) => t.id === track.id);
     if (idx !== -1 && idx + 1 < currentQueue.length) {
-      try {
-        // Use RNTP native skip — queue is already loaded.
-        await TrackPlayer.skipToNext();
-        await TrackPlayer.play();
-      } catch {
-        // Fallback: queue not loaded yet, use playTrack (will load queue).
-        await playTrack(currentQueue[idx + 1]);
-      }
+      await playTrack(currentQueue[idx + 1]);
     }
   }, [playTrack]);
 
@@ -496,18 +507,16 @@ export function AudioPlayerProvider({
     if (repeatModeRef.current === "shuffle") {
       const available = currentQueue.filter((t) => t.id !== track.id);
       if (available.length > 0) {
-        await playTrack(available[Math.floor(Math.random() * available.length)]);
+        await playTrack(
+          available[Math.floor(Math.random() * available.length)],
+        );
       }
       return;
     }
 
     const idx = currentQueue.findIndex((t) => t.id === track.id);
-    const prevIdx = (idx - 1 + currentQueue.length) % currentQueue.length;
-    try {
-      await TrackPlayer.skipToPrevious();
-      await TrackPlayer.play();
-    } catch {
-      await playTrack(currentQueue[prevIdx]);
+    if (idx > 0) {
+      await playTrack(currentQueue[idx - 1]);
     }
   }, [playTrack]);
 

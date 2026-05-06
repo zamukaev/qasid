@@ -415,6 +415,85 @@ export const searchSurahs = onRequest({cors: true}, async (req, res) => {
   }
 });
 
+export const onArtistPlaybackCreated = onDocumentCreated(
+  "artist_plays/{playId}",
+  async (event) => {
+    const snapshot = event.data;
+
+    if (!snapshot) {
+      return;
+    }
+
+    const data = snapshot.data();
+    const artistId = typeof data.artistId === "string" ? data.artistId : "";
+    const nasheedId = typeof data.nasheedId === "string" ? data.nasheedId : "";
+    const userId = typeof data.userId === "string" ? data.userId : "";
+    const eventType = data.eventType;
+    const scoreIncrement = getPlaybackScoreIncrement(eventType);
+
+    if (!artistId || !nasheedId || !userId || scoreIncrement === 0) {
+      console.warn("Skipping artist playback event with invalid payload", {
+        playId: snapshot.id,
+        artistId,
+        nasheedId,
+        userId,
+        eventType,
+      });
+      return;
+    }
+
+    const artistRef = admin.firestore().collection("artists").doc(artistId);
+    const lockId = getPlaybackLockId({
+      userId,
+      reciterId: artistId,
+      surahId: nasheedId,
+      eventType,
+      createdAt: data.createdAt,
+    });
+    const lockRef = admin
+      .firestore()
+      .collection("artist_playback_locks")
+      .doc(lockId);
+
+    await admin.firestore().runTransaction(async (transaction) => {
+      const lockSnapshot = await transaction.get(lockRef);
+
+      if (lockSnapshot.exists) {
+        return;
+      }
+
+      transaction.set(
+        artistRef,
+        {
+          popularity_score: admin.firestore.FieldValue.increment(
+            scoreIncrement,
+          ),
+          play_count: admin.firestore.FieldValue.increment(
+            eventType === "started" ? 1 : 0,
+          ),
+          qualified_play_count: admin.firestore.FieldValue.increment(
+            eventType === "qualified" ? 1 : 0,
+          ),
+          completed_play_count: admin.firestore.FieldValue.increment(
+            eventType === "completed" ? 1 : 0,
+          ),
+        },
+        {merge: true},
+      );
+
+      transaction.set(lockRef, {
+        playId: snapshot.id,
+        artistId,
+        nasheedId,
+        userId,
+        eventType,
+        createdAt:
+          data.createdAt ?? admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  },
+);
+
 export const onReciterPlaybackCreated = onDocumentCreated(
   "reciter_plays/{playId}",
   async (event) => {

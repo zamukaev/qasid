@@ -18,7 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import { createAudioPlayer } from "expo-audio";
 
 import { FirebaseReciter } from "../../../../types/quran";
 
@@ -149,40 +148,8 @@ export default function ReciterDetailsScreen() {
     return getDownloadURL(ref(storage, audioUrl));
   };
 
-  const getDurationMillis = async (audioUrl: string) => {
-    return new Promise<number | null>((resolve) => {
-      let settled = false;
-      const player = createAudioPlayer({ uri: audioUrl });
-      const cleanup = (listener?: { remove: () => void }) => {
-        if (listener) listener.remove();
-        try {
-          player.pause();
-        } catch {}
-        try {
-          player.remove();
-        } catch {}
-      };
-
-      const timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve(null);
-      }, 5000);
-
-      const listener = player.addListener(
-        "playbackStatusUpdate",
-        (status: any) => {
-          if (settled) return;
-          if (status?.isLoaded && status.duration > 0) {
-            settled = true;
-            clearTimeout(timeoutId);
-            cleanup(listener);
-            resolve(status.duration * 1000);
-          }
-        },
-      );
-    });
+  const getDurationMillis = async (_audioUrl: string): Promise<number | null> => {
+    return null;
   };
 
   const loadDurationForTrack = async (
