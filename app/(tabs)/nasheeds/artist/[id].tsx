@@ -153,7 +153,7 @@ export default function ArtistScreen() {
     try {
       const [artistData, { nasheeds: nasheedData, nextCursor }] =
         await Promise.all([fetchArtistById(id), fetchArtistNasheeds(id)]);
-
+      console.log("Fetched artist data:", nasheedData.length);
       if (!isMountedRef.current) return;
 
       if (!artistData) {
@@ -187,7 +187,11 @@ export default function ArtistScreen() {
         20,
         lastCursor,
       );
-      setNasheeds((prev) => [...prev, ...normalizeNasheeds(more)]);
+      setNasheeds((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const fresh = normalizeNasheeds(more).filter((n) => !existingIds.has(n.id));
+        return [...prev, ...fresh];
+      });
       setLastCursor(nextCursor);
       setHasMore(!!nextCursor);
     } catch (e) {
@@ -299,7 +303,7 @@ export default function ArtistScreen() {
           <View className="px-5 pt-6">
             <View className="flex-row items-center">
               <View
-                className="rounded-full mr-4"
+                className=" mr-4"
                 style={{
                   shadowColor: "#E7C11C",
                   shadowOffset: { width: 0, height: 0 },
@@ -313,7 +317,7 @@ export default function ArtistScreen() {
                       ? { uri: artist.image_path }
                       : PlaceholderAvatar
                   }
-                  className="h-24 w-24 rounded-full border border-qasid-gold/30"
+                  className="h-28 w-28 rounded-full border border-qasid-gold/30"
                 />
               </View>
               <View className="flex-1">
@@ -330,7 +334,13 @@ export default function ArtistScreen() {
                 )}
               </View>
             </View>
-
+            {artist?.desc && (
+              <View className="mt-6">
+                <Text className="text-l text-qasid-white  mb-1">
+                  {artist?.desc}
+                </Text>
+              </View>
+            )}
             <View className="mt-6">
               <PlayButton
                 handlePlayAll={handlePlayAll}

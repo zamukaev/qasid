@@ -292,7 +292,7 @@ export async function fetchArtistNasheeds(
 
   const lastDoc = docs.length === pageSize ? docs[docs.length - 1] : undefined;
   const nextCursor = lastDoc
-    ? { title: (lastDoc.data() as any).title ?? "", id: lastDoc.id }
+    ? { title: (lastDoc.data() as any).title_en ?? "", id: lastDoc.id }
     : undefined;
 
   return { nasheeds, nextCursor };

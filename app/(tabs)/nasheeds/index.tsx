@@ -67,6 +67,7 @@ export default function Nasheeds() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 44 }}
       >
+        <ContinueListeningBlock variant="nasheeds" />
         <ArtistRailSection
           title="Popular Artists"
           large

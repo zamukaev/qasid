@@ -7,7 +7,36 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { Progressbar } from "./Progressbar";
 
-export default function ContinueListeningBlock() {
+type Variant = "quran" | "nasheeds";
+
+const VARIANT_CONFIG: Record<
+  Variant,
+  {
+    emptyTitle: string;
+    emptyDescription: string;
+    emptyButtonText: string;
+    emptyRoute: string;
+  }
+> = {
+  quran: {
+    emptyTitle: "Play Quran",
+    emptyDescription: "Browse reciters and start a new recitation.",
+    emptyButtonText: "Browse Reciters",
+    emptyRoute: "/(tabs)/quran/all-reciters",
+  },
+  nasheeds: {
+    emptyTitle: "Play Nasheeds",
+    emptyDescription: "Browse artists and start listening.",
+    emptyButtonText: "Browse Artists",
+    emptyRoute: "/(tabs)/nasheeds/all-artists",
+  },
+};
+
+export default function ContinueListeningBlock({
+  variant = "quran",
+}: {
+  variant?: Variant;
+}) {
   const router = useRouter();
   const {
     currentTrack,
@@ -19,6 +48,7 @@ export default function ContinueListeningBlock() {
     playTrack,
   } = useAudioPlayer();
 
+  const config = VARIANT_CONFIG[variant];
   const hasHistory = Boolean(currentTrack);
 
   const progressPercent = useMemo(() => {
@@ -40,7 +70,7 @@ export default function ContinueListeningBlock() {
       return;
     }
 
-    router.push("/(tabs)/quran/all-reciters");
+    router.push(config.emptyRoute as Parameters<typeof router.push>[0]);
   };
 
   return (
@@ -68,12 +98,12 @@ export default function ContinueListeningBlock() {
           <View className="flex-row items-start justify-between">
             <View className="flex-1 pr-4">
               <Text className="text-qasid-white text-[30px] leading-9 font-bold tracking-tight">
-                {hasHistory ? "Continue Listening" : "Play Quran"}
+                {hasHistory ? "Continue Listening" : config.emptyTitle}
               </Text>
               <Text className="mt-2 text-white/60 text-[15px] leading-6">
                 {hasHistory
                   ? "Continue from where you left off."
-                  : "Browse reciters and start a new recitation."}
+                  : config.emptyDescription}
               </Text>
             </View>
 
@@ -175,7 +205,7 @@ export default function ContinueListeningBlock() {
                 ]}
                 className="ml-2 text-qasid-black font-semibold"
               >
-                <Text>Browse Reciters</Text>
+                <Text>{config.emptyButtonText}</Text>
               </Pressable>
             )}
           </View>
