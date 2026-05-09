@@ -13,12 +13,14 @@ import {
   fetchPopularArtists,
   fetchNewArtists,
 } from "../../../services/nasheeds-service";
+import { fetchRecentArtists } from "../../../services/recents-service";
 
 export default function Nasheeds() {
   const router = useRouter();
   const [popularArtists, setPopularArtists] = useState<NasheedArtist[]>([]);
   const [newArtists, setNewArtists] = useState<NasheedArtist[]>([]);
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
+  const [recentArtists, setRecentArtists] = useState<NasheedArtist[]>([]);
   const [isLoadingMain, setIsLoadingMain] = useState(false);
   const [isLoadingNew, setIsLoadingNew] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -52,10 +54,20 @@ export default function Nasheeds() {
     }
   }, []);
 
+  const loadRecents = useCallback(async () => {
+    try {
+      const artists = await fetchRecentArtists();
+      setRecentArtists(artists);
+    } catch (error) {
+      console.error("Error loading recent artists:", error);
+    }
+  }, []);
+
   useEffect(() => {
     void loadMain();
     void loadNew();
-  }, [loadMain, loadNew]);
+    void loadRecents();
+  }, [loadMain, loadNew, loadRecents]);
 
   if (errorMessage) {
     return <ShowError message={errorMessage} />;
@@ -68,6 +80,11 @@ export default function Nasheeds() {
         contentContainerStyle={{ paddingBottom: 44 }}
       >
         <ContinueListeningBlock variant="nasheeds" />
+        <ArtistRailSection
+          large
+          title="Recently Visited"
+          artists={recentArtists}
+        />
         <ArtistRailSection
           title="Popular Artists"
           large

@@ -39,6 +39,7 @@ import {
   fetchArtistNasheeds,
   trackArtistPlayback,
 } from "../../../../services/nasheeds-service";
+import { addRecentArtist } from "../../../../services/recents-service";
 
 interface NasheedItem {
   id: string;
@@ -162,6 +163,7 @@ export default function ArtistScreen() {
       }
 
       setArtist(artistData);
+      void addRecentArtist(artistData);
       setNasheeds(normalizeNasheeds(nasheedData));
       setLastCursor(nextCursor);
       setHasMore(!!nextCursor);

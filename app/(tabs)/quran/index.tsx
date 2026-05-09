@@ -17,12 +17,14 @@ import {
   fetchPopularReciters,
   fetchReciters,
 } from "../../../services/quran-service";
+import { fetchRecentReciters } from "../../../services/recents-service";
 
 export default function Quran() {
   const router = useRouter();
   const [allReciters, setAllReciters] = useState<FirebaseReciter[]>([]);
   const [popularReciters, setPopularReciters] = useState<FirebaseReciter[]>([]);
   const [newReciters, setNewReciters] = useState<FirebaseReciter[]>([]);
+  const [recentReciters, setRecentReciters] = useState<FirebaseReciter[]>([]);
   const [featuredCollections, setFeaturedCollections] = useState<
     FeaturedItem[]
   >([]);
@@ -47,9 +49,10 @@ export default function Quran() {
   const loadMainReciters = useCallback(async () => {
     setIsLoadingMainReciters(true);
     try {
-      const [allRecitersResponse, popularRecitersResponse] = await Promise.all(
-        [fetchReciters(), fetchPopularReciters()],
-      );
+      const [allRecitersResponse, popularRecitersResponse] = await Promise.all([
+        fetchReciters(),
+        fetchPopularReciters(),
+      ]);
 
       setAllReciters(allRecitersResponse.reciters);
       setPopularReciters(popularRecitersResponse);
@@ -87,11 +90,21 @@ export default function Quran() {
     });
   }, [router]);
 
+  const loadRecents = useCallback(async () => {
+    try {
+      const reciters = await fetchRecentReciters();
+      setRecentReciters(reciters);
+    } catch (error) {
+      console.error("Error loading recent reciters:", error);
+    }
+  }, []);
+
   useEffect(() => {
     void loadMainReciters();
     void loadNewReciters();
     void loadFeaturedCollections();
-  }, [loadFeaturedCollections, loadMainReciters, loadNewReciters]);
+    void loadRecents();
+  }, [loadFeaturedCollections, loadMainReciters, loadNewReciters, loadRecents]);
 
   if (errorMessage) {
     return <ShowError message={errorMessage} />;
@@ -110,13 +123,20 @@ export default function Quran() {
           title="Featured Collections"
         />
         <ReciterRailSection
+          large
+          title="Recently Visited"
+          reciters={recentReciters}
+        />
+        <ReciterRailSection
           title="Popular Reciters"
+          large
           reciters={popularReciters}
           isLoading={isLoadingMainReciters}
           onPressSeeAll={openPopularReciters}
         />
         <ReciterRailSection
           title="New Reciters"
+          circle
           reciters={newReciters}
           isLoading={isLoadingNewReciters}
           onPressSeeAll={openNewReciters}

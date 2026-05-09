@@ -1,9 +1,9 @@
 import React from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { NasheedArtist } from "../types/nasheed";
-import HomeSectionShell from "./HomeSectionShell";
 import { useReciterImageSource } from "../hooks/useReciterImageSource";
+import HorizontalRailSection from "./HorizontalRailSection";
 
 type CardSize = { cardWidth: number; imageSize: number };
 
@@ -100,40 +100,21 @@ function ArtistRailSection({
   large,
   small,
 }: ArtistRailSectionProps) {
-  const items = isLoading
-    ? Array.from({ length: skeletonCount }, (_, i) => i)
-    : artists;
-
-  if (!isLoading && artists.length === 0) return null;
-
   return (
-    <HomeSectionShell title={title} onPressSeeAll={onPressSeeAll}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="-mx-4"
-        contentContainerStyle={{ paddingLeft: 16, paddingRight: 0 }}
-      >
-        <View className="flex-row">
-          {items.map((item, index) => (
-            <View
-              key={
-                typeof item === "number"
-                  ? `${title}-skeleton-${index}`
-                  : item.id
-              }
-              className="mr-3"
-            >
-              {typeof item === "number" ? (
-                <CompactArtistCardSkeleton circle={circle} large={large} small={small} />
-              ) : (
-                <CompactArtistCard artist={item} circle={circle} large={large} small={small} />
-              )}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </HomeSectionShell>
+    <HorizontalRailSection
+      title={title}
+      items={artists}
+      isLoading={isLoading}
+      onPressSeeAll={onPressSeeAll}
+      skeletonCount={skeletonCount}
+      keyExtractor={(a) => a.id}
+      renderItem={(a) => (
+        <CompactArtistCard artist={a} circle={circle} large={large} small={small} />
+      )}
+      renderSkeleton={(_) => (
+        <CompactArtistCardSkeleton circle={circle} large={large} small={small} />
+      )}
+    />
   );
 }
 

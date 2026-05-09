@@ -2,7 +2,7 @@ import React from "react";
 import { View } from "react-native";
 import HomeSectionHeader from "./HomeSectionHeader";
 
-const SECTION_CONTAINER_CLASS = "px-4 py-9";
+const SECTION_CONTAINER_CLASS = "px-4 py-6";
 
 interface HomeSectionShellProps {
   title: string;

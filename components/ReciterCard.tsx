@@ -54,35 +54,62 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
   );
 }
 
-interface CompactReciterCardProps {
+type CardSize = { cardWidth: number; imageSize: number };
+
+function resolveSize(large?: boolean, small?: boolean): CardSize {
+  if (large) return { cardWidth: 116, imageSize: 104 };
+  if (small) return { cardWidth: 84, imageSize: 72 };
+  return { cardWidth: 100, imageSize: 88 };
+}
+
+export interface CompactReciterCardVariantProps {
+  circle?: boolean;
+  large?: boolean;
+  small?: boolean;
+}
+
+interface CompactReciterCardProps extends CompactReciterCardVariantProps {
   reciter: FirebaseReciter;
 }
 
-export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
+export function CompactReciterCard({ reciter, circle, large, small }: CompactReciterCardProps) {
   const router = useRouter();
   const imageSource = useReciterImageSource(reciter.image_path);
   const displayName = getReciterDisplayName(reciter);
-  const handlePress = () => {
-    router.push({
-      pathname: "/(tabs)/quran/reciter/[id]",
-      params: { id: reciter.id.toString() },
-    });
-  };
+  const { cardWidth, imageSize } = resolveSize(large, small);
 
   return (
     <Pressable
-      onPress={handlePress}
-      className="items-center"
-      style={{ width: 100 }}
+      onPress={() =>
+        router.push({
+          pathname: "/(tabs)/quran/reciter/[id]",
+          params: { id: reciter.id.toString() },
+        })
+      }
+      className="items-center active:opacity-80"
+      android_ripple={{ color: "#E7C11C20" }}
+      style={{ width: cardWidth }}
     >
-      <View className="rounded-full mb-2">
+      <View
+        className={`${circle ? "rounded-full" : "rounded-xl"} overflow-hidden border border-qasid-gold/20 mb-2`}
+        style={{
+          width: imageSize,
+          height: imageSize,
+          shadowColor: "#E7C11C",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: circle ? 0.3 : 0.2,
+          shadowRadius: circle ? 8 : 6,
+          elevation: circle ? 8 : 5,
+        }}
+      >
         <Image
-          className="h-20 w-20 rounded-full border-2 border-qasid-gold/25"
           source={imageSource}
+          className="w-full h-full"
+          resizeMode="cover"
         />
       </View>
       <Text
-        className="text-qasid-white text-center text-sm leading-4"
+        className="text-white/90 text-center text-xs leading-4"
         numberOfLines={2}
       >
         {displayName}

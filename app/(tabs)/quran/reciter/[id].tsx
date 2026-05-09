@@ -48,6 +48,7 @@ import {
   fetchSurahs,
   trackReciterPlayback,
 } from "../../../../services/quran-service";
+import { addRecentReciter } from "../../../../services/recents-service";
 
 interface SurahListItem {
   id: string;
@@ -393,6 +394,7 @@ export default function ReciterDetailsScreen() {
       }
 
       setReciter(loadedReciter);
+      void addRecentReciter(loadedReciter);
       setError(null);
       setSurahs(
         normalizeSurahItems(loadedSurahs as unknown as SourceSurahItem[]),
