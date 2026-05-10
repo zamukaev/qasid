@@ -7,13 +7,14 @@ import {
   BrowseAllArtistsPreview,
   ContinueListeningBlock,
 } from "../../../components";
-import { NasheedArtist } from "../../../types/nasheed";
+import { NasheedArtist, Playlist } from "../../../types/nasheed";
 import {
   fetchNasheedArtists,
   fetchPopularArtists,
   fetchNewArtists,
 } from "../../../services/nasheeds-service";
 import { fetchRecentArtists } from "../../../services/recents-service";
+import { fetchPlaylists } from "../../../services/playlists-service";
 
 export default function Nasheeds() {
   const router = useRouter();
@@ -21,6 +22,8 @@ export default function Nasheeds() {
   const [newArtists, setNewArtists] = useState<NasheedArtist[]>([]);
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
   const [recentArtists, setRecentArtists] = useState<NasheedArtist[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
   const [isLoadingMain, setIsLoadingMain] = useState(false);
   const [isLoadingNew, setIsLoadingNew] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,6 +57,18 @@ export default function Nasheeds() {
     }
   }, []);
 
+  const loadPlaylists = useCallback(async () => {
+    setIsLoadingPlaylists(true);
+    try {
+      const data = await fetchPlaylists();
+      setPlaylists(data);
+    } catch (error) {
+      console.error("Error loading playlists:", error);
+    } finally {
+      setIsLoadingPlaylists(false);
+    }
+  }, []);
+
   const loadRecents = useCallback(async () => {
     try {
       const artists = await fetchRecentArtists();
@@ -67,7 +82,8 @@ export default function Nasheeds() {
     void loadMain();
     void loadNew();
     void loadRecents();
-  }, [loadMain, loadNew, loadRecents]);
+    void loadPlaylists();
+  }, [loadMain, loadNew, loadRecents, loadPlaylists]);
 
   if (errorMessage) {
     return <ShowError message={errorMessage} />;
@@ -82,12 +98,19 @@ export default function Nasheeds() {
         <ContinueListeningBlock variant="nasheeds" />
         <ArtistRailSection
           large
-          title="Recently Visited"
-          artists={recentArtists}
+          title="Playlists"
+          artists={playlists}
+          isLoading={isLoadingPlaylists}
+          onPressItem={(id) =>
+            router.push({
+              pathname: "/(tabs)/nasheeds/playlist/[id]",
+              params: { id },
+            })
+          }
         />
+        <ArtistRailSection title="Recently Visited" artists={recentArtists} />
         <ArtistRailSection
           title="Popular Artists"
-          large
           artists={popularArtists}
           isLoading={isLoadingMain}
           onPressSeeAll={() =>
@@ -110,6 +133,7 @@ export default function Nasheeds() {
           }
         />
         <BrowseAllArtistsPreview
+          small
           artists={allArtists}
           isLoading={isLoadingMain}
         />

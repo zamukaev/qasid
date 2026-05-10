@@ -15,15 +15,11 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 
-import {
-  NasheedArtist,
-  Nasheed,
-  NasheedCursor,
-} from "../../../../types/nasheed";
+import { Playlist, Nasheed } from "../../../../types/nasheed";
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
 import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
+import { useReciterImageSource } from "../../../../hooks/useReciterImageSource";
 import {
   SharedCard,
   SharedCardSkeleton,
@@ -35,11 +31,9 @@ import {
   PlayButtonVariant,
 } from "../../../../components/PlayButton";
 import {
-  fetchArtistById,
-  fetchArtistNasheeds,
-  trackArtistPlayback,
-} from "../../../../services/nasheeds-service";
-import { addRecentArtist } from "../../../../services/recents-service";
+  fetchPlaylistById,
+  fetchNasheedsForPlaylist,
+} from "../../../../services/playlists-service";
 
 interface NasheedItem {
   id: string;
@@ -48,27 +42,38 @@ interface NasheedItem {
   imageUrl: string | null;
 }
 
-const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
-  items.map((item) => ({
-    id: item.id,
-    title: item.title_en,
-    audioUrl: item.audio_path ?? null,
-    imageUrl: item.image_path ?? null,
-  }));
+const resolveStorageUrl = async (path: string): Promise<string> => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  try {
+    return await getDownloadURL(ref(getStorage(getApp()), path));
+  } catch {
+    return path;
+  }
+};
 
-export default function ArtistScreen() {
+const normalizeNasheeds = async (items: Nasheed[]): Promise<NasheedItem[]> =>
+  Promise.all(
+    items.map(async (item) => ({
+      id: item.id,
+      title: item.title_en,
+      audioUrl: item.audio_path
+        ? await resolveStorageUrl(item.audio_path)
+        : null,
+      imageUrl: item.image_path
+        ? await resolveStorageUrl(item.image_path)
+        : null,
+    })),
+  );
+
+export default function PlaylistScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const navigation = useNavigation();
 
-  const [artist, setArtist] = useState<NasheedArtist | null>(null);
+  const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [nasheeds, setNasheeds] = useState<NasheedItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastCursor, setLastCursor] = useState<NasheedCursor | undefined>(
-    undefined,
-  );
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
   const scrollViewRef = useRef<ScrollView | null>(null);
@@ -83,96 +88,37 @@ export default function ArtistScreen() {
     resume,
     isPlaying,
     viewMode,
-    listenedMillis,
-    didJustFinish,
   } = useAudioPlayer();
 
-  const playbackTrackingRef = useRef<
-    Record<string, { started: boolean; qualified: boolean; completed: boolean }>
-  >({});
+  const trackPrefix = `playlist-${id}`;
+  const playlistImageSource = useReciterImageSource(playlist?.image_path);
 
-  useEffect(() => {
-    if (!artist?.id || !currentTrack?.id) return;
-
-    const prefix = `${artist.id}-`;
-    if (!currentTrack.id.startsWith(prefix)) return;
-
-    const nasheedId = currentTrack.id.slice(prefix.length);
-    if (!nasheedId) return;
-
-    const state = playbackTrackingRef.current[currentTrack.id] ?? {
-      started: false,
-      qualified: false,
-      completed: false,
-    };
-
-    const track = async (eventType: "started" | "qualified" | "completed") => {
-      try {
-        await trackArtistPlayback({
-          artistId: artist.id,
-          nasheedId,
-          eventType,
-          playedSeconds: Math.floor(listenedMillis / 1000),
-        });
-      } catch (e) {
-        console.warn("Failed to track artist playback", e);
-      }
-    };
-
-    if (!state.started && listenedMillis >= 10000) {
-      state.started = true;
-      playbackTrackingRef.current[currentTrack.id] = state;
-      void track("started");
-    }
-
-    if (!state.qualified && listenedMillis >= 30000) {
-      state.qualified = true;
-      playbackTrackingRef.current[currentTrack.id] = state;
-      void track("qualified");
-    }
-
-    if (!state.completed && didJustFinish) {
-      state.completed = true;
-      playbackTrackingRef.current[currentTrack.id] = state;
-      void track("completed");
-    }
-  }, [artist?.id, currentTrack?.id, didJustFinish, listenedMillis]);
-
-  const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
-
-  const resolveAudioUrl = async (audioPath: string): Promise<string> => {
-    if (audioPath.startsWith("http")) return audioPath;
-    return getDownloadURL(ref(getStorage(getApp()), audioPath));
-  };
-
-  const loadArtist = async () => {
+  const loadPlaylist = async () => {
     if (!id) {
-      setError("Artist not specified.");
+      setError("Playlist not specified.");
       return;
     }
     setLoading(true);
     try {
-      const [artistData, { nasheeds: nasheedData, nextCursor }] =
-        await Promise.all([fetchArtistById(id), fetchArtistNasheeds(id)]);
-      console.log("Fetched artist data:", nasheedData.length);
+      const [playlistData, nasheedData] = await Promise.all([
+        fetchPlaylistById(id),
+        fetchNasheedsForPlaylist(id),
+      ]);
       if (!isMountedRef.current) return;
 
-      if (!artistData) {
-        setError("Artist not found.");
+      if (!playlistData) {
+        setError("Playlist not found.");
         return;
       }
 
-      setArtist(artistData);
-      void addRecentArtist(artistData);
-      setNasheeds(normalizeNasheeds(nasheedData));
-      setLastCursor(nextCursor);
-      setHasMore(!!nextCursor);
+      setPlaylist(playlistData);
+      setNasheeds(await normalizeNasheeds(nasheedData));
       setError(null);
     } catch (e) {
       if (isMountedRef.current) {
-        console.error("Error loading artist data:", e);
+        console.error("Error loading playlist:", e);
         setError(
-          e instanceof Error ? e.message : "Unable to load artist data.",
+          e instanceof Error ? e.message : "Unable to load playlist data.",
         );
       }
     } finally {
@@ -180,65 +126,29 @@ export default function ArtistScreen() {
     }
   };
 
-  const loadMore = async () => {
-    if (loadingMore || !hasMore || !id) return;
-    setLoadingMore(true);
-    try {
-      const { nasheeds: more, nextCursor } = await fetchArtistNasheeds(
-        id,
-        20,
-        lastCursor,
-      );
-      setNasheeds((prev) => {
-        const existingIds = new Set(prev.map((n) => n.id));
-        const fresh = normalizeNasheeds(more).filter(
-          (n) => !existingIds.has(n.id),
-        );
-        return [...prev, ...fresh];
-      });
-      setLastCursor(nextCursor);
-      setHasMore(!!nextCursor);
-    } catch (e) {
-      console.error("Error loading more nasheeds:", e);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
   const handlePlayNasheed = async (nasheed: NasheedItem) => {
-    if (!artist || !nasheed.audioUrl) return;
+    if (!playlist || !nasheed.audioUrl) return;
 
-    const trackId = `${artist.id}-${nasheed.id}`;
+    const trackId = `${trackPrefix}-${nasheed.id}`;
 
     if (currentTrack?.id === trackId) {
       isPlaying ? await pause() : await resume();
       return;
     }
 
-    // Cancel any previous in-flight play request for this screen.
     const playId = ++pendingPlayIdRef.current;
-
-    let audioUrl = nasheed.audioUrl;
-    try {
-      audioUrl = await resolveAudioUrl(audioUrl);
-    } catch (e) {
-      console.error("Failed to resolve audio URL", e);
-      return;
-    }
-
-    // A newer tap arrived while we were resolving — discard this stale request.
     if (playId !== pendingPlayIdRef.current) return;
 
-    const artworkUri = artist.image_path?.startsWith("http")
-      ? artist.image_path
+    const artworkUri = playlist.image_path?.startsWith("http")
+      ? playlist.image_path
       : PlaceholderAvatar;
 
     const queueTracks = nasheeds
       .filter((item) => !!item.audioUrl)
       .map((item) => ({
-        id: `${artist.id}-${item.id}`,
+        id: `${trackPrefix}-${item.id}`,
         title: item.title,
-        artist: artist.name_en,
+        artist: playlist.name_en,
         artworkUri: item.imageUrl ?? artworkUri,
         uri: { uri: item.audioUrl as string },
       }));
@@ -247,9 +157,9 @@ export default function ArtistScreen() {
     await playTrack({
       id: trackId,
       title: nasheed.title,
-      artist: artist.name_en,
+      artist: playlist.name_en,
       artworkUri: nasheed.imageUrl ?? artworkUri,
-      uri: { uri: audioUrl },
+      uri: { uri: nasheed.audioUrl as string },
     });
   };
 
@@ -261,20 +171,11 @@ export default function ArtistScreen() {
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
     setShowScrollToTop(offsetY > 400);
-
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    if (
-      layoutMeasurement.height + contentOffset.y >= contentSize.height - 50 &&
-      hasMore &&
-      !loadingMore
-    ) {
-      loadMore();
-    }
   };
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: artist?.name_en ?? "Artist" });
-  }, [navigation, artist?.name_en]);
+    navigation.setOptions({ title: playlist?.name_en ?? "Playlist" });
+  }, [navigation, playlist?.name_en]);
 
   useEffect(() => {
     return () => {
@@ -283,21 +184,23 @@ export default function ArtistScreen() {
   }, []);
 
   useEffect(() => {
-    void loadArtist();
+    void loadPlaylist();
   }, [id]);
 
   if (error) return <ShowError message={error} />;
-  if (!artist && !loading)
-    return <ShowError message="Artist data is not available." />;
+  if (!playlist && !loading)
+    return <ShowError message="Playlist data is not available." />;
 
-  const isArtistPlaying =
-    isPlaying && !!currentTrack?.id.startsWith(`${artist?.id}-`);
+  const isPlaylistPlaying =
+    isPlaying && !!currentTrack?.id.startsWith(trackPrefix);
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={{ paddingBottom: contentBottomPadding }}
+        contentContainerStyle={{
+          paddingBottom: viewMode === "hidden" ? 32 : 128,
+        }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
@@ -307,7 +210,7 @@ export default function ArtistScreen() {
           <View className="px-5 pt-6">
             <View className="flex-row items-center">
               <View
-                className=" mr-4"
+                className="mr-4"
                 style={{
                   shadowColor: "#E7C11C",
                   shadowOffset: { width: 0, height: 0 },
@@ -316,24 +219,23 @@ export default function ArtistScreen() {
                 }}
               >
                 <Image
-                  source={
-                    artist?.image_path
-                      ? { uri: artist.image_path }
-                      : PlaceholderAvatar
-                  }
-                  className="h-28 w-28 rounded-full border border-qasid-gold/30"
+                  source={playlistImageSource}
+                  className="h-28 w-28 rounded-xl border border-qasid-gold/30"
                 />
               </View>
               <View className="flex-1">
                 <Text className="text-2xl text-qasid-white font-bold mb-1">
-                  {artist?.name_en}
+                  {playlist?.name_en}
+                </Text>
+                <Text className="text-sm text-qasid-white/70">
+                  {nasheeds.length} Nasheeds
                 </Text>
               </View>
             </View>
-            {artist?.desc && (
+            {playlist?.desc && (
               <View className="mt-6">
-                <Text className="text-l text-qasid-white  mb-1">
-                  {artist?.desc}
+                <Text className="text-l text-qasid-white mb-1">
+                  {playlist.desc}
                 </Text>
               </View>
             )}
@@ -342,7 +244,7 @@ export default function ArtistScreen() {
                 handlePlayAll={handlePlayAll}
                 label="Play"
                 kind={PlayButtonVariant.PRIMARY}
-                isPlaying={isArtistPlaying}
+                isPlaying={isPlaylistPlaying}
               />
             </View>
           </View>
@@ -364,7 +266,7 @@ export default function ArtistScreen() {
           ) : (
             <>
               {nasheeds.map((nasheed) => {
-                const trackId = `${artist?.id}-${nasheed.id}`;
+                const trackId = `${trackPrefix}-${nasheed.id}`;
                 const isActive = currentTrack?.id === trackId;
                 return (
                   <SharedCard
@@ -375,11 +277,11 @@ export default function ArtistScreen() {
                     isPaused={isActive}
                     title={nasheed.title}
                     image={nasheed.imageUrl ?? undefined}
-                    subtitle={artist?.name_en ?? ""}
+                    subtitle={playlist?.name_en ?? ""}
                     track={{
                       id: trackId,
                       title: nasheed.title,
-                      artist: artist?.name_en,
+                      artist: playlist?.name_en,
                       uri: nasheed.audioUrl,
                     }}
                   />
@@ -388,13 +290,7 @@ export default function ArtistScreen() {
 
               {nasheeds.length === 0 && !loading && (
                 <Text className="text-qasid-white/70 text-base">
-                  No nasheeds available for this artist yet.
-                </Text>
-              )}
-
-              {loadingMore && (
-                <Text className="text-qasid-gold text-sm text-center py-4">
-                  Loading more...
+                  No nasheeds in this playlist yet.
                 </Text>
               )}
             </>

@@ -1,16 +1,16 @@
 import React from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { NasheedArtist } from "../types/nasheed";
+import { NasheedArtist, Playlist } from "../types/nasheed";
 import { useReciterImageSource } from "../hooks/useReciterImageSource";
 import HorizontalRailSection from "./HorizontalRailSection";
 
 type CardSize = { cardWidth: number; imageSize: number };
 
 function resolveSize(large?: boolean, small?: boolean): CardSize {
-  if (large) return { cardWidth: 116, imageSize: 104 };
+  if (large) return { cardWidth: 148, imageSize: 136 };
   if (small) return { cardWidth: 84, imageSize: 72 };
-  return { cardWidth: 100, imageSize: 88 };
+  return { cardWidth: 116, imageSize: 104 };
 }
 
 interface CardVariantProps {
@@ -34,10 +34,17 @@ function CompactArtistCardSkeleton({ circle, large, small }: CardVariantProps) {
 }
 
 interface CompactArtistCardProps extends CardVariantProps {
-  artist: NasheedArtist;
+  artist: NasheedArtist | Playlist;
+  onPress?: (id: string) => void;
 }
 
-function CompactArtistCard({ artist, circle, large, small }: CompactArtistCardProps) {
+function CompactArtistCard({
+  artist,
+  circle,
+  large,
+  small,
+  onPress,
+}: CompactArtistCardProps) {
   const router = useRouter();
   const imageSource = useReciterImageSource(artist.image_path);
   const { cardWidth, imageSize } = resolveSize(large, small);
@@ -48,10 +55,12 @@ function CompactArtistCard({ artist, circle, large, small }: CompactArtistCardPr
       className="items-center active:opacity-80"
       android_ripple={{ color: "#E7C11C20" }}
       onPress={() =>
-        router.push({
-          pathname: "/(tabs)/nasheeds/artist/[id]",
-          params: { id: artist.id },
-        })
+        onPress
+          ? onPress(artist.id)
+          : router.push({
+              pathname: "/(tabs)/nasheeds/artist/[id]",
+              params: { id: artist.id },
+            })
       }
     >
       <View
@@ -73,7 +82,7 @@ function CompactArtistCard({ artist, circle, large, small }: CompactArtistCardPr
         />
       </View>
       <Text
-        className="text-white/90 text-center text-xs leading-4"
+        className={`text-white/90 text-center leading-4 ${large ? "text-sm" : "text-xs"}`}
         numberOfLines={2}
       >
         {artist.name_en}
@@ -84,9 +93,10 @@ function CompactArtistCard({ artist, circle, large, small }: CompactArtistCardPr
 
 interface ArtistRailSectionProps extends CardVariantProps {
   title: string;
-  artists: NasheedArtist[];
+  artists: NasheedArtist[] | Playlist[];
   isLoading?: boolean;
   onPressSeeAll?: () => void;
+  onPressItem?: (id: string) => void;
   skeletonCount?: number;
 }
 
@@ -95,6 +105,7 @@ function ArtistRailSection({
   artists,
   isLoading = false,
   onPressSeeAll,
+  onPressItem,
   skeletonCount = 8,
   circle,
   large,
@@ -109,10 +120,20 @@ function ArtistRailSection({
       skeletonCount={skeletonCount}
       keyExtractor={(a) => a.id}
       renderItem={(a) => (
-        <CompactArtistCard artist={a} circle={circle} large={large} small={small} />
+        <CompactArtistCard
+          artist={a}
+          circle={circle}
+          large={large}
+          small={small}
+          onPress={onPressItem}
+        />
       )}
       renderSkeleton={(_) => (
-        <CompactArtistCardSkeleton circle={circle} large={large} small={small} />
+        <CompactArtistCardSkeleton
+          circle={circle}
+          large={large}
+          small={small}
+        />
       )}
     />
   );

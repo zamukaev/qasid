@@ -5,25 +5,41 @@ import { NasheedArtist } from "../types/nasheed";
 import HomeSectionShell from "./HomeSectionShell";
 import { useReciterImageSource } from "../hooks/useReciterImageSource";
 
-const CARD_WIDTH = 100;
 const CARD_GAP = 0;
-const ROW_HEIGHT = 140;
+const TEXT_AREA = 52;
 
-function CompactArtistCardSkeleton() {
+function resolveSize(large?: boolean, small?: boolean) {
+  if (large) return { cardWidth: 148, imageSize: 136 };
+  if (small) return { cardWidth: 84, imageSize: 72 };
+  return { cardWidth: 116, imageSize: 104 };
+}
+
+interface CardVariantProps {
+  large?: boolean;
+  small?: boolean;
+}
+
+function CompactArtistCardSkeleton({ large, small }: CardVariantProps) {
+  const { cardWidth, imageSize } = resolveSize(large, small);
   return (
-    <View style={{ width: CARD_WIDTH }} className="items-center">
+    <View style={{ width: cardWidth }} className="items-center">
       <View
         className="rounded-xl bg-gray-700/30 animate-pulse mb-2"
-        style={{ width: 88, height: 88 }}
+        style={{ width: imageSize, height: imageSize }}
       />
       <View className="h-3 w-20 bg-gray-700/30 rounded animate-pulse" />
     </View>
   );
 }
 
-function ArtistBrowseCard({ artist }: { artist: NasheedArtist }) {
+function ArtistBrowseCard({
+  artist,
+  large,
+  small,
+}: { artist: NasheedArtist } & CardVariantProps) {
   const router = useRouter();
   const imageSource = useReciterImageSource(artist.image_path);
+  const { cardWidth, imageSize } = resolveSize(large, small);
 
   return (
     <Pressable
@@ -39,8 +55,8 @@ function ArtistBrowseCard({ artist }: { artist: NasheedArtist }) {
       <View
         className="rounded-xl overflow-hidden border border-qasid-gold/20 mb-2"
         style={{
-          width: 88,
-          height: 88,
+          width: imageSize,
+          height: imageSize,
           shadowColor: "#E7C11C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.2,
@@ -55,9 +71,9 @@ function ArtistBrowseCard({ artist }: { artist: NasheedArtist }) {
         />
       </View>
       <Text
-        className="text-white/90 text-center text-xs leading-4"
+        className={`text-white/90 text-center leading-4 ${large ? "text-sm" : "text-xs"}`}
         numberOfLines={2}
-        style={{ width: CARD_WIDTH }}
+        style={{ width: cardWidth }}
       >
         {artist.name_en}
       </Text>
@@ -65,7 +81,7 @@ function ArtistBrowseCard({ artist }: { artist: NasheedArtist }) {
   );
 }
 
-interface BrowseAllArtistsPreviewProps {
+interface BrowseAllArtistsPreviewProps extends CardVariantProps {
   artists: NasheedArtist[];
   isLoading?: boolean;
 }
@@ -73,8 +89,12 @@ interface BrowseAllArtistsPreviewProps {
 function BrowseAllArtistsPreview({
   artists,
   isLoading = false,
+  large,
+  small,
 }: BrowseAllArtistsPreviewProps) {
   const router = useRouter();
+  const { cardWidth, imageSize } = resolveSize(large, small);
+  const rowHeight = imageSize + TEXT_AREA;
 
   if (!isLoading && artists.length === 0) return null;
 
@@ -82,8 +102,8 @@ function BrowseAllArtistsPreview({
 
   const rows = isLoading || artists.length > 6 ? 2 : 1;
   const totalColumns = Math.ceil(items.length / rows);
-  const containerWidth = totalColumns * (CARD_WIDTH + CARD_GAP);
-  const containerHeight = rows * ROW_HEIGHT;
+  const containerWidth = totalColumns * (cardWidth + CARD_GAP);
+  const containerHeight = rows * rowHeight;
 
   return (
     <HomeSectionShell
@@ -110,14 +130,14 @@ function BrowseAllArtistsPreview({
                 }
                 style={{
                   position: "absolute",
-                  left: column * (CARD_WIDTH + CARD_GAP),
-                  top: row * ROW_HEIGHT,
+                  left: column * (cardWidth + CARD_GAP),
+                  top: row * rowHeight,
                 }}
               >
                 {typeof item === "number" ? (
-                  <CompactArtistCardSkeleton />
+                  <CompactArtistCardSkeleton large={large} small={small} />
                 ) : (
-                  <ArtistBrowseCard artist={item} />
+                  <ArtistBrowseCard artist={item} large={large} small={small} />
                 )}
               </View>
             );

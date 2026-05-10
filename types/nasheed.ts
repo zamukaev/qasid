@@ -1,22 +1,31 @@
 import { Timestamp } from "firebase/firestore";
 
 export interface NasheedArtist {
-  desc?: string;
   id: string;
   image_path: string;
   is_active: boolean;
   is_known: boolean;
-  language: string;
   name_ar?: string;
   name_en: string;
+  desc?: string;
+  language: string;
   publishedAt: Timestamp;
   createdAt: Timestamp;
   play_count: number;
   popularity_score: number;
   qualified_play_count: number;
   completed_play_count: number;
-  nasheed_count?: number;
 }
+
+export interface Playlist extends Omit<
+  NasheedArtist,
+  | "language"
+  | "is_known"
+  | "play_count"
+  | "popularity_score"
+  | "qualified_play_count"
+  | "completed_play_count"
+> {}
 
 export interface Nasheed {
   id: string;

@@ -10,16 +10,21 @@ import * as Linking from "expo-linking";
 
 // вынеси в .env потом
 const CONTACT_EMAIL = "hello@qasid.mock";
-const TELEGRAM_HANDLE = "@qasid_support_mock";
-const TELEGRAM_URL = "https://t.me/qasid_support_mock";
+const TELEGRAM_SUPPORT = "Support: @qasidsupport";
+const TELEGRAM_CHANNEL = "Channel: @qasidapp";
+const TELEGRAM_CHANNEL_URL = "https://t.me/qasidsound";
+const TELEGRAM_SUPPORT_URL = "https://t.me/qasidsupport?direct";
 
 export default function ContactSupportScreen() {
   const openEmail = () => {
     Linking.openURL(`mailto:${CONTACT_EMAIL}`);
   };
 
-  const openTelegram = () => {
-    Linking.openURL(TELEGRAM_URL);
+  const openTelegramSupport = () => {
+    Linking.openURL(TELEGRAM_SUPPORT_URL);
+  };
+  const openTelegramChannel = () => {
+    Linking.openURL(TELEGRAM_CHANNEL_URL);
   };
 
   return (
@@ -63,7 +68,11 @@ export default function ContactSupportScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={openTelegram} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={openTelegramSupport}
+            activeOpacity={0.7}
+            className="mb-3"
+          >
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-bg-2" />
               <LinearGradient
@@ -76,9 +85,31 @@ export default function ContactSupportScreen() {
 
               <View className="px-4 py-4 flex-row items-center justify-between">
                 <View className="flex-1">
-                  <Text className="text-white text-base">Telegram</Text>
+                  <Text className="text-white text-base">Telegram Support</Text>
                   <Text className="text-white/50 text-sm mt-0.5">
-                    {TELEGRAM_HANDLE}
+                    {TELEGRAM_SUPPORT}
+                  </Text>
+                </View>
+                <Text className="text-white/40 text-base">→</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={openTelegramChannel} activeOpacity={0.7}>
+            <View className="relative overflow-hidden rounded-2xl">
+              <View className="absolute inset-0 bg-qasid-bg-2" />
+              <LinearGradient
+                colors={["rgba(231,193,28,0.05)", "rgba(0,0,0,0.00)"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ position: "absolute", inset: 0 }}
+              />
+              <View className="absolute inset-0 rounded-2xl border border-white/10" />
+
+              <View className="px-4 py-4 flex-row items-center justify-between">
+                <View className="flex-1">
+                  <Text className="text-white text-base">Telegram Channel</Text>
+                  <Text className="text-white/50 text-sm mt-0.5">
+                    {TELEGRAM_CHANNEL}
                   </Text>
                 </View>
                 <Text className="text-white/40 text-base">→</Text>

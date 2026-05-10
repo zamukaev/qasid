@@ -30,6 +30,13 @@ export default function NasheedLayout() {
           headerBackTitle: "Artists",
         }}
       />
+      <Stack.Screen
+        name="playlist/[id]"
+        options={{
+          title: "Playlist",
+          headerBackTitle: "Playlists",
+        }}
+      />
     </Stack>
   );
 }
