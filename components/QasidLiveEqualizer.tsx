@@ -29,7 +29,6 @@ export function QasidLiveEqualizer({
   ).current;
 
   useEffect(() => {
-    console.log("Equalizer status:", status);
     if (status === "paused") {
       values.forEach((v) => {
         v.stopAnimation();

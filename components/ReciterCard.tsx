@@ -1,21 +1,20 @@
 import { Pressable, Text, View, Image } from "react-native";
 
-import PlaceholderAvatar from "../assets/images/avatar.webp";
-import { Reciter } from "../types/quran";
+import { FirebaseReciter } from "../types/quran";
 import { useRouter } from "expo-router";
+import { useReciterImageSource } from "../hooks/useReciterImageSource";
 
 interface ReciterCardProps {
-  reciter: Reciter;
-  href: number;
-  style?: any;
+  reciter: FirebaseReciter;
 }
 
-export default function ReciterCard({
-  reciter,
-  href,
-  style,
-}: ReciterCardProps) {
+const getReciterDisplayName = (reciter: FirebaseReciter) =>
+  reciter.name_en?.trim() || reciter.name_ar?.trim() || "Unknown reciter";
+
+export default function ReciterCard({ reciter }: ReciterCardProps) {
   const router = useRouter();
+  const imageSource = useReciterImageSource(reciter.image_path);
+  const displayName = getReciterDisplayName(reciter);
   const handlePress = () => {
     router.push({
       pathname: "/(tabs)/quran/reciter/[id]",
@@ -29,83 +28,91 @@ export default function ReciterCard({
       className="flex-row  items-center justify-between rounded-2xl  border border-qasid-gold/25 p-4"
       android_ripple={{ color: "#E7C11C20" }}
     >
-      <View
-        className="rounded-full mr-6"
-        style={{
-          shadowColor: "#E7C11C",
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
-        {true ? (
+      <View className="rounded-full mr-6">
+        {imageSource ? (
           <Image
             className="h-16 w-16 rounded-full  border border-qasid-gold/25 "
-            source={
-              reciter.image_path
-                ? { uri: reciter.image_path }
-                : PlaceholderAvatar
-            }
+            source={imageSource}
           />
         ) : (
           <View className="flex-1 border bg-qasid-gray border-qasid-gold/25 items-center justify-center h-16 w-16 rounded-full">
             <Text className="text-qasid-gold font-semibold text-3xl">
-              {reciter.name.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </Text>
           </View>
         )}
       </View>
       <View className="flex-1">
         <Text className="text-qasid-white font-semibold text-lg">
-          {reciter.name}
+          {displayName}
         </Text>
         <Text className="text-qasid-gold font-light text-base opacity-[0.8]">
-          {reciter.moshaf[0].name}
+          {reciter.name_ar}
         </Text>
       </View>
     </Pressable>
   );
 }
 
-interface CompactReciterCardProps {
-  reciter: Reciter;
+type CardSize = { cardWidth: number; imageSize: number };
+
+function resolveSize(large?: boolean, small?: boolean): CardSize {
+  if (large) return { cardWidth: 116, imageSize: 104 };
+  if (small) return { cardWidth: 84, imageSize: 72 };
+  return { cardWidth: 100, imageSize: 88 };
 }
 
-export function CompactReciterCard({ reciter }: CompactReciterCardProps) {
+export interface CompactReciterCardVariantProps {
+  circle?: boolean;
+  large?: boolean;
+  small?: boolean;
+}
+
+interface CompactReciterCardProps extends CompactReciterCardVariantProps {
+  reciter: FirebaseReciter;
+}
+
+export function CompactReciterCard({ reciter, circle, large, small }: CompactReciterCardProps) {
   const router = useRouter();
-  const handlePress = () => {
-    router.push({
-      pathname: "/(tabs)/quran/reciter/[id]",
-      params: { id: reciter.id.toString() },
-    });
-  };
+  const imageSource = useReciterImageSource(reciter.image_path);
+  const displayName = getReciterDisplayName(reciter);
+  const { cardWidth, imageSize } = resolveSize(large, small);
 
   return (
     <Pressable
-      onPress={handlePress}
-      className="items-center"
-      style={{ width: 100 }}
+      onPress={() =>
+        router.push({
+          pathname: "/(tabs)/quran/reciter/[id]",
+          params: { id: reciter.id.toString() },
+        })
+      }
+      className="items-center active:opacity-80"
+      android_ripple={{ color: "#E7C11C20" }}
+      style={{ width: cardWidth }}
     >
       <View
-        className="rounded-full mb-2"
+        className={`${circle ? "rounded-full" : "rounded-xl"} overflow-hidden border border-qasid-gold/20 mb-2`}
         style={{
+          width: imageSize,
+          height: imageSize,
           shadowColor: "#E7C11C",
           shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
+          shadowOpacity: circle ? 0.3 : 0.2,
+          shadowRadius: circle ? 8 : 6,
+          elevation: circle ? 8 : 5,
         }}
       >
         <Image
-          className="h-20 w-20 rounded-full border-2 border-qasid-gold/25"
-          source={
-            reciter.image_path ? { uri: reciter.image_path } : PlaceholderAvatar
-          }
+          source={imageSource}
+          className="w-full h-full"
+          resizeMode="cover"
         />
       </View>
-      <Text className="text-qasid-white text-center text-sm">
-        {reciter.name}
+      <Text
+        className="text-white/90 text-center text-xs leading-4"
+        numberOfLines={2}
+      >
+        {displayName}
       </Text>
     </Pressable>
   );

@@ -1,3 +1,4 @@
+import { getApp } from "@react-native-firebase/app";
 import {
   getFirestore,
   collection,
@@ -16,18 +17,48 @@ import {
   getDownloadURL,
 } from "@react-native-firebase/storage";
 import { BeautifulRecitation, FeaturedItem } from "../types/featured";
-import { RecitersImage, ResponseSurah, Surah } from "../types/quran";
+import { FirebaseSurah, ResponseSurah, SurahCursor } from "../types/quran";
+import { surahMetadata } from "../constants/surahMetadata";
+
+const FIREBASE_PROJECT_ID = "qasid-fd80d";
+const SEARCH_SURAHS_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunctions.net/searchSurahs`;
+const SEARCH_BATCH_SIZE = 50;
+const MAX_SEARCH_SCAN_PAGES = 10;
+
+const normalizeSearchText = (value: string) => value.trim().toLowerCase();
+
+const matchesSurahSearch = (surah: FirebaseSurah, search: string) => {
+  const normalizedSearch = normalizeSearchText(search);
+
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  const metadata = surahMetadata.find((m) => m.number === surah.surah_number);
+  const englishName = normalizeSearchText(metadata?.englishName ?? "");
+  const arabicName = normalizeSearchText(metadata?.arabicName ?? "");
+  const surahNumber = String(surah.surah_number ?? "");
+  const paddedSurahNumber = surahNumber.padStart(3, "0");
+
+  return (
+    englishName.includes(normalizedSearch) ||
+    arabicName.includes(normalizedSearch) ||
+    surahNumber.includes(normalizedSearch) ||
+    paddedSurahNumber.includes(normalizedSearch)
+  );
+};
 
 export async function loadFeaturedItems(): Promise<FeaturedItem[]> {
-  const db = getFirestore();
+  const app = getApp();
+  const db = getFirestore(app);
   const q = query(
     collection(db, "featuredItems"),
     where("is_active", "==", true),
-    orderBy("order")
+    orderBy("order"),
   );
   const snapshot = await getDocs(q);
   const items: FeaturedItem[] = [];
-  const storage = getStorage();
+  const storage = getStorage(app);
 
   for (const doc of snapshot.docs) {
     const data = doc.data() as any;
@@ -45,21 +76,23 @@ export async function loadFeaturedItems(): Promise<FeaturedItem[]> {
       content_type: data?.content_type,
       target: data?.target,
       description: data?.description,
+      surah_count: data?.surah_count,
     });
   }
   return items;
 }
 
 export async function getFeaturedItemById(
-  id: string
+  id: string,
 ): Promise<FeaturedItem | null> {
-  const db = getFirestore();
+  const app = getApp();
+  const db = getFirestore(app);
   const docSnap = await getDoc(doc(db, "featuredItems", id));
   if (!docSnap.exists()) {
     return null;
   }
   const data = docSnap.data() as FeaturedItem;
-  const storage = getStorage();
+  const storage = getStorage(app);
   const imageUrl = await getDownloadURL(ref(storage, data.image_path));
 
   return {
@@ -74,21 +107,23 @@ export async function getFeaturedItemById(
     target: data?.target,
     featured: data?.featured,
     description: data?.description,
+    surah_count: data?.surah_count,
   };
 }
 
 export async function fetchBeautifulCollection(
-  target: string
+  target: string,
 ): Promise<BeautifulRecitation[]> {
-  const db = getFirestore();
+  const app = getApp();
+  const db = getFirestore(app);
   const q = query(
     collection(db, target),
     where("is_active", "==", true),
-    orderBy("order")
+    orderBy("order"),
   );
   const snapshot = await getDocs(q);
   const items: BeautifulRecitation[] = [];
-  const storage = getStorage();
+  const storage = getStorage(app);
   for (const docSnap of snapshot.docs) {
     const data = docSnap.data() as any;
     const audioUrl = await getDownloadURL(ref(storage, data.audio_path));
@@ -106,18 +141,21 @@ export async function fetchBeautifulCollection(
       tags: data.tags ?? [],
       is_active: data.is_active,
       description: data.description,
+      surah_count: data.surah_count,
     });
   }
+
   return items;
 }
 
 export async function fetchFeaturedSurahs(
   target: string,
   pageSize = 20,
-  cursor?: any
+  cursor?: any,
 ): Promise<ResponseSurah> {
-  const db = getFirestore();
-  const storage = getStorage();
+  const app = getApp();
+  const db = getFirestore(app);
+  const storage = getStorage(app);
   const base = [
     collection(db, "reciters", target, "surahs"),
     orderBy("surah_number"),
@@ -138,9 +176,12 @@ export async function fetchFeaturedSurahs(
 
   const snapshot = await getDocs(q);
   const docs = snapshot.docs;
-  const surahs: Surah[] = await Promise.all(
+  const surahs: FirebaseSurah[] = await Promise.all(
     snapshot.docs.map(async (docSnap: any) => {
       const data = docSnap.data() as any;
+      const imageUrl = data.image_path
+        ? await getDownloadURL(ref(storage, data.image_path))
+        : "";
 
       return {
         id: docSnap.id,
@@ -149,8 +190,9 @@ export async function fetchFeaturedSurahs(
         order: data.order,
         audio_path: data.audio_path,
         surah_number: data.surah_number,
+        image_path: imageUrl,
       };
-    })
+    }),
   );
 
   const lastDoc = docs.length ? docs[docs.length - 1] : undefined;
@@ -167,11 +209,11 @@ export async function fetchFeaturedSurahs(
 export async function fetchBeautifulCollectionPage(
   target: string,
   pageSize = 20,
-  cursor?: any // QueryDocumentSnapshot
+  cursor?: any, // QueryDocumentSnapshot
 ): Promise<ResponseSurah> {
-  const db = getFirestore();
-  const storage = getStorage();
-
+  const app = getApp();
+  const db = getFirestore(app);
+  const storage = getStorage(app);
   const base = [
     collection(db, target),
     where("is_active", "==", true),
@@ -194,25 +236,29 @@ export async function fetchBeautifulCollectionPage(
 
   const docs = snapshot.docs;
 
-  // URLs erstmal NICHT ziehen → nur Pfade returnen (siehe Punkt 2)
-  const surahs = docs.map((docSnap: any) => {
-    const data = docSnap.data() as any;
-    return {
-      id: docSnap.id,
-      title_en: data.title_en,
-      title_ar: data.title_ar,
-      surah_number: data.surah_number,
-      name_en: data.name_en,
-      name_ar: data.name_ar,
-      // erst mal nur paths
-      image_path: data.image_path,
-      audio_path: data.audio_path,
-      order: data.order,
-      tags: data.tags ?? [],
-      is_active: data.is_active,
-      description: data.description,
-    } as BeautifulRecitation;
-  });
+  const surahs: BeautifulRecitation[] = await Promise.all(
+    docs.map(async (docSnap: any) => {
+      const data = docSnap.data() as any;
+      const imageUrl = data.image_path
+        ? await getDownloadURL(ref(storage, data.image_path))
+        : "";
+
+      return {
+        id: docSnap.id,
+        title_en: data.title_en,
+        title_ar: data.title_ar,
+        surah_number: data.surah_number,
+        name_en: data.name_en,
+        name_ar: data.name_ar,
+        image_path: imageUrl,
+        audio_path: data.audio_path,
+        order: data.order,
+        tags: data.tags ?? [],
+        is_active: data.is_active,
+        description: data.description,
+      };
+    }),
+  );
 
   const lastDoc = docs.length ? docs[docs.length - 1] : undefined;
   const nextCursor = lastDoc
@@ -225,40 +271,80 @@ export async function fetchBeautifulCollectionPage(
   };
 }
 
-// 1. Funktion, die Featured Items lädt
-export async function loadRecitersImages(): Promise<RecitersImage[]> {
-  const db = getFirestore();
-  const q = query(collection(db, "recitersImages"));
-  const snapshot = await getDocs(q);
-  const items: RecitersImage[] = [];
-  const storage = getStorage();
-  for (const doc of snapshot.docs) {
-    const data = doc.data() as any;
-    const imageUrl = await getDownloadURL(ref(storage, data.image_path));
+export async function fetchFilteredCollectionSurahs(
+  target: string,
+  search: string,
+  pageSize: number = 20,
+  cursor?: SurahCursor,
+): Promise<ResponseSurah> {
+  const trimmedSearch = search.trim();
+  const params = new URLSearchParams({
+    target,
+    search: trimmedSearch,
+    pageSize: String(pageSize),
+    sourceType: "collection",
+  });
 
-    items.push({
-      id: data.id,
-      image_path: imageUrl,
-    });
+  if (cursor?.surah_number) {
+    params.set("cursorId", cursor.surah_number.toString());
+    params.set("cursorSurahNumber", String(cursor.surah_number));
   }
-  return items;
-}
 
-export async function getRecitersImageById(
-  id: number
-): Promise<RecitersImage | null> {
-  const db = getFirestore();
-  const q = query(collection(db, "recitersImages"), where("id", "==", id));
-  const snapshot = await getDocs(q);
-  if (snapshot.empty) {
-    return null;
+  const response = await fetch(`${SEARCH_SURAHS_URL}?${params.toString()}`);
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.warn("searchSurahs collection fallback triggered:", errorBody);
+    return fetchFilteredCollectionSurahsFallback(
+      target,
+      trimmedSearch,
+      pageSize,
+      cursor,
+    );
   }
-  const data = snapshot.docs[0].data() as any;
-  const storage = getStorage();
-  const imageUrl = await getDownloadURL(ref(storage, data.image_path));
+
+  const payload = (await response.json()) as ResponseSurah;
 
   return {
-    id: data.id,
-    image_path: imageUrl,
+    surahs: Array.isArray(payload.surahs) ? payload.surahs : [],
+    nextCursor: payload.nextCursor,
+  };
+}
+
+async function fetchFilteredCollectionSurahsFallback(
+  target: string,
+  search: string,
+  pageSize: number = 20,
+  cursor?: SurahCursor,
+): Promise<ResponseSurah> {
+  const surahs: FirebaseSurah[] = [];
+  let currentCursor = cursor;
+  let pagesScanned = 0;
+  let hasMore = true;
+
+  while (
+    surahs.length < pageSize &&
+    hasMore &&
+    pagesScanned < MAX_SEARCH_SCAN_PAGES
+  ) {
+    const response = await fetchBeautifulCollectionPage(
+      target,
+      SEARCH_BATCH_SIZE,
+      currentCursor,
+    );
+
+    const matchingSurahs = response.surahs.filter((surah) =>
+      matchesSurahSearch(surah, search),
+    );
+
+    surahs.push(...matchingSurahs.slice(0, pageSize - surahs.length));
+    currentCursor = response.nextCursor;
+    hasMore = Boolean(response.nextCursor);
+    pagesScanned += 1;
+  }
+
+  return {
+    surahs,
+    nextCursor: hasMore ? currentCursor : undefined,
   };
 }

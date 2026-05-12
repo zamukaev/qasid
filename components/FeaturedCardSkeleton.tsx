@@ -7,29 +7,33 @@ type Props = {
 
 export default function FeaturedCardSkeleton({ className = "" }: Props) {
   return (
-    <View className={`overflow-hidden rounded-3xl ${className}`}>
+    <View className={`overflow-hidden rounded-[28px] border border-white/10 ${className}`}>
       <LinearGradient
-        colors={["#0B0B0C", "#141416", "rgba(231,193,28,0.10)"]}
-        start={{ x: 0.1, y: 0.0 }}
+        colors={["#1B1B1C", "#0B0B0C", "rgba(231,193,28,0.12)"]}
+        start={{ x: 0.2, y: 0.0 }}
         end={{ x: 1, y: 1 }}
-        className="rounded-3xl"
       >
-        {/* Content Layer */}
-        <View className="p-5 h-80 w-72">
-          {/* Avatar Skeleton */}
+        <View className="w-60 h-80 p-5">
           <View className="items-center">
-            <View className="w-40 h-40 rounded-full overflow-hidden border border-qasid-gold-20 bg-gray-700/30 animate-pulse" />
+            <View
+              className="h-40 w-40 rounded-full overflow-hidden border border-qasid-gold/20 bg-gray-700/30 animate-pulse"
+              style={{
+                shadowColor: "#E7C11C",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.18,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+            />
           </View>
 
-          {/* Bottom Glass Panel Skeleton */}
           <View className="mt-auto">
-            <View className="h-28 rounded-2xl bg-qasid-card/50 px-5 py-4 border border-white/5">
-              {/* Skeleton line 1 */}
-              <View className="h-4 bg-gray-700/30 rounded w-24 mb-3 animate-pulse" />
-              {/* Skeleton line 2 */}
-              <View className="h-4 bg-gray-700/30 rounded w-32 mb-2 animate-pulse" />
-              {/* Skeleton line 3 */}
-              <View className="h-4 bg-gray-700/30 rounded w-28 animate-pulse" />
+            <View className="rounded-2xl border border-white/8 bg-black/30 px-4 py-4">
+              <View className="flex-1 justify-center">
+                <View className="h-3 w-20 rounded bg-gray-700/25 animate-pulse mb-2" />
+                <View className="h-5 w-40 rounded bg-gray-700/30 animate-pulse" />
+                <View className="h-3 w-24 rounded bg-gray-700/20 animate-pulse mt-4" />
+              </View>
             </View>
           </View>
         </View>

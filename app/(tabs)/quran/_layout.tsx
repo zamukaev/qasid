@@ -31,12 +31,6 @@ export default function QuranLayout() {
           headerBackTitle: "Reciters",
         }}
       />
-      <Stack.Screen
-        name="surah/[id]"
-        options={{
-          title: "Surah",
-        }}
-      />
     </Stack>
   );
 }

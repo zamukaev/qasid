@@ -1,34 +1,52 @@
-type NasheedType = "nasheeds";
-type NasheedStatus = "published";
+import { Timestamp } from "firebase/firestore";
 
-export type NasheedKind =
-  | "all"
-  | "beautiful"
-  | "night_reflection"
-  | "kids"
-  | "motivation";
-
-export interface MoodType {
+export interface NasheedArtist {
   id: string;
-  title: string;
-  subtitle: string;
-  kind: NasheedKind;
+  image_path: string;
+  is_active: boolean;
+  is_known: boolean;
+  name_ar?: string;
+  name_en: string;
+  desc?: string;
+  language: string;
+  publishedAt: Timestamp;
+  createdAt: Timestamp;
+  play_count: number;
+  popularity_score: number;
+  qualified_play_count: number;
+  completed_play_count: number;
 }
 
-export interface Track {
-  id: string;
-  title: string;
-  artist: string;
-  uri: string;
-}
+export interface Playlist extends Omit<
+  NasheedArtist,
+  | "language"
+  | "is_known"
+  | "play_count"
+  | "popularity_score"
+  | "qualified_play_count"
+  | "completed_play_count"
+> {}
 
 export interface Nasheed {
   id: string;
+  name_en: string;
   title_en: string;
-  title_ar: string;
   audio_path: string;
-  is_active: boolean;
-  kind: NasheedKind[];
-  popularity_score: number;
-  publishedAt: string;
+  image_path?: string;
+  artist_id: string;
+}
+
+export interface NasheedCursor {
+  title: string;
+  id: string;
+}
+
+export interface ArtistCursor {
+  name_en: string;
+  id: string;
+}
+
+export interface ResponseArtists {
+  artists: NasheedArtist[];
+  nextCursor?: ArtistCursor;
 }

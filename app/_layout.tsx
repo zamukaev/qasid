@@ -1,7 +1,18 @@
 import { Stack } from "expo-router";
 import { AudioPlayerProvider } from "../context/AudioPlayerContext";
-import "react-native-reanimated";
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from "react-native-reanimated";
 import "../global.css";
+
+// react-native-screens calls makeMutable() during render inside
+// ScreenGestureDetector, which Reanimated strict mode flags as a warning.
+// This is a known library issue — disable strict mode to suppress the noise.
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
 
 export default function RootLayout() {
   return (

@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
+    "target": "ES2019",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "../.tmp-scripts",
+    "rootDir": "."
+  },
+  "include": ["./**/*.ts"]
+}

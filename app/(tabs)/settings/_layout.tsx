@@ -4,6 +4,7 @@ export default function SettingsLayout() {
   return (
     <Stack
       screenOptions={{
+        animation: "slide_from_right",
         headerStyle: { backgroundColor: "#090A07" },
         headerTintColor: "#E7C11C",
         headerTitleStyle: {
@@ -15,15 +16,13 @@ export default function SettingsLayout() {
         name="index"
         options={{
           headerShown: false,
-          title: "Settings",
         }}
       />
       <Stack.Screen
-        name="premium"
+        name="contact-support"
         options={{
+          title: "Contact & Support",
           headerBackTitle: "Settings",
-          headerShown: false,
-          animation: "slide_from_right",
         }}
       />
     </Stack>

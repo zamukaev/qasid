@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { getApp } from "@react-native-firebase/app";
 import {
   getStorage,
   ref,
@@ -17,21 +18,19 @@ import { Ionicons } from "@expo/vector-icons";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import { createAudioPlayer } from "expo-audio";
 
-import { axiosInstance } from "../../../../services/api-service";
-import { Reciter, Surah } from "../../../../types/quran";
-import { SURAH_METADATA } from "../../../../constants/surahMetadata";
+import { FirebaseReciter } from "../../../../types/quran";
 
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
 import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
 import { formatMillis } from "../../../../utils/formatMillis";
 import {
   fetchBeautifulCollectionPage,
+  fetchFilteredCollectionSurahs,
   fetchFeaturedSurahs,
   getFeaturedItemById,
-  getRecitersImageById,
 } from "../../../../services/featured-service";
+import { getSurahMetadata } from "../../../../constants/surahMetadata";
 import {
   Search,
   SharedCard,
@@ -43,14 +42,51 @@ import {
   PlayButton,
   PlayButtonVariant,
 } from "../../../../components/PlayButton";
+import {
+  fetchReciterById,
+  fetchFilteredSurahs,
+  fetchSurahs,
+  trackReciterPlayback,
+} from "../../../../services/quran-service";
+import { addRecentReciter } from "../../../../services/recents-service";
 
 interface SurahListItem {
-  id: number;
-  reciter_name?: string;
+  id: string;
+  surahNumber: number;
   englishName: string;
   arabicName: string;
+  reciterName?: string;
   audioUrl: string | null;
+  imageUrl: string | null;
 }
+
+type SourceSurahItem = {
+  id: string;
+  title_en?: string;
+  title_ar?: string;
+  surah_number: number;
+  audio_path?: string;
+  name_en?: string;
+  name_ar?: string;
+  image_path?: string;
+};
+
+const normalizeSurahItems = (items: SourceSurahItem[]): SurahListItem[] =>
+  items
+    .filter((surah) => !!surah.surah_number)
+    .map((surah) => {
+      const metadata = getSurahMetadata(surah.surah_number);
+
+      return {
+        id: surah.id,
+        surahNumber: surah.surah_number,
+        englishName: `${metadata?.transliteration} ( ${metadata?.englishName} )`,
+        arabicName: metadata?.arabicName ?? "",
+        reciterName: surah.name_en?.trim() || undefined,
+        audioUrl: surah.audio_path ?? null,
+        imageUrl: surah.image_path ?? null,
+      };
+    });
 
 export default function ReciterDetailsScreen() {
   const { id, content_type, target } = useLocalSearchParams<{
@@ -60,21 +96,34 @@ export default function ReciterDetailsScreen() {
   }>();
   const navigation = useNavigation();
 
-  const [reciter, setReciter] = useState<Reciter | null>(null);
+  const [reciter, setReciter] = useState<FirebaseReciter | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pendingTrackId, setPendingTrackId] = useState<string | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [lastDoc, setLastDoc] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [durationMap, setDurationMap] = useState<Record<string, number>>({});
+  const [surahs, setSurahs] = useState<SurahListItem[]>([]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const playbackTrackingRef = useRef<
+    Record<
+      string,
+      {
+        started: boolean;
+        qualified: boolean;
+        completed: boolean;
+      }
+    >
+  >({});
   const durationMapRef = useRef<Record<string, number>>({});
   const durationInFlightRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
+  const requestIdRef = useRef(0);
   const {
     playTrack,
     setQueue,
@@ -87,56 +136,21 @@ export default function ReciterDetailsScreen() {
     progressMap,
     positionMillis,
     durationMillis,
+    listenedMillis,
+    didJustFinish,
   } = useAudioPlayer();
 
-  const contentBottomPadding = viewMode === "hidden" ? 32 : 100;
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
+  const backendSearchQuery = debouncedSearchQuery.trim();
 
   const resolveAudioUrl = async (audioUrl: string) => {
     if (audioUrl.startsWith("http")) return audioUrl;
-    const storage = getStorage();
+    const storage = getStorage(getApp());
     return getDownloadURL(ref(storage, audioUrl));
   };
 
-  const getDurationMillis = async (audioUrl: string) => {
-    return new Promise<number | null>((resolve) => {
-      let settled = false;
-      const player = createAudioPlayer({ uri: audioUrl });
-      const cleanup = (listener?: { remove: () => void }) => {
-        if (listener) listener.remove();
-        try {
-          player.pause();
-        } catch {}
-        try {
-          player.remove();
-        } catch {}
-      };
-
-      const timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve(null);
-      }, 5000);
-
-      const listener = player.addListener(
-        "playbackStatusUpdate",
-        (status: any) => {
-          if (settled) return;
-          if (status?.isLoaded && status.duration > 0) {
-            settled = true;
-            clearTimeout(timeoutId);
-            cleanup(listener);
-            resolve(status.duration * 1000);
-          }
-        },
-      );
-    });
+  const getDurationMillis = async (_audioUrl: string): Promise<number | null> => {
+    return null;
   };
 
   const loadDurationForTrack = async (
@@ -168,15 +182,26 @@ export default function ReciterDetailsScreen() {
   };
 
   const getFeaturedCollection = async (
-    content_type: string,
     target: string,
     id: string,
+    requestId: number,
+    showInitialLoader: boolean,
+    search: string = "",
   ) => {
     try {
-      setLoading(true);
+      if (showInitialLoader) {
+        setLoading(true);
+      } else {
+        setSearchLoading(true);
+      }
       const data = await getFeaturedItemById(id);
-      const { surahs: beautifulRecitations, nextCursor } =
-        await fetchBeautifulCollectionPage(target);
+      const { surahs: beautifulRecitations, nextCursor } = search
+        ? await fetchFilteredCollectionSurahs(target, search)
+        : await fetchBeautifulCollectionPage(target);
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
@@ -185,34 +210,22 @@ export default function ReciterDetailsScreen() {
         setError("Featured reciter was not found.");
         return;
       }
-      if (beautifulRecitations.length === 0) {
-        setError("No beautiful recitations found for this reciter.");
-        return;
-      }
-
-      const moshaf = beautifulRecitations.map((item: any, index: number) => ({
-        id: index,
-        name: item.title_en,
-        arabic_name: item.title_ar,
-        reciter_name: item.name_en,
-        server: item.audio_path ?? "",
-        surah_list: item?.surah_number?.toString(),
-        surah_total: beautifulRecitations.length,
-        moshaf_type: 0,
-        image_path: item?.image_path || "",
-      }));
 
       setReciter({
         id: data.id,
-        name: data.title_en,
+        name_en: data.title_en,
+        name_ar: data.title_ar,
         image_path: data.image_path,
-        moshaf: moshaf,
-        data: "",
-        letter: "",
-        arabic_name: data.title_ar,
-        description: data.description,
+        is_active: true,
+        desc: data.description,
+        surah_count: data.surah_count ?? beautifulRecitations?.length ?? 0,
       });
-      setLoading(false);
+      setError(null);
+      setSurahs(
+        normalizeSurahItems(
+          beautifulRecitations as unknown as SourceSurahItem[],
+        ),
+      );
     } catch (fetchError) {
       setError(
         fetchError instanceof Error
@@ -220,50 +233,54 @@ export default function ReciterDetailsScreen() {
           : "Unable to load the reciter data.",
       );
     } finally {
-      setLoading(false);
+      if (showInitialLoader) {
+        setLoading(false);
+      } else {
+        setSearchLoading(false);
+      }
     }
   };
 
   const getFeaturedReciter = async (
-    content_type: string,
     target: string,
     id: string,
+    requestId: number,
+    showInitialLoader: boolean,
+    search: string = "",
   ) => {
     try {
-      setLoading(true);
+      if (showInitialLoader) {
+        setLoading(true);
+      } else {
+        setSearchLoading(true);
+      }
       const data = await getFeaturedItemById(id);
-      const { surahs, nextCursor } = await fetchFeaturedSurahs(target);
-      setLastDoc(nextCursor);
-      setHasMore(!!nextCursor);
-      if (!surahs || surahs.length === 0) {
-        setError("No surahs found for this reciter.");
+      const { surahs, nextCursor } = search
+        ? await fetchFilteredSurahs(target, search)
+        : await fetchFeaturedSurahs(target);
+
+      if (requestId !== requestIdRef.current) {
         return;
       }
+
+      setLastDoc(nextCursor);
+      setHasMore(!!nextCursor);
       if (!data) {
         setError("Featured reciter was not found.");
         return;
       }
 
-      const moshaf = surahs.map((item: Surah, index: number) => ({
-        id: index,
-        name: item.title_en,
-        arabic_name: item.title_ar,
-        server: item.audio_path ?? "",
-        surah_list: item?.surah_number?.toString(),
-        surah_total: surahs.length,
-        moshaf_type: 0,
-      }));
       setReciter({
         id: data.id,
-        name: data.title_en,
+        name_en: data.title_en,
+        name_ar: data.title_ar,
         image_path: data.image_path,
-        moshaf: moshaf,
-        data: "",
-        letter: "",
-        arabic_name: data.title_ar,
-        description: data.description,
+        is_active: true,
+        desc: data.description,
+        surah_count: data.surah_count ?? surahs?.length ?? 0,
       });
-      setLoading(false);
+      setError(null);
+      setSurahs(normalizeSurahItems(surahs as unknown as SourceSurahItem[]));
     } catch (fetchError) {
       setError(
         fetchError instanceof Error
@@ -271,42 +288,55 @@ export default function ReciterDetailsScreen() {
           : "Unable to load the reciter data.",
       );
     } finally {
-      setLoading(false);
+      if (showInitialLoader) {
+        setLoading(false);
+      } else {
+        setSearchLoading(false);
+      }
     }
   };
 
   const loadMore = async () => {
-    if (loadingMore || !hasMore || !target) return;
+    const sourceTarget = target ?? id;
+    if (loadingMore || !hasMore || !sourceTarget) return;
     setLoadingMore(true);
     try {
       const { surahs: newItems, nextCursor } =
         content_type === "collection"
-          ? await fetchBeautifulCollectionPage(target, 20, lastDoc)
-          : await fetchFeaturedSurahs(target, 20, lastDoc);
+          ? backendSearchQuery
+            ? await fetchFilteredCollectionSurahs(
+                sourceTarget,
+                backendSearchQuery,
+                20,
+                lastDoc,
+              )
+            : await fetchBeautifulCollectionPage(sourceTarget, 20, lastDoc)
+          : content_type === "reciter"
+            ? backendSearchQuery
+              ? await fetchFilteredSurahs(
+                  sourceTarget,
+                  backendSearchQuery,
+                  20,
+                  lastDoc,
+                )
+              : await fetchFeaturedSurahs(sourceTarget, 20, lastDoc)
+            : backendSearchQuery
+              ? await fetchFilteredSurahs(
+                  sourceTarget,
+                  backendSearchQuery,
+                  20,
+                  lastDoc,
+                )
+              : await fetchSurahs(sourceTarget, 20, lastDoc);
 
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
 
       if (newItems.length > 0) {
-        const newMoshaf = newItems.map((item: any, index: number) => ({
-          id: (reciter?.moshaf.length || 0) + index,
-          name: item.title_en,
-          arabic_name: item.title_ar,
-          reciter_name: item.name_en,
-          server: item.audio_path ?? "",
-          surah_list: item?.surah_number?.toString(),
-          surah_total: newItems.length,
-          moshaf_type: 0,
-          image_path: item?.image_path || "",
-        }));
-
-        setReciter((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            moshaf: [...prev.moshaf, ...newMoshaf],
-          };
-        });
+        setSurahs((prev) => [
+          ...prev,
+          ...normalizeSurahItems(newItems as unknown as SourceSurahItem[]),
+        ]);
       }
     } catch (error) {
       setError("Unable to load more items.");
@@ -322,120 +352,72 @@ export default function ReciterDetailsScreen() {
       return;
     }
 
+    const requestId = ++requestIdRef.current;
+    const showInitialLoader = reciter?.id !== id && !backendSearchQuery;
+
     if (!!content_type && !!target) {
       if (content_type === "collection") {
-        await getFeaturedCollection(content_type, target, id);
+        await getFeaturedCollection(
+          target,
+          id,
+          requestId,
+          showInitialLoader,
+          backendSearchQuery,
+        );
       }
 
       if (content_type === "reciter") {
-        await getFeaturedReciter(content_type, target, id);
+        await getFeaturedReciter(
+          target,
+          id,
+          requestId,
+          showInitialLoader,
+          backendSearchQuery,
+        );
       }
       return;
     }
 
     try {
-      setLoading(true);
-      const response = await axiosInstance.get(
-        `/reciters?language=eng&reciter=${id}`,
-      );
+      if (showInitialLoader) {
+        setLoading(true);
+      } else {
+        setSearchLoading(true);
+      }
+      const loadedReciter = reciter ?? (await fetchReciterById(id));
+      const { surahs: loadedSurahs, nextCursor } = backendSearchQuery
+        ? await fetchFilteredSurahs(id, backendSearchQuery)
+        : await fetchSurahs(id);
 
-      const fetchedReciter: Reciter = response.data.reciters[0];
-      const reciterId: number = +fetchedReciter.id;
-
-      if (!fetchedReciter) {
-        setError("Reciter was not found.");
-        setReciter(null);
+      if (requestId !== requestIdRef.current) {
         return;
       }
 
-      const imagesResponse = await getRecitersImageById(reciterId);
-      setReciter({
-        ...fetchedReciter,
-        image_path: imagesResponse?.image_path || "",
-      });
-      setLoading(false);
+      setReciter(loadedReciter);
+      void addRecentReciter(loadedReciter);
+      setError(null);
+      setSurahs(
+        normalizeSurahItems(loadedSurahs as unknown as SourceSurahItem[]),
+      );
+      setLastDoc(nextCursor);
+      setHasMore(!!nextCursor);
     } catch (fetchError) {
+      console.error("Error fetching reciter data", fetchError);
       setError(
         fetchError instanceof Error
           ? fetchError.message
           : "Unable to load the reciter data.",
       );
     } finally {
-      setLoading(false);
+      if (showInitialLoader) {
+        setLoading(false);
+      } else {
+        setSearchLoading(false);
+      }
     }
   };
 
-  const multipleMoshafsAvailable = reciter?.moshaf && reciter.moshaf.length > 1;
-
-  const primaryMoshaf = reciter?.moshaf;
-
-  const surahItems: SurahListItem[] = useMemo(() => {
-    if (!multipleMoshafsAvailable) {
-      const moshaf = reciter?.moshaf[0];
-      if (!moshaf?.surah_list || !moshaf.server) {
-        return [];
-      }
-
-      return moshaf.surah_list
-        .split(",")
-        .map((surahIdString) => parseInt(surahIdString.trim(), 10))
-        .filter((surahId) => !Number.isNaN(surahId))
-        .map((surahId) => {
-          const metadata = SURAH_METADATA.find((item) => item.id === surahId);
-          const paddedId = surahId.toString().padStart(3, "0");
-          return {
-            id: surahId,
-            englishName: metadata
-              ? metadata.englishName
-              : `Surah ${surahId.toString().padStart(3, "0")}`,
-            arabicName: metadata ? metadata.arabicName : "",
-            audioUrl: `${moshaf.server}${paddedId}.mp3`,
-          };
-        });
-    }
-    const surahList: SurahListItem[] = [];
-    reciter?.moshaf.forEach((moshaf) => {
-      if (!moshaf.surah_list || !moshaf.server) {
-        return;
-      }
-      moshaf.surah_list
-        .split(",")
-        .map((surahIdString) => parseInt(surahIdString.trim(), 10))
-        .filter((surahId) => !Number.isNaN(surahId))
-        .forEach((surahId) => {
-          if (!surahList.find((item) => item.id === surahId)) {
-            const metadata = SURAH_METADATA.find((item) => item.id === surahId);
-            const paddedId = surahId.toString().padStart(3, "0");
-            surahList.push({
-              id: surahId,
-              reciter_name: moshaf.reciter_name,
-              englishName: metadata
-                ? metadata.englishName
-                : `Surah ${surahId.toString().padStart(3, "0")}`,
-              arabicName: metadata ? metadata.arabicName : "",
-              audioUrl: moshaf.server,
-            });
-          }
-        });
-    });
-    return surahList;
-  }, [primaryMoshaf]);
-
-  const filteredSurahItems = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return surahItems;
-    }
-    const query = searchQuery.trim().toLowerCase();
-    return surahItems.filter((item) => {
-      if (item.englishName.toLowerCase().includes(query)) {
-        return true;
-      }
-      if (item.arabicName && item.arabicName.toLowerCase().includes(query)) {
-        return true;
-      }
-      return item.id.toString().padStart(3, "0").includes(query);
-    });
-  }, [searchQuery, surahItems]);
+  const filteredSurahItems = surahs;
 
   const handlePlaySurah = async (surah: SurahListItem) => {
     if (!reciter || !surah.audioUrl) return;
@@ -443,7 +425,7 @@ export default function ReciterDetailsScreen() {
     let audioUrl = surah.audioUrl;
     if (!audioUrl.startsWith("http")) {
       try {
-        const storage = getStorage();
+        const storage = getStorage(getApp());
         audioUrl = await getDownloadURL(ref(storage, audioUrl));
       } catch (e) {
         setError("Unable to load audio URL.");
@@ -452,7 +434,7 @@ export default function ReciterDetailsScreen() {
       }
     }
 
-    const trackId = `${reciter.id}-${surah.id}`;
+    const trackId = `${reciter.id}-${surah.surahNumber}`;
     const savedProgress = progressMap[trackId];
     const hasSavedPosition =
       savedProgress &&
@@ -483,19 +465,14 @@ export default function ReciterDetailsScreen() {
         if (isFinished && !hasSavedPosition) {
           // Трек закончился и нет сохраненной позиции - перезапускаем с начала
           // Это работает для всех треков, включая последний
-          setPendingTrackId(trackId);
           const track = {
             id: trackId,
             title: surah.englishName,
-            artist: reciter.name,
-            artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
+            artist: surah.reciterName ?? reciter.name_en,
+            artworkUri: surah.imageUrl ?? PlaceholderAvatar,
             uri: { uri: audioUrl },
           };
-          try {
-            await playTrack(track);
-          } finally {
-            setPendingTrackId(null);
-          }
+          await playTrack(track);
         } else {
           // Трек не закончился или есть сохраненная позиция - возобновляем
           if (resumePosition) {
@@ -507,16 +484,13 @@ export default function ReciterDetailsScreen() {
       return;
     }
 
-    // Только для нового трека показываем лоадер
-    setPendingTrackId(trackId);
-
-    const queueTracks = surahItems
+    const queueTracks = filteredSurahItems
       .filter((item) => !!item.audioUrl)
       .map((item) => ({
-        id: `${reciter.id}-${item.id}`,
+        id: `${reciter.id}-${item.surahNumber}`,
         title: item.englishName,
-        artist: reciter.name,
-        artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
+        artist: item.reciterName ?? reciter.name_en,
+        artworkUri: item.imageUrl ?? PlaceholderAvatar,
         uri: { uri: item.audioUrl as string },
       }));
     setQueue(queueTracks);
@@ -524,15 +498,11 @@ export default function ReciterDetailsScreen() {
     const track = {
       id: trackId,
       title: surah.englishName,
-      artist: reciter.name,
-      artworkUri: "https://via.placeholder.com/300x300.png?text=Quran",
+      artist: surah.reciterName ?? reciter.name_en,
+      artworkUri: surah.imageUrl ?? PlaceholderAvatar,
       uri: { uri: audioUrl },
     };
-    try {
-      await playTrack(track, resumePosition);
-    } finally {
-      setPendingTrackId(null);
-    }
+    await playTrack(track, resumePosition);
   };
 
   const handlePlayAll = async () => {
@@ -563,23 +533,43 @@ export default function ReciterDetailsScreen() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: reciter?.name ?? "Reciter",
+      title: reciter?.name_en ?? "Reciter",
     });
-  }, [navigation, reciter?.name]);
+  }, [navigation, reciter?.name_en]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setSearchQuery("");
+    setDurationMap({});
+    playbackTrackingRef.current = {};
+    durationMapRef.current = {};
   }, [reciter?.id]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [searchQuery]);
+
   useEffect(() => {
     fetchReciter();
-  }, [id]);
+  }, [id, content_type, target, debouncedSearchQuery]);
 
   useEffect(() => {
     if (loading || !reciter) return;
     const queue = filteredSurahItems
       .filter((item) => item.audioUrl)
       .map((item) => ({
-        key: `${reciter?.id}-${item.id}`,
+        key: `${reciter?.id}-${item.surahNumber}`,
         url: item.audioUrl,
       }))
       .filter((item) => !durationMapRef.current[item.key]);
@@ -607,6 +597,55 @@ export default function ReciterDetailsScreen() {
       cancelled = true;
     };
   }, [filteredSurahItems, reciter, loading]);
+
+  useEffect(() => {
+    if (!reciter || content_type === "collection" || !currentTrack?.id) return;
+
+    const trackPrefix = `${reciter.id}-`;
+    if (!currentTrack.id.startsWith(trackPrefix)) return;
+
+    const surahId = currentTrack.id.slice(trackPrefix.length);
+    if (!surahId) return;
+
+    const trackingState = playbackTrackingRef.current[currentTrack.id] ?? {
+      started: false,
+      qualified: false,
+      completed: false,
+    };
+
+    const syncPlaybackEvent = async (
+      eventType: "started" | "qualified" | "completed",
+    ) => {
+      try {
+        await trackReciterPlayback({
+          reciterId: reciter.id,
+          surahId,
+          eventType,
+          playedSeconds: Math.floor(listenedMillis / 1000),
+        });
+      } catch (trackingError) {
+        console.warn("Failed to track reciter playback", trackingError);
+      }
+    };
+
+    if (!trackingState.started && listenedMillis >= 10000) {
+      trackingState.started = true;
+      playbackTrackingRef.current[currentTrack.id] = trackingState;
+      void syncPlaybackEvent("started");
+    }
+
+    if (!trackingState.qualified && listenedMillis >= 30000) {
+      trackingState.qualified = true;
+      playbackTrackingRef.current[currentTrack.id] = trackingState;
+      void syncPlaybackEvent("qualified");
+    }
+
+    if (!trackingState.completed && didJustFinish) {
+      trackingState.completed = true;
+      playbackTrackingRef.current[currentTrack.id] = trackingState;
+      void syncPlaybackEvent("completed");
+    }
+  }, [content_type, currentTrack?.id, didJustFinish, listenedMillis, reciter]);
 
   if (error) {
     return <ShowError message={error} />;
@@ -650,11 +689,7 @@ export default function ReciterDetailsScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-2xl text-qasid-white font-bold mb-1">
-                  {reciter?.name}
-                </Text>
-                <Text className="text-sm text-qasid-gold/80">
-                  {primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
-                    ?.name ?? "Murattal Recitation"}
+                  {reciter?.name_en}
                 </Text>
               </View>
             </View>
@@ -676,14 +711,9 @@ export default function ReciterDetailsScreen() {
               </View>
               <View className="flex-row items-center gap-2">
                 <FontAwesome6 name="list-ul" size={14} color="#E7C11C" />
-                {!!primaryMoshaf?.find((moshaf) => moshaf.id === reciter?.id)
-                  ?.surah_total && (
+                {reciter?.surah_count && (
                   <Text className="text-m text-qasid-white">
-                    {
-                      primaryMoshaf.find((moshaf) => moshaf.id === reciter?.id)
-                        ?.surah_total
-                    }{" "}
-                    Surahs
+                    {reciter?.surah_count} Surahs
                   </Text>
                 )}
               </View>
@@ -712,7 +742,7 @@ export default function ReciterDetailsScreen() {
             </Text>
           </View>
 
-          {loading ? (
+          {loading || searchLoading ? (
             // Show skeleton loaders while loading
             Array.from({ length: 8 }).map((_, index) => (
               <View key={`skeleton-${index}`} className="mb-1">
@@ -721,31 +751,11 @@ export default function ReciterDetailsScreen() {
             ))
           ) : (
             <>
-              {filteredSurahItems.map((surah, index) => {
-                const trackKey = `${reciter?.id}-${surah.id}`;
+              {filteredSurahItems.map((surah) => {
+                const key = `${surah?.reciterName}-${surah.surahNumber}`;
+                const trackKey = `${reciter?.id}-${surah.surahNumber}`;
                 const isActive = currentTrack?.id === trackKey;
-                const isPending = pendingTrackId === trackKey;
                 const progressEntry = progressMap[trackKey];
-                const hasSavedProgress =
-                  progressEntry &&
-                  progressEntry.positionMillis > 0 &&
-                  progressEntry.durationMillis > 0 &&
-                  progressEntry.positionMillis <
-                    progressEntry.durationMillis - 5000;
-                const progressPercent = hasSavedProgress
-                  ? Math.min(
-                      99,
-                      Math.round(
-                        (progressEntry.positionMillis /
-                          progressEntry.durationMillis) *
-                          100,
-                      ),
-                    )
-                  : 0;
-                const resumeMillis =
-                  hasSavedProgress && progressEntry
-                    ? progressEntry.positionMillis
-                    : 0;
                 const knownDurationMillis =
                   durationMap[trackKey] ?? progressEntry?.durationMillis;
                 const durationLabel = knownDurationMillis
@@ -754,17 +764,23 @@ export default function ReciterDetailsScreen() {
                 return (
                   <SharedCard
                     className="mb-1"
-                    key={trackKey}
+                    key={key}
                     handlePlayTrack={() => handlePlaySurah(surah)}
-                    isPlaying={isPlaying}
+                    isPlaying={isPlaying && isActive}
                     isPaused={isActive}
                     title={surah.englishName}
-                    order={index + 1}
-                    subtitle={surah.arabicName}
+                    order={surah.surahNumber}
+                    image={surah.imageUrl ?? undefined}
+                    subtitle={
+                      content_type === "collection"
+                        ? (surah.reciterName ?? surah.arabicName)
+                        : surah.arabicName
+                    }
                     duration={durationLabel}
                     track={{
-                      id: surah.id.toString(),
-                      artist: surah?.reciter_name,
+                      id: trackKey,
+                      surahNumber: surah.surahNumber,
+                      artist: surah.reciterName ?? reciter?.name_en,
                       title: surah.englishName,
                       uri: surah.audioUrl,
                     }}
@@ -772,11 +788,15 @@ export default function ReciterDetailsScreen() {
                 );
               })}
 
-              {filteredSurahItems.length === 0 && !loading && (
-                <Text className="text-qasid-white/70 text-base">
-                  There are no recordings available for this reciter yet.
-                </Text>
-              )}
+              {filteredSurahItems.length === 0 &&
+                !loading &&
+                !searchLoading && (
+                  <Text className="text-qasid-white/70 text-base">
+                    {searchQuery.trim()
+                      ? "No surahs found for this search."
+                      : "There are no recordings available for this reciter yet."}
+                  </Text>
+                )}
             </>
           )}
         </View>
@@ -788,7 +808,7 @@ export default function ReciterDetailsScreen() {
         style={{
           position: "absolute",
           right: 20,
-          bottom: viewMode === "hidden" ? 40 : 100,
+          bottom: viewMode === "hidden" ? 40 : 128,
           backgroundColor: "rgba(231, 193, 28, 0.7)",
           borderRadius: 999,
           width: 52,

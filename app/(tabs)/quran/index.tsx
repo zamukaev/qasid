@@ -1,144 +1,150 @@
-import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, Text, View, Pressable } from "react-native";
-import { axiosInstance } from "../../../services/api-service";
-import { Reciter } from "../../../types/quran";
-import {
-  CompactReciterCard,
-  CompactReciterCardSkeleton,
-  FeaturedList,
-  ShowError,
-} from "../../../components";
+import { useCallback, useEffect, useState } from "react";
+import { SafeAreaView, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 
+import { FirebaseReciter } from "../../../types/quran";
 import {
-  loadFeaturedItems,
-  loadRecitersImages,
-} from "../../../services/featured-service";
+  BrowseAllRecitersPreview,
+  ContinueListeningBlock,
+  FeaturedList,
+  ReciterRailSection,
+  ShowError,
+} from "../../../components";
+import { loadFeaturedItems } from "../../../services/featured-service";
 import { FeaturedItem } from "../../../types/featured";
+import {
+  fetchNewReciters,
+  fetchPopularReciters,
+  fetchReciters,
+} from "../../../services/quran-service";
+import { fetchRecentReciters } from "../../../services/recents-service";
 
 export default function Quran() {
   const router = useRouter();
-  const [reciters, setReciters] = useState<Reciter[]>([]);
-  const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [allReciters, setAllReciters] = useState<FirebaseReciter[]>([]);
+  const [popularReciters, setPopularReciters] = useState<FirebaseReciter[]>([]);
+  const [newReciters, setNewReciters] = useState<FirebaseReciter[]>([]);
+  const [recentReciters, setRecentReciters] = useState<FirebaseReciter[]>([]);
+  const [featuredCollections, setFeaturedCollections] = useState<
+    FeaturedItem[]
+  >([]);
+  const [isLoadingMainReciters, setIsLoadingMainReciters] = useState(false);
+  const [isLoadingNewReciters, setIsLoadingNewReciters] = useState(false);
+  const [isLoadingFeaturedCollections, setIsLoadingFeaturedCollections] =
+    useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const fetchFeaturedItems = async () => {
+  const loadFeaturedCollections = useCallback(async () => {
+    setIsLoadingFeaturedCollections(true);
     try {
-      const data = await loadFeaturedItems();
-      setFeaturedItems(data);
-    } catch (e) {
-      console.error("Error loading featured items ", e);
-    } finally {
-    }
-  };
-
-  const fetchQuran = async () => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.get(
-        "/reciters?language=eng&limit=20",
-      );
-      const imagesResponse = await loadRecitersImages();
-
-      setReciters(
-        response.data.reciters
-          .sort((a: Reciter, b: Reciter) => {
-            if (a.letter < b.letter) return -1;
-            if (a.letter > b.letter) return 1;
-            return 0;
-          })
-          .map((reciter: Reciter) => ({
-            ...reciter,
-            image_path:
-              imagesResponse.find((img) => img.id === reciter.id)?.image_path ??
-              "",
-          })),
-      );
-      setLoading(false);
+      const items = await loadFeaturedItems();
+      setFeaturedCollections(items);
     } catch (error) {
-      setError(error instanceof Error ? error.message : String(error));
-      console.error(error);
+      console.error("Error loading featured items", error);
     } finally {
-      setLoading(false);
+      setIsLoadingFeaturedCollections(false);
     }
-  };
-
-  useEffect(() => {
-    fetchQuran();
-    fetchFeaturedItems();
   }, []);
 
-  if (error) {
-    return <ShowError message={error} />;
-  }
+  const loadMainReciters = useCallback(async () => {
+    setIsLoadingMainReciters(true);
+    try {
+      const [allRecitersResponse, popularRecitersResponse] = await Promise.all([
+        fetchReciters(),
+        fetchPopularReciters(),
+      ]);
 
-  // Calculate the total width needed for all cards
-  const displayReciters = loading ? Array.from({ length: 20 }) : reciters;
-  const totalColumns = Math.ceil(displayReciters.length / 2);
-  const cardWidth = 100;
-  const cardGap = 0;
-  const containerWidth = totalColumns * (cardWidth + cardGap);
+      setAllReciters(allRecitersResponse.reciters);
+      setPopularReciters(popularRecitersResponse);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : String(error));
+      console.error("Error loading reciters", error);
+    } finally {
+      setIsLoadingMainReciters(false);
+    }
+  }, []);
+
+  const loadNewReciters = useCallback(async () => {
+    setIsLoadingNewReciters(true);
+    try {
+      const response = await fetchNewReciters(8);
+      setNewReciters(response.reciters);
+    } catch (error) {
+      console.error("Error loading new reciters", error);
+    } finally {
+      setIsLoadingNewReciters(false);
+    }
+  }, []);
+
+  const openPopularReciters = useCallback(() => {
+    router.push({
+      pathname: "/(tabs)/quran/all-reciters",
+      params: { sort: "popular" },
+    });
+  }, [router]);
+
+  const openNewReciters = useCallback(() => {
+    router.push({
+      pathname: "/(tabs)/quran/all-reciters",
+      params: { sort: "new" },
+    });
+  }, [router]);
+
+  const loadRecents = useCallback(async () => {
+    try {
+      const reciters = await fetchRecentReciters();
+      setRecentReciters(reciters);
+    } catch (error) {
+      console.error("Error loading recent reciters:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMainReciters();
+    void loadNewReciters();
+    void loadFeaturedCollections();
+    void loadRecents();
+  }, [loadFeaturedCollections, loadMainReciters, loadNewReciters, loadRecents]);
+
+  if (errorMessage) {
+    return <ShowError message={errorMessage} />;
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
-      <ScrollView>
-        <FeaturedList featuredItems={featuredItems} />
-        <View className="px-4 py-6">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-qasid-white text-2xl font-bold">
-              All Reciters
-            </Text>
-            <Pressable onPress={() => router.push("quran/all-reciters")}>
-              <Text className="text-qasid-title text-base font-semibold underline">
-                See All
-              </Text>
-            </Pressable>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingRight: 20,
-            }}
-          >
-            <View style={{ width: containerWidth, height: 300 }}>
-              {loading
-                ? displayReciters.map((_, index) => {
-                    const row = index % 2;
-                    const column = Math.floor(index / 2);
-                    return (
-                      <View
-                        key={`skeleton-${index}`}
-                        style={{
-                          position: "absolute",
-                          left: column * (cardWidth + cardGap),
-                          top: row * 140,
-                        }}
-                      >
-                        <CompactReciterCardSkeleton />
-                      </View>
-                    );
-                  })
-                : reciters.map((reciter, index) => {
-                    const row = index % 2;
-                    const column = Math.floor(index / 2);
-                    return (
-                      <View
-                        key={reciter.id}
-                        style={{
-                          position: "absolute",
-                          left: column * (cardWidth + cardGap),
-                          top: row * 140,
-                        }}
-                      >
-                        <CompactReciterCard reciter={reciter} />
-                      </View>
-                    );
-                  })}
-            </View>
-          </ScrollView>
-        </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 44 }}
+      >
+        <ContinueListeningBlock />
+        <FeaturedList
+          featuredItems={featuredCollections}
+          isLoading={isLoadingFeaturedCollections}
+          title="Featured Collections"
+        />
+        <ReciterRailSection
+          large
+          title="Recently Visited"
+          reciters={recentReciters}
+        />
+        <ReciterRailSection
+          title="Popular Reciters"
+          large
+          reciters={popularReciters}
+          isLoading={isLoadingMainReciters}
+          onPressSeeAll={openPopularReciters}
+        />
+        <ReciterRailSection
+          title="New Reciters"
+          circle
+          reciters={newReciters}
+          isLoading={isLoadingNewReciters}
+          onPressSeeAll={openNewReciters}
+        />
+        <BrowseAllRecitersPreview
+          reciters={allReciters}
+          isLoading={isLoadingMainReciters}
+        />
       </ScrollView>
     </SafeAreaView>
   );

@@ -14,8 +14,7 @@ import { useUserStore } from "../stores/userStore";
 import "../global.css";
 
 export default function Welcome() {
-  const { user, isLoading, isAuthenticated, setUser, setLoading } =
-    useUserStore();
+  const { user, isLoading, setUser, setLoading } = useUserStore();
 
   const router = useRouter();
   const segments = useSegments();
