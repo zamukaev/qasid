@@ -9,13 +9,17 @@ export interface User {
   emailVerified: boolean;
 }
 
+export type SubscriptionPlan = "free" | "monthly" | "yearly" | "family";
+
 interface UserState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  currentPlan: SubscriptionPlan;
   setUser: (firebaseUser: FirebaseAuthTypes.User | null) => void;
   clearUser: () => void;
   setLoading: (loading: boolean) => void;
+  setCurrentPlan: (plan: SubscriptionPlan) => void;
 }
 
 const mapFirebaseUser = (
@@ -36,6 +40,7 @@ export const useUserStore = create<UserState>((set) => ({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  currentPlan: "free",
 
   setUser: (firebaseUser) => {
     const user = mapFirebaseUser(firebaseUser);
@@ -56,5 +61,9 @@ export const useUserStore = create<UserState>((set) => ({
 
   setLoading: (loading) => {
     set({ isLoading: loading });
+  },
+
+  setCurrentPlan: (plan) => {
+    set({ currentPlan: plan });
   },
 }));
