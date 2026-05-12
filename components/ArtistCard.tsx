@@ -14,14 +14,14 @@ function ArtistCard({ artist, onPress }: ArtistCardProps) {
     <Pressable
       style={{ width: "30%" }}
       onPress={() => onPress(artist.id)}
-      android_ripple={{ color: "#E7C11C20" }}
+      android_ripple={{ color: "#C9A84C20" }}
       className="active:opacity-80"
     >
       <View
         className="rounded-xl overflow-hidden border border-qasid-gold/20"
         style={{
           aspectRatio: 1,
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.2,
           shadowRadius: 8,

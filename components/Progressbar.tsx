@@ -16,7 +16,7 @@ export const Progressbar = ({
         <Ionicons
           name="time-outline"
           size={14}
-          color="#E7C11C"
+          color="#C9A84C"
           style={{ marginRight: 6 }}
         />
         <Text className="text-qasid-gold text-xs font-medium">

@@ -15,6 +15,7 @@ export interface NasheedArtist {
   popularity_score: number;
   qualified_play_count: number;
   completed_play_count: number;
+  nasheed_count?: number;
 }
 
 export interface Playlist extends Omit<

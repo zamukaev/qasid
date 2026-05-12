@@ -111,7 +111,7 @@ export default function ContinueListeningBlock({
               {!hasHistory ? (
                 <Pressable
                   onPress={handlePress}
-                  android_ripple={{ color: "#E7C11C22" }}
+                  android_ripple={{ color: "#C9A84C22" }}
                   style={({ pressed }) => [
                     {
                       opacity: pressed ? 0.94 : 1,
@@ -122,13 +122,13 @@ export default function ContinueListeningBlock({
                   <Ionicons
                     name={"library-outline"}
                     size={24}
-                    color="#E7C11C"
+                    color="#C9A84C"
                   />
                 </Pressable>
               ) : (
                 <Pressable
                   onPress={handlePress}
-                  android_ripple={{ color: "#E7C11C22" }}
+                  android_ripple={{ color: "#C9A84C22" }}
                   style={({ pressed }) => [
                     {
                       opacity: pressed ? 0.94 : 1,
@@ -139,7 +139,7 @@ export default function ContinueListeningBlock({
                   <Ionicons
                     name={isPlaying ? "pause" : "play"}
                     size={24}
-                    color="#E7C11C"
+                    color="#C9A84C"
                   />
                 </Pressable>
               )}
@@ -180,7 +180,7 @@ export default function ContinueListeningBlock({
             {hasHistory ? (
               <Pressable
                 onPress={handlePress}
-                android_ripple={{ color: "#E7C11C22" }}
+                android_ripple={{ color: "#C9A84C22" }}
                 style={({ pressed }) => [
                   {
                     opacity: pressed ? 0.94 : 1,
@@ -196,7 +196,7 @@ export default function ContinueListeningBlock({
             ) : (
               <Pressable
                 onPress={handlePress}
-                android_ripple={{ color: "#E7C11C22" }}
+                android_ripple={{ color: "#C9A84C22" }}
                 style={({ pressed }) => [
                   {
                     opacity: pressed ? 0.94 : 1,

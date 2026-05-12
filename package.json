@@ -7,10 +7,12 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "seed:artists": "ts-node --project scripts/tsconfig.json scripts/seed-nasheed-artists.ts"
+    "seed:artists": "ts-node --project scripts/tsconfig.json scripts/seed-nasheed-artists.ts",
+    "seed:nasheeds-abu-ali": "ts-node --project scripts/tsconfig.json scripts/seed-nasheeds-abu-ali.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
+    "@invertase/react-native-apple-authentication": "^2.5.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/slider": "4.5.6",
     "@react-native-firebase/app": "^23.8.6",

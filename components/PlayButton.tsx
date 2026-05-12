@@ -34,7 +34,7 @@ export const PlayButton = ({
       <Ionicons
         name={isPlaying ? "pause" : "play"}
         size={16}
-        color={kind === PlayButtonVariant.PRIMARY ? "#000000" : "#E7C11C"}
+        color={kind === PlayButtonVariant.PRIMARY ? "#000000" : "#C9A84C"}
         style={{ marginLeft: 8 }}
       />
     </TouchableOpacity>

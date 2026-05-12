@@ -22,12 +22,12 @@ export default function FeaturedCard({
     <Pressable
       onPress={onPress}
       className={`overflow-hidden rounded-[28px] border border-white/10 bg-qasid-card ${className}`}
-      android_ripple={{ color: "#E7C11C33" }}
+      android_ripple={{ color: "#C9A84C33" }}
       style={({ pressed }) => [
         {
           opacity: pressed ? 0.94 : 1,
           transform: [{ scale: pressed ? 0.988 : 1 }],
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOpacity: pressed ? 0.16 : 0.1,
           shadowRadius: 16,
           shadowOffset: { width: 0, height: 8 },

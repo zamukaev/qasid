@@ -14,7 +14,7 @@ export default function ReciterGridCardSkeleton() {
         style={{
           width: 128,
           height: 128,
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.3,
           shadowRadius: 8,

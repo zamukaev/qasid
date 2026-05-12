@@ -10,6 +10,7 @@ import {
   orderBy,
   limit,
   serverTimestamp,
+  FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
 import { NasheedArtist } from "../types/nasheed";
 import { FirebaseReciter } from "../types/quran";
@@ -62,7 +63,7 @@ export async function fetchRecentReciters(): Promise<FirebaseReciter[]> {
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => {
+  return snapshot.docs.map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
     const data = d.data();
     return {
       id: d.id,
@@ -88,7 +89,7 @@ export async function fetchRecentArtists(): Promise<NasheedArtist[]> {
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => {
+  return snapshot.docs.map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
     const data = d.data();
     return {
       id: d.id,

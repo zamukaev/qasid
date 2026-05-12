@@ -672,7 +672,7 @@ export default function ReciterDetailsScreen() {
               <View
                 className="rounded-full mr-4"
                 style={{
-                  shadowColor: "#E7C11C",
+                  shadowColor: "#C9A84C",
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.35,
                   shadowRadius: 12,
@@ -696,21 +696,21 @@ export default function ReciterDetailsScreen() {
 
             <View className="mt-6 w-full flex-row justify-evenly items-center">
               <View className="flex-row items-center gap-2">
-                <Feather name="headphones" size={14} color="#E7C11C" />
+                <Feather name="headphones" size={14} color="#C9A84C" />
                 <Text className="text-m text-qasid-white">Clear Tajweed</Text>
               </View>
               <View className="flex-row items-center gap-2">
                 <MaterialCommunityIcons
                   name="mosque"
                   size={14}
-                  color="#E7C11C"
+                  color="#C9A84C"
                 />
                 <Text className="text-m text-qasid-white">
                   Daily Reflection
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
-                <FontAwesome6 name="list-ul" size={14} color="#E7C11C" />
+                <FontAwesome6 name="list-ul" size={14} color="#C9A84C" />
                 {reciter?.surah_count && (
                   <Text className="text-m text-qasid-white">
                     {reciter?.surah_count} Surahs

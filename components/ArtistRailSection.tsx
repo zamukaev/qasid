@@ -53,7 +53,7 @@ function CompactArtistCard({
     <Pressable
       style={{ width: cardWidth }}
       className="items-center active:opacity-80"
-      android_ripple={{ color: "#E7C11C20" }}
+      android_ripple={{ color: "#C9A84C20" }}
       onPress={() =>
         onPress
           ? onPress(artist.id)
@@ -68,7 +68,7 @@ function CompactArtistCard({
         style={{
           width: imageSize,
           height: imageSize,
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: circle ? 0.3 : 0.2,
           shadowRadius: circle ? 8 : 6,

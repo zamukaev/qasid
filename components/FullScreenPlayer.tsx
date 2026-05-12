@@ -174,7 +174,7 @@ export default function FullScreenPlayer() {
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="musical-notes" size={100} color="#E7C11C" />
+              <Ionicons name="musical-notes" size={100} color="#C9A84C" />
             </View>
           </View>
         </View>
@@ -229,7 +229,7 @@ export default function FullScreenPlayer() {
                 ) * (durationMillis || 0);
               seekTo(target);
             }}
-            minimumTrackTintColor="#E7C11C"
+            minimumTrackTintColor="#C9A84C"
             maximumTrackTintColor="rgba(255, 255, 255, 0.2)"
             thumbTintColor="#ffffff"
           />
@@ -291,7 +291,7 @@ export default function FullScreenPlayer() {
             <Ionicons
               name={isPlaying ? "pause-circle" : "play-circle"}
               size={70}
-              color="#E7C11C"
+              color="#C9A84C"
             />
           </TouchableOpacity>
 
@@ -315,7 +315,7 @@ export default function FullScreenPlayer() {
             <Feather
               name="repeat"
               size={28}
-              color={repeatMode === "repeat-one" ? "#E7C11C" : "#ffffff"}
+              color={repeatMode === "repeat-one" ? "#C9A84C" : "#ffffff"}
             />
           </TouchableOpacity>
           {/* Sequential */}
@@ -326,7 +326,7 @@ export default function FullScreenPlayer() {
             <Feather
               name="list"
               size={28}
-              color={repeatMode === "sequential" ? "#E7C11C" : "#ffffff"}
+              color={repeatMode === "sequential" ? "#C9A84C" : "#ffffff"}
             />
           </TouchableOpacity>
           {/* Shuffle */}
@@ -337,7 +337,7 @@ export default function FullScreenPlayer() {
             <Feather
               name="shuffle"
               size={28}
-              color={repeatMode === "shuffle" ? "#E7C11C" : "#ffffff"}
+              color={repeatMode === "shuffle" ? "#C9A84C" : "#ffffff"}
             />
           </TouchableOpacity>
         </View>

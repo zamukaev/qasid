@@ -92,7 +92,7 @@ export default function TabsLayout() {
             paddingTop: 4,
             borderRadius: 18,
           },
-          tabBarActiveTintColor: "#E7C11C",
+          tabBarActiveTintColor: "#C9A84C",
           tabBarInactiveTintColor: "rgba(255, 255, 255, 0.58)",
           tabBarBackground: () => (
             <LinearGradient

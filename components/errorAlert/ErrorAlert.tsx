@@ -135,7 +135,7 @@ export default function ErrorAlert({
               style={styles.closeButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <AntDesign name="close" size={18} color="#E7C11C" />
+              <AntDesign name="close" size={18} color="#C9A84C" />
             </Pressable>
           </View>
         </Pressable>

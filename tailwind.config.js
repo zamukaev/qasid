@@ -10,17 +10,15 @@ module.exports = {
     extend: {
       colors: {
         qasid: {
-          gold: "#E7C11C", // кнопка Sign In
-          gray: "#1c1c1c", // кнопка Sign Up
-          black: "#0B0B0B", // фон
+          gray: "#1c1c1c",
+          black: "#0B0B0B",
           white: "#ffffff",
-          title: "#E7C11C", // заголовок QASID
-          "qasid-bg": "#0B0B0C",
-          "qasid-bg-2": "#141416",
-          "qasid-gold": "#E7C11C",
-          "qasid-gold-20": "rgba(231,193,28,0.20)",
-          "qasid-card": "rgba(20,20,22,0.85)",
-          red: "#FF4444", // ссылки и акценты
+          bg: "#0B0B0C",
+          "bg-2": "#141416",
+          gold: "#C9A84C",
+          "gold-20": "rgba(201,168,76,0.20)",
+          card: "rgba(20,20,22,0.85)",
+          red: "#FF4444",
         },
       },
       borderRadius: {

@@ -55,12 +55,8 @@ export default function Welcome() {
       <View className="flex-1 items-center justify-center px-8">
         <Image
           source={require("../assets/logo.png")}
-          resizeMode="contain"
-          className="w-36 h-36 mb-6"
+          className="w-80 h-80 mb-[-40px]"
         />
-        <Text className="text-qasid-title text-6xl font-display tracking-[4] mb-2">
-          QASID
-        </Text>
         <Text className="text-white/80 text-xl text-center mb-10">
           Sacred sounds. Pure soul.
         </Text>

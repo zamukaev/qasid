@@ -309,7 +309,7 @@ export default function ArtistScreen() {
               <View
                 className=" mr-4"
                 style={{
-                  shadowColor: "#E7C11C",
+                  shadowColor: "#C9A84C",
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.35,
                   shadowRadius: 12,

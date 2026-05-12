@@ -77,7 +77,7 @@ export const SharedCard = ({
                 />
               )}
               <Text
-                style={{ color: isPaused ? "#E7C11C" : "#DCDFE4" }}
+                style={{ color: isPaused ? "#C9A84C" : "#DCDFE4" }}
                 className="text-[16px] font-semibold text-white/90"
                 numberOfLines={1}
               >

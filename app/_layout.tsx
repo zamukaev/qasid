@@ -21,7 +21,7 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: true,
           headerStyle: { backgroundColor: "#090A07" },
-          headerTintColor: "#E7C11C",
+          headerTintColor: "#C9A84C",
           headerBackButtonDisplayMode: "minimal",
         }}
       >

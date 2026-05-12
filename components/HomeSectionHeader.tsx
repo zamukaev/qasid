@@ -23,12 +23,12 @@ function HomeSectionHeader({
           onPress={onPress}
           hitSlop={12}
           className="flex-row items-center rounded-full border border-qasid-gold/20 bg-qasid-gold/5 px-3 py-2"
-          android_ripple={{ color: "#E7C11C22" }}
+          android_ripple={{ color: "#C9A84C22" }}
         >
           <Text className="mr-2 text-qasid-gold text-xs font-semibold uppercase tracking-[1.4px]">
             {actionLabel ?? "See all"}
           </Text>
-          <FontAwesome6 name="chevron-right" size={9} color="#E7C11C" />
+          <FontAwesome6 name="chevron-right" size={9} color="#C9A84C" />
         </Pressable>
       ) : null}
     </View>

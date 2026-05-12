@@ -20,7 +20,7 @@ export function QasidLiveEqualizer({
   maxHeight = 18,
   barWidth = 4,
   gap = 4,
-  color = "#E7C11C",
+  color = "#C9A84C",
   status = "playing",
   className = "",
 }: QasidLiveEqualizerProps) {

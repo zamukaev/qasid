@@ -23,9 +23,9 @@ export default function Nasheeds() {
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
   const [recentArtists, setRecentArtists] = useState<NasheedArtist[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
-  const [isLoadingMain, setIsLoadingMain] = useState(false);
-  const [isLoadingNew, setIsLoadingNew] = useState(false);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(true);
+  const [isLoadingMain, setIsLoadingMain] = useState(true);
+  const [isLoadingNew, setIsLoadingNew] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadMain = useCallback(async () => {

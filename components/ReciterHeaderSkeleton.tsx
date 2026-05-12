@@ -10,7 +10,7 @@ export default function ReciterHeaderSkeleton() {
           style={{
             width: 96,
             height: 96,
-            shadowColor: "#E7C11C",
+            shadowColor: "#C9A84C",
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.35,
             shadowRadius: 12,

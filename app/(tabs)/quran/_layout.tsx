@@ -5,7 +5,7 @@ export default function QuranLayout() {
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: "#090A07" },
-        headerTintColor: "#E7C11C",
+        headerTintColor: "#C9A84C",
         headerTitleStyle: {
           fontWeight: "bold",
         },

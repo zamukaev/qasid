@@ -26,7 +26,7 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
     <Pressable
       onPress={handlePress}
       className="flex-row  items-center justify-between rounded-2xl  border border-qasid-gold/25 p-4"
-      android_ripple={{ color: "#E7C11C20" }}
+      android_ripple={{ color: "#C9A84C20" }}
     >
       <View className="rounded-full mr-6">
         {imageSource ? (
@@ -87,7 +87,7 @@ export function CompactReciterCard({ reciter, circle, large, small }: CompactRec
         })
       }
       className="items-center active:opacity-80"
-      android_ripple={{ color: "#E7C11C20" }}
+      android_ripple={{ color: "#C9A84C20" }}
       style={{ width: cardWidth }}
     >
       <View
@@ -95,7 +95,7 @@ export function CompactReciterCard({ reciter, circle, large, small }: CompactRec
         style={{
           width: imageSize,
           height: imageSize,
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: circle ? 0.3 : 0.2,
           shadowRadius: circle ? 8 : 6,

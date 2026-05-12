@@ -60,9 +60,10 @@ export default function EmailSignUpScreen() {
       <TouchableOpacity
         onPress={handleSignUp}
         disabled={loading}
-        className="bg-qasid-gold p-4 rounded-lg items-center"
+        className="w-full items-center rounded-2xl bg-qasid-gold px-6 py-4"
+        activeOpacity={0.8}
       >
-        <Text className="text-qasid-black font-bold">
+        <Text className="text-qasid-black font-semibold text-lg">
           {loading ? "Creating account..." : "Sign up"}
         </Text>
       </TouchableOpacity>

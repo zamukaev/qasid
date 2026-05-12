@@ -20,7 +20,7 @@ export default function CompactReciterCardSkeleton({
         style={{
           width: imageSize,
           height: imageSize,
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: circle ? 0.3 : 0.2,
           shadowRadius: circle ? 8 : 6,

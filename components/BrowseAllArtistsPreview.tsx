@@ -44,7 +44,7 @@ function ArtistBrowseCard({
   return (
     <Pressable
       className="items-center active:opacity-80"
-      android_ripple={{ color: "#E7C11C20" }}
+      android_ripple={{ color: "#C9A84C20" }}
       onPress={() =>
         router.push({
           pathname: "/(tabs)/nasheeds/artist/[id]",
@@ -57,7 +57,7 @@ function ArtistBrowseCard({
         style={{
           width: imageSize,
           height: imageSize,
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.2,
           shadowRadius: 6,

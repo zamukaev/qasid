@@ -1,4 +1,11 @@
-import { SafeAreaView, View, Text, Pressable, Image } from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  Pressable,
+  Image,
+  Platform,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { AntDesign } from "@expo/vector-icons";
 import { Link, Stack } from "expo-router";
@@ -6,9 +13,11 @@ import { useState } from "react";
 import {
   getAuth,
   GoogleAuthProvider,
+  AppleAuthProvider,
   signInWithCredential,
 } from "@react-native-firebase/auth";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import appleAuth from "@invertase/react-native-apple-authentication";
 
 import { ErrorAlert } from "../../../components";
 import { getFirebaseErrorMessage } from "../../../utils/firebaseErrors";
@@ -21,6 +30,37 @@ GoogleSignin.configure({
 export default function SignIn() {
   const [error, setError] = useState("");
   const [showError, setShowError] = useState(false);
+
+  const signInWithApple = async () => {
+    try {
+      const appleAuthResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      });
+
+      if (!appleAuthResponse.identityToken) {
+        console.log("Apple Sign-In failed – no identity token");
+        throw new Error("Apple Sign-In failed – no identity token");
+      }
+
+      const { identityToken, nonce } = appleAuthResponse;
+      const appleCredential = AppleAuthProvider.credential(
+        identityToken,
+        nonce ?? undefined,
+      );
+
+      const auth = getAuth();
+      await signInWithCredential(auth, appleCredential);
+    } catch (e: any) {
+      console.log("Apple Sign-In error:", e);
+      if (e.code === appleAuth.Error.CANCELED) return;
+      const errorMessage = e.code
+        ? getFirebaseErrorMessage(e.code)
+        : "Apple sign-in failed. Please try again";
+      setError(errorMessage);
+      setShowError(true);
+    }
+  };
 
   const singInWithGoogle = async () => {
     try {
@@ -49,81 +89,67 @@ export default function SignIn() {
       <Stack.Screen options={{ headerTitle: "" }} />
       <View className="flex-1 items-center px-6">
         {/* Лого */}
-        <View className="items-center mt-36 mb-6">
+        <View className="items-center mt-36">
           <Image
-            source={require("../../../assets/logo.png")}
-            resizeMode="contain"
-            className="w-28 h-28"
+            source={require("../../../assets/logo1.png")}
+            className="w-60 h-60 mb-[-40px]"
           />
         </View>
 
         {/* Заголовки */}
         <View className="items-center px-2">
-          <Text className="text-qasid-title text-[36px] leading-[64px] font-bold">
+          <Text className="text-qasid-gold text-[36px] leading-[64px] font-bold">
             Sign in to Qasid
           </Text>
         </View>
 
         {/* Кнопки соцрегистрации */}
-        <View className="mt-8  gap-y-5">
+        <View className="mt-8 w-full gap-y-4">
           <Link href="signin/email" asChild>
             <Pressable
-              className="items-center  rounded-2xl bg-white/05 px-10 py-5 bg-qasid-gold"
+              className="w-full items-center rounded-2xl bg-qasid-gold px-6 py-4"
               android_ripple={{ color: "#3a2f11" }}
               style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
               onPress={() => {}}
             >
-              <View className="flex-row w-full">
-                <AntDesign
-                  name="mail"
-                  size={22}
-                  color="black"
-                  className="mr-8"
-                />
-                <Text className="text-[20px] text-qasid-black">
+              <View className="flex-row items-center justify-center gap-x-3">
+                <AntDesign name="mail" size={20} color="black" />
+                <Text className="text-qasid-black font-semibold text-lg">
                   Continue with Email
                 </Text>
               </View>
             </Pressable>
           </Link>
+
           <Pressable
-            className="items-center rounded-2xl bg-white/05 px-10 py-5 bg-qasid-gray"
+            className="w-full items-center rounded-2xl border border-white/20 px-6 py-4"
             android_ripple={{ color: "#2a2a2a" }}
             style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
             onPress={singInWithGoogle}
           >
-            <View className="flex-row w-full">
-              <AntDesign
-                name="google"
-                size={22}
-                color="white"
-                className="mr-8"
-              />
-              <Text className="text-white text-[20px]">
+            <View className="flex-row items-center justify-center gap-x-3">
+              <AntDesign name="google" size={20} color="white" />
+              <Text className="text-white font-semibold text-lg">
                 Continue with Google
               </Text>
             </View>
           </Pressable>
 
-          <Pressable
-            disabled={true}
-            className="items-center  rounded-2xl bg-white/05 px-10 py-5  bg-gray-800/50"
-            android_ripple={{ color: "#2a2a2a" }}
-            style={{ opacity: 0.5 }}
-            onPress={() => {}}
-          >
-            <View className="flex-row w-full">
-              <AntDesign
-                name="apple-o"
-                size={22}
-                color="gray"
-                className="mr-8"
-              />
-              <Text className="text-gray-400 text-[20px]">
-                Continue with Apple
-              </Text>
-            </View>
-          </Pressable>
+          {Platform.OS === "ios" && (
+            <Pressable
+              className="w-full items-center rounded-2xl border border-white/20 px-6 py-4"
+              android_ripple={{ color: "#2a2a2a" }}
+              style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
+              onPress={signInWithApple}
+            >
+              <View className="flex-row items-center justify-center gap-x-3">
+                <AntDesign name="apple-o" size={20} color="white" />
+                <Text className="text-white font-semibold text-lg">
+                  Continue with Apple
+                </Text>
+              </View>
+            </Pressable>
+          )}
         </View>
         <View className="flex-1 items-center">
           <Text className="text-qasid-gold mt-10 text-[16px]">

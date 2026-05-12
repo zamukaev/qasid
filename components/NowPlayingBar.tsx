@@ -132,7 +132,7 @@ export default function NowPlayingBar() {
                 <Ionicons
                   name={isPlaying ? "pause" : "play"}
                   size={22}
-                  color="#E7C11C"
+                  color="#C9A84C"
                   style={{ marginLeft: isPlaying ? 0 : 2 }}
                 />
               </Pressable>
@@ -174,7 +174,7 @@ export default function NowPlayingBar() {
                 style={{
                   height: "100%",
                   width: `${sliderValue * 100}%`,
-                  backgroundColor: "#E7C11C",
+                  backgroundColor: "#C9A84C",
                   borderRadius: 999,
                 }}
               />

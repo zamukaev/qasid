@@ -35,7 +35,7 @@ function ReciterGridItem({ reciter, onPress }: ReciterGridItemProps) {
       <View
         className="rounded-full mb-3"
         style={{
-          shadowColor: "#E7C11C",
+          shadowColor: "#C9A84C",
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.3,
           shadowRadius: 8,

@@ -18,7 +18,7 @@ export default function FeaturedCardSkeleton({ className = "" }: Props) {
             <View
               className="h-40 w-40 rounded-full overflow-hidden border border-qasid-gold/20 bg-gray-700/30 animate-pulse"
               style={{
-                shadowColor: "#E7C11C",
+                shadowColor: "#C9A84C",
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.18,
                 shadowRadius: 8,
