@@ -4,6 +4,12 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
+
+import { Platform } from "react-native";
+import { useEffect } from "react";
+
+import Purchases, { LOG_LEVEL } from "react-native-purchases";
+
 import "../global.css";
 
 // react-native-screens calls makeMutable() during render inside
@@ -15,6 +21,19 @@ configureReanimatedLogger({
 });
 
 export default function RootLayout() {
+  useEffect(() => {
+    Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+
+    // Platform-specific API keys
+    const iosApiKey = "test_EdKpJMOxxEmeVEdSEDZnxswKOVJ";
+    const androidApiKey = "test_EdKpJMOxxEmeVEdSEDZnxswKOVJ";
+
+    if (Platform.OS === "ios") {
+      Purchases.configure({ apiKey: iosApiKey });
+    } else if (Platform.OS === "android") {
+      Purchases.configure({ apiKey: androidApiKey });
+    }
+  }, []);
   return (
     <AudioPlayerProvider>
       <Stack

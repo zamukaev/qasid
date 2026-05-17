@@ -15,8 +15,15 @@ import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
 import { useUserStore } from "../../../stores/userStore";
 
+const PLAN_LABEL: Record<string, { name: string; description: string }> = {
+  free: { name: "Free Plan", description: "Basic access to Quran & limited features" },
+  monthly: { name: "Premium Monthly", description: "Full access, billed every month" },
+  yearly: { name: "Premium Yearly", description: "Full access, billed annually" },
+  family: { name: "Family Plan", description: "Full access for the whole family" },
+};
+
 export default function Settings() {
-  const { user, clearUser } = useUserStore();
+  const { user, clearUser, currentPlan } = useUserStore();
   const router = useRouter();
   const auth = getAuth();
   const appVersion = Constants.expoConfig?.version ?? "unknown";
@@ -115,7 +122,7 @@ export default function Settings() {
 
             <View className="mt-2 flex-row items-center justify-between">
               <Text className="text-2xl font-semibold text-white">
-                Free Plan
+                {PLAN_LABEL[currentPlan]?.name ?? "Free Plan"}
               </Text>
               <View className="rounded-full border border-qasid-gold/30 bg-qasid-gold/10 px-3 py-1">
                 <Text className="text-xs font-semibold text-qasid-gold">
@@ -125,7 +132,7 @@ export default function Settings() {
             </View>
 
             <Text className="mt-3 text-sm text-white/50 leading-5">
-              Basic access to Quran & limited features
+              {PLAN_LABEL[currentPlan]?.description ?? "Basic access to Quran & limited features"}
             </Text>
 
             <TouchableOpacity
@@ -139,7 +146,7 @@ export default function Settings() {
 
                 <View className="px-4 py-4 items-center">
                   <Text className="text-qasid-gold text-base font-semibold">
-                    Upgrade to Premium →
+                    {currentPlan === "free" ? "Upgrade to Premium →" : "Manage Plan →"}
                   </Text>
                 </View>
               </View>

@@ -36,6 +36,7 @@ type Track = {
   artist?: string;
   artworkUri?: any;
   surahNumber?: number;
+  isNasheed?: boolean;
   uri: any;
 };
 

@@ -39,6 +39,8 @@
     "react-native-axios": "^0.17.1",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-google-signin": "^2.1.1",
+    "react-native-purchases": "^10.1.1",
+    "react-native-purchases-ui": "^10.1.1",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",

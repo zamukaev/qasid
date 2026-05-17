@@ -11,6 +11,7 @@ import { SafeAreaView, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSegments } from "expo-router";
 import { useUserStore } from "../stores/userStore";
+import * as RevenueCatService from "../services/revenuecat";
 import "../global.css";
 
 export default function Welcome() {
@@ -19,10 +20,19 @@ export default function Welcome() {
   const router = useRouter();
   const segments = useSegments();
 
-  const handleAuthStateChanged = (
+  const handleAuthStateChanged = async (
     firebaseUser: FirebaseAuthTypes.User | null,
   ) => {
     setUser(firebaseUser);
+    if (firebaseUser) {
+      try {
+        await RevenueCatService.initialize(firebaseUser.uid);
+      } catch {
+        // RC initialization failure should not block the auth flow
+      }
+    } else {
+      RevenueCatService.logout();
+    }
   };
 
   useEffect(() => {

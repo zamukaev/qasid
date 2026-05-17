@@ -26,6 +26,7 @@ import {
   ShowError,
   ReciterHeaderSkeleton,
 } from "../../../../components";
+import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -34,6 +35,8 @@ import {
   fetchPlaylistById,
   fetchNasheedsForPlaylist,
 } from "../../../../services/playlists-service";
+import { markManualPlay, useNasheedLimit } from "../../../../hooks/useNasheedLimit";
+import { useUserStore } from "../../../../stores/userStore";
 
 interface NasheedItem {
   id: string;
@@ -69,6 +72,10 @@ const normalizeNasheeds = async (items: Nasheed[]): Promise<NasheedItem[]> =>
 export default function PlaylistScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const navigation = useNavigation();
+
+  const { currentPlan } = useUserStore();
+  const { canPlay, increment, playsLeft } = useNasheedLimit();
+  const [gateVisible, setGateVisible] = useState(false);
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [nasheeds, setNasheeds] = useState<NasheedItem[]>([]);
@@ -136,29 +143,48 @@ export default function PlaylistScreen() {
       return;
     }
 
+    if (!canPlay(currentPlan !== "free")) {
+      setGateVisible(true);
+      return;
+    }
+
     const playId = ++pendingPlayIdRef.current;
     if (playId !== pendingPlayIdRef.current) return;
+
+    await increment();
 
     const artworkUri = playlist.image_path?.startsWith("http")
       ? playlist.image_path
       : PlaceholderAvatar;
 
-    const queueTracks = nasheeds
+    const isPremium = currentPlan !== "free";
+    const allQueueTracks = nasheeds
       .filter((item) => !!item.audioUrl)
       .map((item) => ({
         id: `${trackPrefix}-${item.id}`,
         title: item.title,
         artist: playlist.name_en,
         artworkUri: item.imageUrl ?? artworkUri,
+        isNasheed: true,
         uri: { uri: item.audioUrl as string },
       }));
+
+    const selectedIndex = allQueueTracks.findIndex((t) => t.id === trackId);
+    const queueTracks = isPremium
+      ? allQueueTracks
+      : allQueueTracks.slice(
+          Math.max(0, selectedIndex),
+          Math.max(0, selectedIndex) + playsLeft,
+        );
     setQueue(queueTracks);
 
+    markManualPlay();
     await playTrack({
       id: trackId,
       title: nasheed.title,
       artist: playlist.name_en,
       artworkUri: nasheed.imageUrl ?? artworkUri,
+      isNasheed: true,
       uri: { uri: nasheed.audioUrl as string },
     });
   };
@@ -196,6 +222,11 @@ export default function PlaylistScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
+      <PremiumGateModal
+        visible={gateVisible}
+        playsLeft={playsLeft}
+        onClose={() => setGateVisible(false)}
+      />
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={{

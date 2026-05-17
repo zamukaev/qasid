@@ -30,6 +30,7 @@ import {
   ShowError,
   ReciterHeaderSkeleton,
 } from "../../../../components";
+import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -40,6 +41,8 @@ import {
   trackArtistPlayback,
 } from "../../../../services/nasheeds-service";
 import { addRecentArtist } from "../../../../services/recents-service";
+import { markManualPlay, useNasheedLimit } from "../../../../hooks/useNasheedLimit";
+import { useUserStore } from "../../../../stores/userStore";
 
 interface NasheedItem {
   id: string;
@@ -59,6 +62,10 @@ const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
 export default function ArtistScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const navigation = useNavigation();
+
+  const { currentPlan } = useUserStore();
+  const { canPlay, increment, playsLeft } = useNasheedLimit();
+  const [gateVisible, setGateVisible] = useState(false);
 
   const [artist, setArtist] = useState<NasheedArtist | null>(null);
   const [nasheeds, setNasheeds] = useState<NasheedItem[]>([]);
@@ -215,6 +222,11 @@ export default function ArtistScreen() {
       return;
     }
 
+    if (!canPlay(currentPlan !== "free")) {
+      setGateVisible(true);
+      return;
+    }
+
     // Cancel any previous in-flight play request for this screen.
     const playId = ++pendingPlayIdRef.current;
 
@@ -229,26 +241,42 @@ export default function ArtistScreen() {
     // A newer tap arrived while we were resolving — discard this stale request.
     if (playId !== pendingPlayIdRef.current) return;
 
+    await increment();
+
     const artworkUri = artist.image_path?.startsWith("http")
       ? artist.image_path
       : PlaceholderAvatar;
 
-    const queueTracks = nasheeds
+    const isPremium = currentPlan !== "free";
+    const allQueueTracks = nasheeds
       .filter((item) => !!item.audioUrl)
       .map((item) => ({
         id: `${artist.id}-${item.id}`,
         title: item.title,
         artist: artist.name_en,
         artworkUri: item.imageUrl ?? artworkUri,
+        isNasheed: true,
         uri: { uri: item.audioUrl as string },
       }));
+
+    // For free users, cap the queue at playsLeft tracks from the tapped position.
+    // This prevents RNTP from ever loading the track beyond the daily limit.
+    const selectedIndex = allQueueTracks.findIndex((t) => t.id === trackId);
+    const queueTracks = isPremium
+      ? allQueueTracks
+      : allQueueTracks.slice(
+          Math.max(0, selectedIndex),
+          Math.max(0, selectedIndex) + playsLeft,
+        );
     setQueue(queueTracks);
 
+    markManualPlay();
     await playTrack({
       id: trackId,
       title: nasheed.title,
       artist: artist.name_en,
       artworkUri: nasheed.imageUrl ?? artworkUri,
+      isNasheed: true,
       uri: { uri: audioUrl },
     });
   };
@@ -295,6 +323,11 @@ export default function ArtistScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
+      <PremiumGateModal
+        visible={gateVisible}
+        playsLeft={playsLeft}
+        onClose={() => setGateVisible(false)}
+      />
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={{ paddingBottom: contentBottomPadding }}

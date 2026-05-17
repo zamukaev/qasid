@@ -2,68 +2,50 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   SafeAreaView,
   ScrollView,
   Text,
-  View,
   TouchableOpacity,
+  View,
 } from "react-native";
+import { PURCHASES_ERROR_CODE } from "react-native-purchases";
+import { useRevenueCat } from "../../../hooks/useRevenueCat";
 import { useUserStore } from "../../../stores/userStore";
 
-type PlanId = "free" | "monthly" | "yearly" | "family";
+type PlanId = "free" | "monthly" | "yearly";
 
-const plans: {
-  id: PlanId;
-  name: string;
-  price: string;
-  period: string;
-  description: string;
-  billingNote: string;
-  recommended?: boolean;
-}[] = [
+const PLAN_META: Record<
+  Exclude<PlanId, "free">,
   {
-    id: "free",
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "Basic access with limited nasheeds and no offline mode.",
-    billingNote: "no payment required",
-  },
-  {
-    id: "monthly",
+    name: string;
+    period: string;
+    description: string;
+    billingNote: string;
+    recommended?: boolean;
+  }
+> = {
+  monthly: {
     name: "Monthly",
-    price: "$3.99",
     period: "month",
     description: "Perfect if you want flexibility month by month.",
     billingNote: "billed every month",
   },
-  {
-    id: "yearly",
+  yearly: {
     name: "Yearly",
-    price: "$29.99",
     period: "year",
     description: "Best value for daily listeners who want to save.",
     billingNote: "billed annually",
     recommended: true,
   },
-  {
-    id: "family",
-    name: "Family",
-    price: "$59.99",
-    period: "year",
-    description: "For households with up to 6 QASID accounts.",
-    billingNote: "billed annually",
-  },
-];
+};
 
 const featureComparison: {
   label: string;
-  premiumOnly?: boolean;
-  free?: boolean;
-  premium?: boolean;
-  freeText?: string;
-  premiumText?: string;
+  free: boolean;
+  premium: boolean;
 }[] = [
   { label: "Unlimited quran listening", free: true, premium: true },
   { label: "Background playback", free: true, premium: true },
@@ -74,8 +56,22 @@ const featureComparison: {
 export default function Premium() {
   const router = useRouter();
   const currentPlan = useUserStore((state) => state.currentPlan);
-  const currentPlanId: PlanId = currentPlan;
+  const currentPlanId: PlanId =
+    currentPlan === "monthly" || currentPlan === "yearly"
+      ? currentPlan
+      : "free";
+
+  const {
+    offerings,
+    isPremium,
+    isLoading: rcLoading,
+    purchasePackage,
+    restorePurchases,
+  } = useRevenueCat();
+
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId>(currentPlanId);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -115,10 +111,98 @@ export default function Premium() {
     setSelectedPlanId(currentPlanId);
   }, [currentPlanId]);
 
+  const monthlyPkg =
+    offerings?.availablePackages.find((p) => p.identifier === "$rc_monthly") ??
+    null;
+  const yearlyPkg =
+    offerings?.availablePackages.find((p) => p.identifier === "$rc_annual") ??
+    null;
+
+  const plans: {
+    id: PlanId;
+    name: string;
+    price: string;
+    period: string;
+    description: string;
+    billingNote: string;
+    recommended?: boolean;
+  }[] = [
+    {
+      id: "free",
+      name: "Free",
+      price: "$0",
+      period: "forever",
+      description: "Basic access with limited nasheeds and no offline mode.",
+      billingNote: "no payment required",
+    },
+    {
+      id: "monthly" as PlanId,
+      price: rcLoading ? "—" : (monthlyPkg?.product.priceString ?? "$3.99"),
+      ...PLAN_META.monthly,
+    },
+    {
+      id: "yearly" as PlanId,
+      price: rcLoading ? "—" : (yearlyPkg?.product.priceString ?? "$29.99"),
+      ...PLAN_META.yearly,
+    },
+  ];
+
   const selectedCardScale = pulseAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.02],
   });
+
+  const handleUpgrade = async () => {
+    const pkg =
+      selectedPlanId === "monthly"
+        ? monthlyPkg
+        : selectedPlanId === "yearly"
+          ? yearlyPkg
+          : null;
+
+    if (!pkg) return;
+
+    setIsPurchasing(true);
+    try {
+      await purchasePackage(pkg);
+    } catch (error: any) {
+      if (!error?.userCancelled && error?.code !== PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        Alert.alert(
+          "Purchase Failed",
+          error?.message ?? "Something went wrong. Please try again."
+        );
+      }
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setIsPurchasing(true);
+    try {
+      await restorePurchases();
+      Alert.alert("Success", "Your purchases have been restored.");
+    } catch (error: any) {
+      Alert.alert(
+        "Restore Failed",
+        error?.message ?? "Could not restore purchases. Please try again."
+      );
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  const isCurrentPlan = selectedPlanId === currentPlanId;
+  const isFree = selectedPlanId === "free";
+  const ctaDisabled = isFree || isCurrentPlan || isPurchasing || rcLoading;
+
+  const ctaLabel = isPurchasing
+    ? "Processing..."
+    : isCurrentPlan && isPremium
+      ? "Active Plan"
+      : isFree
+        ? "Continue with Free"
+        : "Upgrade to Premium →";
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
@@ -152,7 +236,7 @@ export default function Premium() {
 
           <View className="mb-5">
             {plans.map((plan) => {
-              const isCurrentPlan = plan.id === currentPlanId;
+              const isCurrentPlanCard = plan.id === currentPlanId;
               const isSelectedPlan = plan.id === selectedPlanId;
 
               return (
@@ -182,7 +266,7 @@ export default function Premium() {
                     <View className="px-5 py-5">
                       <View className="flex-row items-start justify-between">
                         <View className="flex-1 pr-3">
-                          <View className="flex-row items-center gap-2">
+                          <View className="flex-row items-center gap-2 flex-wrap">
                             <View
                               className={`h-6 w-6 items-center justify-center rounded-full border ${
                                 isSelectedPlan
@@ -208,7 +292,7 @@ export default function Premium() {
                                 </Text>
                               </View>
                             ) : null}
-                            {isCurrentPlan ? (
+                            {isCurrentPlanCard ? (
                               <View className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
                                 <Text className="text-white text-[11px] font-semibold">
                                   Current plan
@@ -221,9 +305,13 @@ export default function Premium() {
                           </Text>
                         </View>
                         <View className="items-end ml-4">
-                          <Text className="text-qasid-gold text-lg font-semibold">
-                            {plan.price} / {plan.period}
-                          </Text>
+                          {rcLoading && plan.id !== "free" ? (
+                            <ActivityIndicator size="small" color="#E7C11C" />
+                          ) : (
+                            <Text className="text-qasid-gold text-lg font-semibold">
+                              {plan.price} / {plan.period}
+                            </Text>
+                          )}
                           <Text className="text-white/55 text-xs mt-0.5">
                             {plan.billingNote}
                           </Text>
@@ -261,46 +349,21 @@ export default function Premium() {
                         {item.label}
                       </Text>
                     </View>
-
                     <View className="w-[58px] items-center">
-                      {item.freeText ? (
-                        <Text
-                          className={`text-xs font-semibold ${
-                            item.freeText === "Unlimited"
-                              ? "text-[#22c55e]"
-                              : "text-[#ef4444]"
-                          }`}
-                        >
-                          {item.freeText}
-                        </Text>
-                      ) : (
-                        <Ionicons
-                          name={item.free ? "checkmark-circle" : "close-circle"}
-                          size={20}
-                          color={item.free ? "#22c55e" : "#ef4444"}
-                        />
-                      )}
+                      <Ionicons
+                        name={item.free ? "checkmark-circle" : "close-circle"}
+                        size={20}
+                        color={item.free ? "#22c55e" : "#ef4444"}
+                      />
                     </View>
                     <View className="w-[80px] items-center">
-                      {item.premiumText ? (
-                        <Text
-                          className={`text-xs font-semibold ${
-                            item.premiumText === "Unlimited"
-                              ? "text-[#22c55e]"
-                              : "text-[#ef4444]"
-                          }`}
-                        >
-                          {item.premiumText}
-                        </Text>
-                      ) : (
-                        <Ionicons
-                          name={
-                            item.premium ? "checkmark-circle" : "close-circle"
-                          }
-                          size={20}
-                          color={item.premium ? "#22c55e" : "#ef4444"}
-                        />
-                      )}
+                      <Ionicons
+                        name={
+                          item.premium ? "checkmark-circle" : "close-circle"
+                        }
+                        size={20}
+                        color={item.premium ? "#22c55e" : "#ef4444"}
+                      />
                     </View>
                   </View>
                 </View>
@@ -308,20 +371,45 @@ export default function Premium() {
             </View>
           </View>
 
-          <TouchableOpacity className="mt-120" activeOpacity={0.8}>
+          <TouchableOpacity
+            className="mt-2"
+            activeOpacity={ctaDisabled ? 1 : 0.8}
+            onPress={ctaDisabled ? undefined : handleUpgrade}
+            disabled={ctaDisabled}
+          >
             <View className="relative overflow-hidden rounded-2xl">
-              <View className="absolute inset-0 bg-qasid-gold/10" />
-              <View className="absolute inset-0 rounded-2xl border border-qasid-gold/30" />
-
+              <View
+                className={`absolute inset-0 ${ctaDisabled ? "bg-white/5" : "bg-qasid-gold/10"}`}
+              />
+              <View
+                className={`absolute inset-0 rounded-2xl border ${ctaDisabled ? "border-white/10" : "border-qasid-gold/30"}`}
+              />
               <View className="px-4 py-4 items-center">
-                <Text className="text-qasid-gold text-base font-semibold">
-                  Upgrade to Premium →
-                </Text>
+                {isPurchasing ? (
+                  <ActivityIndicator size="small" color="#E7C11C" />
+                ) : (
+                  <Text
+                    className={`text-base font-semibold ${ctaDisabled ? "text-white/30" : "text-qasid-gold"}`}
+                  >
+                    {ctaLabel}
+                  </Text>
+                )}
               </View>
             </View>
           </TouchableOpacity>
 
-          <View className="mt-3 mb-14">
+          <TouchableOpacity
+            className="mt-3"
+            activeOpacity={0.7}
+            onPress={isPurchasing ? undefined : handleRestore}
+            disabled={isPurchasing}
+          >
+            <View className="px-4 py-3 items-center">
+              <Text className="text-white/40 text-sm">Restore Purchases</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View className="mb-14">
             <Text className="text-white/50 text-sm text-center">
               Cancel anytime. Secure payment. Keep your listening uninterrupted.
             </Text>
