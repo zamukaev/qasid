@@ -8,7 +8,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "seed:artists": "ts-node --project scripts/tsconfig.json scripts/seed-nasheed-artists.ts",
-    "seed:nasheeds-abu-ali": "ts-node --project scripts/tsconfig.json scripts/seed-nasheeds-abu-ali.ts"
+    "seed:nasheeds-abu-ali": "ts-node --project scripts/tsconfig.json scripts/seed-nasheeds-abu-ali.ts",
+    "version": "node scripts/bump-version.js && git add app.json",
+    "postversion": "git push && git push --tags"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

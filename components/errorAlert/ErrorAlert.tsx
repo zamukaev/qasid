@@ -7,9 +7,9 @@ import {
   Modal,
   StyleSheet,
   Platform,
+  StatusBar,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TOAST_CONFIG } from "./config";
 
 export type ToastType = "error" | "success" | "warning" | "info";
@@ -29,7 +29,7 @@ export default function ErrorAlert({
   duration = 3000,
   onClose,
 }: ToastProps) {
-  const insets = useSafeAreaInsets();
+  const topInset = Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 50;
   const translateY = useRef(new Animated.Value(-200)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const config = TOAST_CONFIG[type];
@@ -92,7 +92,7 @@ export default function ErrorAlert({
         style={[
           styles.container,
           {
-            top: insets.top + 40,
+            top: topInset + 16,
             transform: [{ translateY }],
             opacity: opacityAnim,
           },

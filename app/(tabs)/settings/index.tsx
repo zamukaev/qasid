@@ -92,7 +92,7 @@ export default function Settings() {
             Account
           </Text>
 
-          <TouchableOpacity activeOpacity={0.7}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/(tabs)/settings/profile")}>
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-bg-2" />
               <LinearGradient

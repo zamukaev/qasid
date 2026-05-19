@@ -19,6 +19,13 @@ export default function SettingsLayout() {
         }}
       />
       <Stack.Screen
+        name="profile"
+        options={{
+          title: "Profile Settings",
+          headerBackTitle: "Settings",
+        }}
+      />
+      <Stack.Screen
         name="contact-support"
         options={{
           title: "Contact & Support",

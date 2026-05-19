@@ -9,11 +9,10 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/banner.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "jsEngine": "jsc",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.abusafiia.qasid.dev",

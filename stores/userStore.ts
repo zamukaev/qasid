@@ -17,6 +17,7 @@ interface UserState {
   isAuthenticated: boolean;
   currentPlan: SubscriptionPlan;
   setUser: (firebaseUser: FirebaseAuthTypes.User | null) => void;
+  updateUser: (updates: Partial<User>) => void;
   clearUser: () => void;
   setLoading: (loading: boolean) => void;
   setCurrentPlan: (plan: SubscriptionPlan) => void;
@@ -49,6 +50,12 @@ export const useUserStore = create<UserState>((set) => ({
       isAuthenticated: !!user,
       isLoading: false,
     });
+  },
+
+  updateUser: (updates) => {
+    set((state) => ({
+      user: state.user ? { ...state.user, ...updates } : null,
+    }));
   },
 
   clearUser: () => {

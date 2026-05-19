@@ -39,9 +39,12 @@ export async function initialize(userId: string): Promise<void> {
 
 export async function logout(): Promise<void> {
   try {
-    await Purchases.logOut();
+    const isAnonymous = await Purchases.isAnonymous();
+    if (!isAnonymous) {
+      await Purchases.logOut();
+    }
   } catch {
-    // logOut throws if the current user is already anonymous
+    // ignore unexpected errors
   }
 }
 
