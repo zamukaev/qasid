@@ -1,4 +1,5 @@
 import { View, Text, Image, Pressable } from "react-native";
+import { GOLD, GOLD_RIPPLE_33 } from "../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -22,12 +23,12 @@ export default function FeaturedCard({
     <Pressable
       onPress={onPress}
       className={`overflow-hidden rounded-[28px] border border-white/10 bg-qasid-card ${className}`}
-      android_ripple={{ color: "#C9A84C33" }}
+      android_ripple={{ color: GOLD_RIPPLE_33 }}
       style={({ pressed }) => [
         {
           opacity: pressed ? 0.94 : 1,
           transform: [{ scale: pressed ? 0.988 : 1 }],
-          shadowColor: "#C9A84C",
+          shadowColor: GOLD,
           shadowOpacity: pressed ? 0.16 : 0.1,
           shadowRadius: 16,
           shadowOffset: { width: 0, height: 8 },
@@ -36,7 +37,7 @@ export default function FeaturedCard({
       ]}
     >
       <LinearGradient
-        colors={["#1B1B1C", "#0B0B0C", "rgba(231,193,28,0.14)"]}
+        colors={["#1B1B1C", "#0B0B0C", "rgba(201,168,76,0.14)"]}
         start={{ x: 0.2, y: 0.0 }}
         end={{ x: 1, y: 1 }}
       >
@@ -55,7 +56,9 @@ export default function FeaturedCard({
           <View className="mt-auto">
             <View className="h-24 rounded-2xl border border-white/8 bg-black/35 px-4 py-4">
               <View className="flex-1 items-center justify-center gap-1">
-                <Text className="text-qasid-title text-xs">{subtitle}</Text>
+                <Text className="text-qasid-title text-xs text-qasid-gold">
+                  {subtitle}
+                </Text>
                 <Text className="text-white text-l">{title}</Text>
               </View>
             </View>

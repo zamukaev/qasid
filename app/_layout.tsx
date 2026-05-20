@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { GOLD } from "../constants/colors";
 import { AudioPlayerProvider } from "../context/AudioPlayerContext";
 import {
   configureReanimatedLogger,
@@ -40,7 +41,7 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: true,
           headerStyle: { backgroundColor: "#090A07" },
-          headerTintColor: "#C9A84C",
+          headerTintColor: GOLD,
           headerBackButtonDisplayMode: "minimal",
         }}
       >

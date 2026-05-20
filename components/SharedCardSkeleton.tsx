@@ -11,8 +11,8 @@ export default function SharedCardSkeleton({ className = "" }: Props) {
       <View className="absolute inset-0 bg-[#0B0B10]" />
       <LinearGradient
         colors={[
-          "rgba(231,193,28,0.14)",
-          "rgba(231,193,28,0.05)",
+          "rgba(201,168,76,0.14)",
+          "rgba(201,168,76,0.05)",
           "rgba(0,0,0,0.00)",
           "rgba(0,0,0,0.45)",
         ]}

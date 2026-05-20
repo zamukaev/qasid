@@ -1,5 +1,6 @@
 import React from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { GOLD, GOLD_RIPPLE_20 } from "../constants/colors";
 import { useRouter } from "expo-router";
 import { NasheedArtist } from "../types/nasheed";
 import HomeSectionShell from "./HomeSectionShell";
@@ -44,7 +45,7 @@ function ArtistBrowseCard({
   return (
     <Pressable
       className="items-center active:opacity-80"
-      android_ripple={{ color: "#C9A84C20" }}
+      android_ripple={{ color: GOLD_RIPPLE_20 }}
       onPress={() =>
         router.push({
           pathname: "/(tabs)/nasheeds/artist/[id]",
@@ -57,7 +58,7 @@ function ArtistBrowseCard({
         style={{
           width: imageSize,
           height: imageSize,
-          shadowColor: "#C9A84C",
+          shadowColor: GOLD,
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.2,
           shadowRadius: 6,

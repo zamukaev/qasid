@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { GOLD } from "../../constants/colors";
 import {
   View,
   Text,
@@ -135,7 +136,7 @@ export default function ErrorAlert({
               style={styles.closeButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <AntDesign name="close" size={18} color="#C9A84C" />
+              <AntDesign name="close" size={18} color={GOLD} />
             </Pressable>
           </View>
         </Pressable>
@@ -206,6 +207,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
-    backgroundColor: "rgba(231, 193, 28, 0.1)",
+    backgroundColor: "rgba(201, 168, 76, 0.1)",
   },
 });

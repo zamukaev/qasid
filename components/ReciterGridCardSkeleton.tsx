@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { GOLD } from "../constants/colors";
 
 export default function ReciterGridCardSkeleton() {
   return (
@@ -14,7 +15,7 @@ export default function ReciterGridCardSkeleton() {
         style={{
           width: 128,
           height: 128,
-          shadowColor: "#C9A84C",
+          shadowColor: GOLD,
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.3,
           shadowRadius: 8,

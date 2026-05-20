@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, View } from "react-native";
+import { GOLD } from "../constants/colors";
 
 export type EqualizerStatus = "hidden" | "playing" | "paused";
 
@@ -20,7 +21,7 @@ export function QasidLiveEqualizer({
   maxHeight = 18,
   barWidth = 4,
   gap = 4,
-  color = "#C9A84C",
+  color = GOLD,
   status = "playing",
   className = "",
 }: QasidLiveEqualizerProps) {

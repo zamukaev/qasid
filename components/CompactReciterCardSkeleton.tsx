@@ -1,5 +1,6 @@
 import { View } from "react-native";
 import { CompactReciterCardVariantProps } from "./ReciterCard";
+import { GOLD } from "../constants/colors";
 
 function resolveSize(large?: boolean, small?: boolean) {
   if (large) return { cardWidth: 116, imageSize: 104 };
@@ -20,7 +21,7 @@ export default function CompactReciterCardSkeleton({
         style={{
           width: imageSize,
           height: imageSize,
-          shadowColor: "#C9A84C",
+          shadowColor: GOLD,
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: circle ? 0.3 : 0.2,
           shadowRadius: circle ? 8 : 6,

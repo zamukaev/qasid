@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import { GOLD } from "../constants/colors";
 import {
   View,
   Text,
@@ -174,7 +175,7 @@ export default function FullScreenPlayer() {
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="musical-notes" size={100} color="#C9A84C" />
+              <Ionicons name="musical-notes" size={100} color={GOLD} />
             </View>
           </View>
         </View>
@@ -229,7 +230,7 @@ export default function FullScreenPlayer() {
                 ) * (durationMillis || 0);
               seekTo(target);
             }}
-            minimumTrackTintColor="#C9A84C"
+            minimumTrackTintColor={GOLD}
             maximumTrackTintColor="rgba(255, 255, 255, 0.2)"
             thumbTintColor="#ffffff"
           />
@@ -291,7 +292,7 @@ export default function FullScreenPlayer() {
             <Ionicons
               name={isPlaying ? "pause-circle" : "play-circle"}
               size={70}
-              color="#C9A84C"
+              color={GOLD}
             />
           </TouchableOpacity>
 
@@ -315,7 +316,7 @@ export default function FullScreenPlayer() {
             <Feather
               name="repeat"
               size={28}
-              color={repeatMode === "repeat-one" ? "#C9A84C" : "#ffffff"}
+              color={repeatMode === "repeat-one" ? GOLD : "#ffffff"}
             />
           </TouchableOpacity>
           {/* Sequential */}
@@ -326,7 +327,7 @@ export default function FullScreenPlayer() {
             <Feather
               name="list"
               size={28}
-              color={repeatMode === "sequential" ? "#C9A84C" : "#ffffff"}
+              color={repeatMode === "sequential" ? GOLD : "#ffffff"}
             />
           </TouchableOpacity>
           {/* Shuffle */}
@@ -337,7 +338,7 @@ export default function FullScreenPlayer() {
             <Feather
               name="shuffle"
               size={28}
-              color={repeatMode === "shuffle" ? "#C9A84C" : "#ffffff"}
+              color={repeatMode === "shuffle" ? GOLD : "#ffffff"}
             />
           </TouchableOpacity>
         </View>

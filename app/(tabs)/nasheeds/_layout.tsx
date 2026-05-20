@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { GOLD } from "../../../constants/colors";
 import { useEffect, useRef } from "react";
 import { useAudioPlayer } from "../../../context/AudioPlayerContext";
 import {
@@ -38,7 +39,7 @@ export default function NasheedLayout() {
     <Stack
         screenOptions={{
           headerStyle: { backgroundColor: "#090A07" },
-          headerTintColor: "#C9A84C",
+          headerTintColor: GOLD,
           headerTitleStyle: {
             fontWeight: "bold",
           },

@@ -1,11 +1,12 @@
 import { Stack } from "expo-router";
+import { GOLD } from "../../../constants/colors";
 
 export default function QuranLayout() {
   return (
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: "#090A07" },
-        headerTintColor: "#C9A84C",
+        headerTintColor: GOLD,
         headerTitleStyle: {
           fontWeight: "bold",
         },

@@ -1,5 +1,6 @@
 import { View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { GOLD } from "../constants/colors";
 
 type Props = {
   className?: string;
@@ -9,7 +10,7 @@ export default function FeaturedCardSkeleton({ className = "" }: Props) {
   return (
     <View className={`overflow-hidden rounded-[28px] border border-white/10 ${className}`}>
       <LinearGradient
-        colors={["#1B1B1C", "#0B0B0C", "rgba(231,193,28,0.12)"]}
+        colors={["#1B1B1C", "#0B0B0C", "rgba(201,168,76,0.12)"]}
         start={{ x: 0.2, y: 0.0 }}
         end={{ x: 1, y: 1 }}
       >
@@ -18,7 +19,7 @@ export default function FeaturedCardSkeleton({ className = "" }: Props) {
             <View
               className="h-40 w-40 rounded-full overflow-hidden border border-qasid-gold/20 bg-gray-700/30 animate-pulse"
               style={{
-                shadowColor: "#C9A84C",
+                shadowColor: GOLD,
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.18,
                 shadowRadius: 8,

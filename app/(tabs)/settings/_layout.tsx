@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { GOLD } from "../../../constants/colors";
 
 export default function SettingsLayout() {
   return (
@@ -6,7 +7,7 @@ export default function SettingsLayout() {
       screenOptions={{
         animation: "slide_from_right",
         headerStyle: { backgroundColor: "#090A07" },
-        headerTintColor: "#C9A84C",
+        headerTintColor: GOLD,
         headerTitleStyle: {
           fontWeight: "bold",
         },
@@ -29,6 +30,13 @@ export default function SettingsLayout() {
         name="contact-support"
         options={{
           title: "Contact & Support",
+          headerBackTitle: "Settings",
+        }}
+      />
+      <Stack.Screen
+        name="terms-privacy"
+        options={{
+          title: "Terms & Privacy",
           headerBackTitle: "Settings",
         }}
       />

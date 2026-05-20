@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
+import { GOLD, GOLD_RIPPLE } from "../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -78,8 +79,8 @@ export default function ContinueListeningBlock({
       <View className="relative overflow-hidden rounded-[30px] border border-qasid-gold/20 bg-qasid-bg-2 shadow-black/30">
         <LinearGradient
           colors={[
-            "rgba(231,193,28,0.22)",
-            "rgba(231,193,28,0.08)",
+            "rgba(201,168,76,0.22)",
+            "rgba(201,168,76,0.08)",
             "rgba(0,0,0,0.0)",
           ]}
           start={{ x: 0, y: 0 }}
@@ -111,7 +112,7 @@ export default function ContinueListeningBlock({
               {!hasHistory ? (
                 <Pressable
                   onPress={handlePress}
-                  android_ripple={{ color: "#C9A84C22" }}
+                  android_ripple={{ color: GOLD_RIPPLE }}
                   style={({ pressed }) => [
                     {
                       opacity: pressed ? 0.94 : 1,
@@ -122,13 +123,13 @@ export default function ContinueListeningBlock({
                   <Ionicons
                     name={"library-outline"}
                     size={24}
-                    color="#C9A84C"
+                    color={GOLD}
                   />
                 </Pressable>
               ) : (
                 <Pressable
                   onPress={handlePress}
-                  android_ripple={{ color: "#C9A84C22" }}
+                  android_ripple={{ color: GOLD_RIPPLE }}
                   style={({ pressed }) => [
                     {
                       opacity: pressed ? 0.94 : 1,
@@ -139,7 +140,7 @@ export default function ContinueListeningBlock({
                   <Ionicons
                     name={isPlaying ? "pause" : "play"}
                     size={24}
-                    color="#C9A84C"
+                    color={GOLD}
                   />
                 </Pressable>
               )}
@@ -180,7 +181,7 @@ export default function ContinueListeningBlock({
             {hasHistory ? (
               <Pressable
                 onPress={handlePress}
-                android_ripple={{ color: "#C9A84C22" }}
+                android_ripple={{ color: GOLD_RIPPLE }}
                 style={({ pressed }) => [
                   {
                     opacity: pressed ? 0.94 : 1,
@@ -196,7 +197,7 @@ export default function ContinueListeningBlock({
             ) : (
               <Pressable
                 onPress={handlePress}
-                android_ripple={{ color: "#C9A84C22" }}
+                android_ripple={{ color: GOLD_RIPPLE }}
                 style={({ pressed }) => [
                   {
                     opacity: pressed ? 0.94 : 1,

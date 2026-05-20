@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { GOLD } from "../constants/colors";
 import { Text, TouchableOpacity } from "react-native";
 
 export enum PlayButtonVariant {
@@ -34,7 +35,7 @@ export const PlayButton = ({
       <Ionicons
         name={isPlaying ? "pause" : "play"}
         size={16}
-        color={kind === PlayButtonVariant.PRIMARY ? "#000000" : "#C9A84C"}
+        color={kind === PlayButtonVariant.PRIMARY ? "#000000" : GOLD}
         style={{ marginLeft: 8 }}
       />
     </TouchableOpacity>

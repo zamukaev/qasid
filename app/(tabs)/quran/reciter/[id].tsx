@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { GOLD } from "../../../../constants/colors";
 import { getApp } from "@react-native-firebase/app";
 import {
   getStorage,
@@ -434,7 +435,7 @@ export default function ReciterDetailsScreen() {
       }
     }
 
-    const trackId = `${reciter.id}-${surah.surahNumber}`;
+    const trackId = `${reciter.id}-${surah.id}`;
     const savedProgress = progressMap[trackId];
     const hasSavedPosition =
       savedProgress &&
@@ -487,7 +488,7 @@ export default function ReciterDetailsScreen() {
     const queueTracks = filteredSurahItems
       .filter((item) => !!item.audioUrl)
       .map((item) => ({
-        id: `${reciter.id}-${item.surahNumber}`,
+        id: `${reciter.id}-${item.id}`,
         title: item.englishName,
         artist: item.reciterName ?? reciter.name_en,
         artworkUri: item.imageUrl ?? PlaceholderAvatar,
@@ -569,7 +570,7 @@ export default function ReciterDetailsScreen() {
     const queue = filteredSurahItems
       .filter((item) => item.audioUrl)
       .map((item) => ({
-        key: `${reciter?.id}-${item.surahNumber}`,
+        key: `${reciter?.id}-${item.id}`,
         url: item.audioUrl,
       }))
       .filter((item) => !durationMapRef.current[item.key]);
@@ -672,7 +673,7 @@ export default function ReciterDetailsScreen() {
               <View
                 className="rounded-full mr-4"
                 style={{
-                  shadowColor: "#C9A84C",
+                  shadowColor: GOLD,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.35,
                   shadowRadius: 12,
@@ -696,21 +697,21 @@ export default function ReciterDetailsScreen() {
 
             <View className="mt-6 w-full flex-row justify-evenly items-center">
               <View className="flex-row items-center gap-2">
-                <Feather name="headphones" size={14} color="#C9A84C" />
+                <Feather name="headphones" size={14} color={GOLD} />
                 <Text className="text-m text-qasid-white">Clear Tajweed</Text>
               </View>
               <View className="flex-row items-center gap-2">
                 <MaterialCommunityIcons
                   name="mosque"
                   size={14}
-                  color="#C9A84C"
+                  color={GOLD}
                 />
                 <Text className="text-m text-qasid-white">
                   Daily Reflection
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
-                <FontAwesome6 name="list-ul" size={14} color="#C9A84C" />
+                <FontAwesome6 name="list-ul" size={14} color={GOLD} />
                 {reciter?.surah_count && (
                   <Text className="text-m text-qasid-white">
                     {reciter?.surah_count} Surahs
@@ -753,7 +754,7 @@ export default function ReciterDetailsScreen() {
             <>
               {filteredSurahItems.map((surah) => {
                 const key = `${surah?.reciterName}-${surah.surahNumber}`;
-                const trackKey = `${reciter?.id}-${surah.surahNumber}`;
+                const trackKey = `${reciter?.id}-${surah.id}`;
                 const isActive = currentTrack?.id === trackKey;
                 const progressEntry = progressMap[trackKey];
                 const knownDurationMillis =
@@ -761,6 +762,7 @@ export default function ReciterDetailsScreen() {
                 const durationLabel = knownDurationMillis
                   ? formatMillis(knownDurationMillis)
                   : undefined;
+                const isRegularReciter = !content_type;
                 return (
                   <SharedCard
                     className="mb-1"
@@ -769,8 +771,9 @@ export default function ReciterDetailsScreen() {
                     isPlaying={isPlaying && isActive}
                     isPaused={isActive}
                     title={surah.englishName}
-                    order={surah.surahNumber}
-                    image={surah.imageUrl ?? undefined}
+                    order={isRegularReciter ? undefined : surah.surahNumber}
+                    image={isRegularReciter ? undefined : (surah.imageUrl ?? undefined)}
+                    surahNumberBadge={isRegularReciter ? surah.surahNumber : undefined}
                     subtitle={
                       content_type === "collection"
                         ? (surah.reciterName ?? surah.arabicName)
@@ -809,7 +812,7 @@ export default function ReciterDetailsScreen() {
           position: "absolute",
           right: 20,
           bottom: viewMode === "hidden" ? 40 : 128,
-          backgroundColor: "rgba(231, 193, 28, 0.7)",
+          backgroundColor: "rgba(201, 168, 76, 0.7)",
           borderRadius: 999,
           width: 52,
           height: 52,

@@ -11,14 +11,39 @@ import { Stack } from "expo-router";
 import { ErrorAlert } from "../../../components";
 import { getFirebaseErrorMessage } from "../../../utils/firebaseErrors";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function EmailSignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showError, setShowError] = useState(false);
 
+  const validateEmail = (value: string) => {
+    if (!value.trim()) return "Email is required";
+    if (!EMAIL_REGEX.test(value)) return "Enter a valid email address";
+    return "";
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) return "Password is required";
+    if (value.length < 6) return "Password must be at least 6 characters";
+    return "";
+  };
+
+  const validate = () => {
+    const eErr = validateEmail(email);
+    const pErr = validatePassword(password);
+    setEmailError(eErr);
+    setPasswordError(pErr);
+    return !eErr && !pErr;
+  };
+
   const handleSignUp = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
       const auth = getAuth();
@@ -42,20 +67,38 @@ export default function EmailSignUpScreen() {
         placeholder="Email"
         placeholderTextColor="#aaa"
         value={email}
-        onChangeText={setEmail}
-        className="bg-qasid-gray text-qasid-white p-4 rounded-lg mb-2"
+        onChangeText={(v) => {
+          setEmail(v);
+          if (emailError) setEmailError(validateEmail(v));
+        }}
+        onBlur={() => setEmailError(validateEmail(email))}
+        className={`bg-qasid-gray text-qasid-white p-4 rounded-lg ${emailError ? "border border-red-500" : ""}`}
         keyboardType="email-address"
         autoCapitalize="none"
       />
+      {emailError ? (
+        <Text className="text-red-500 text-sm mb-2 mt-1">{emailError}</Text>
+      ) : (
+        <View className="mb-2" />
+      )}
 
       <TextInput
         placeholder="Password"
         placeholderTextColor="#aaa"
         secureTextEntry
         value={password}
-        onChangeText={setPassword}
-        className="bg-qasid-gray text-qasid-white p-4 rounded-lg mb-8"
+        onChangeText={(v) => {
+          setPassword(v);
+          if (passwordError) setPasswordError(validatePassword(v));
+        }}
+        onBlur={() => setPasswordError(validatePassword(password))}
+        className={`bg-qasid-gray text-qasid-white p-4 rounded-lg ${passwordError ? "border border-red-500" : ""}`}
       />
+      {passwordError ? (
+        <Text className="text-red-500 text-sm mb-6 mt-1">{passwordError}</Text>
+      ) : (
+        <View className="mb-8" />
+      )}
 
       <TouchableOpacity
         onPress={handleSignUp}

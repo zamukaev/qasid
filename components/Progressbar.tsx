@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { GOLD } from "../constants/colors";
 
 import { View, Text } from "react-native";
 import { formatMillis } from "../utils";
@@ -16,7 +17,7 @@ export const Progressbar = ({
         <Ionicons
           name="time-outline"
           size={14}
-          color="#C9A84C"
+          color={GOLD}
           style={{ marginRight: 6 }}
         />
         <Text className="text-qasid-gold text-xs font-medium">

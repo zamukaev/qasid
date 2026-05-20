@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import { GOLD } from "../constants/colors";
 
 export default function ReciterHeaderSkeleton() {
   return (
@@ -10,7 +11,7 @@ export default function ReciterHeaderSkeleton() {
           style={{
             width: 96,
             height: 96,
-            shadowColor: "#C9A84C",
+            shadowColor: GOLD,
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.35,
             shadowRadius: 12,

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { GOLD } from "../../../constants/colors";
 import { Text, View, Pressable, FlatList } from "react-native";
 import { FirebaseReciter, ResponseReciters } from "../../../types/quran";
 import { Image } from "react-native";
@@ -35,7 +36,7 @@ function ReciterGridItem({ reciter, onPress }: ReciterGridItemProps) {
       <View
         className="rounded-full mb-3"
         style={{
-          shadowColor: "#C9A84C",
+          shadowColor: GOLD,
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.3,
           shadowRadius: 8,

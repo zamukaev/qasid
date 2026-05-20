@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { GOLD } from "../../../constants/colors";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -218,7 +219,7 @@ export default function Premium() {
             onPress={() => router.replace("/settings")}
             className="pt-4 pb-1 flex-row items-center self-start"
           >
-            <Ionicons name="chevron-back" size={22} color="#E7C11C" />
+            <Ionicons name="chevron-back" size={22} color={GOLD} />
             <Text className="text-qasid-gold text-base font-semibold">
               Settings
             </Text>
@@ -306,7 +307,7 @@ export default function Premium() {
                         </View>
                         <View className="items-end ml-4">
                           {rcLoading && plan.id !== "free" ? (
-                            <ActivityIndicator size="small" color="#E7C11C" />
+                            <ActivityIndicator size="small" color={GOLD} />
                           ) : (
                             <Text className="text-qasid-gold text-lg font-semibold">
                               {plan.price} / {plan.period}
@@ -386,7 +387,7 @@ export default function Premium() {
               />
               <View className="px-4 py-4 items-center">
                 {isPurchasing ? (
-                  <ActivityIndicator size="small" color="#E7C11C" />
+                  <ActivityIndicator size="small" color={GOLD} />
                 ) : (
                   <Text
                     className={`text-base font-semibold ${ctaDisabled ? "text-white/30" : "text-qasid-gold"}`}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { GOLD } from "../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { LayoutChangeEvent, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -53,7 +54,7 @@ export default function NowPlayingBar() {
         borderRadius: 24,
         overflow: "hidden",
         borderWidth: 1,
-        borderColor: "rgba(231, 193, 28, 0.14)",
+        borderColor: "rgba(201, 168, 76, 0.14)",
         shadowColor: "#000",
         shadowOpacity: 0.22,
         shadowRadius: 14,
@@ -123,16 +124,16 @@ export default function NowPlayingBar() {
                   borderRadius: 999,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "rgba(231, 193, 28, 0.12)",
+                  backgroundColor: "rgba(201, 168, 76, 0.12)",
                   borderWidth: 1,
-                  borderColor: "rgba(231, 193, 28, 0.18)",
+                  borderColor: "rgba(201, 168, 76, 0.18)",
                   opacity: pressed ? 0.86 : 1,
                 })}
               >
                 <Ionicons
                   name={isPlaying ? "pause" : "play"}
                   size={22}
-                  color="#C9A84C"
+                  color={GOLD}
                   style={{ marginLeft: isPlaying ? 0 : 2 }}
                 />
               </Pressable>
@@ -165,7 +166,7 @@ export default function NowPlayingBar() {
               }}
               style={{
                 height: 4,
-                backgroundColor: "rgba(231, 193, 28, 0.14)",
+                backgroundColor: "rgba(201, 168, 76, 0.14)",
                 borderRadius: 999,
                 overflow: "hidden",
               }}
@@ -174,7 +175,7 @@ export default function NowPlayingBar() {
                 style={{
                   height: "100%",
                   width: `${sliderValue * 100}%`,
-                  backgroundColor: "#C9A84C",
+                  backgroundColor: GOLD,
                   borderRadius: 999,
                 }}
               />

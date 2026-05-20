@@ -7,7 +7,6 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
-  Linking,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
@@ -52,7 +51,7 @@ export default function Settings() {
   };
 
   const handleTermsPrivacy = () => {
-    Linking.openURL("https://qasid.app/terms");
+    router.push("/(tabs)/settings/terms-privacy");
   };
 
   return (
@@ -96,7 +95,7 @@ export default function Settings() {
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-bg-2" />
               <LinearGradient
-                colors={["rgba(231,193,28,0.05)", "rgba(0,0,0,0.00)"]}
+                colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ position: "absolute", inset: 0 }}
@@ -169,7 +168,7 @@ export default function Settings() {
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-bg-2" />
               <LinearGradient
-                colors={["rgba(231,193,28,0.05)", "rgba(0,0,0,0.00)"]}
+                colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ position: "absolute", inset: 0 }}
@@ -188,7 +187,7 @@ export default function Settings() {
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-bg-2" />
               <LinearGradient
-                colors={["rgba(231,193,28,0.05)", "rgba(0,0,0,0.00)"]}
+                colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ position: "absolute", inset: 0 }}
@@ -212,7 +211,7 @@ export default function Settings() {
           <View className="relative overflow-hidden rounded-2xl">
             <View className="absolute inset-0 bg-qasid-bg-2" />
             <LinearGradient
-              colors={["rgba(231,193,28,0.05)", "rgba(0,0,0,0.00)"]}
+              colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{ position: "absolute", inset: 0 }}

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { GOLD } from "../../../../constants/colors";
 import { getApp } from "@react-native-firebase/app";
 import {
   getStorage,
@@ -243,7 +244,7 @@ export default function PlaylistScreen() {
               <View
                 className="mr-4"
                 style={{
-                  shadowColor: "#C9A84C",
+                  shadowColor: GOLD,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.35,
                   shadowRadius: 12,
@@ -339,7 +340,7 @@ export default function PlaylistScreen() {
           position: "absolute",
           right: 20,
           bottom: viewMode === "hidden" ? 40 : 128,
-          backgroundColor: "rgba(231, 193, 28, 0.7)",
+          backgroundColor: "rgba(201, 168, 76, 0.7)",
           borderRadius: 999,
           width: 52,
           height: 52,

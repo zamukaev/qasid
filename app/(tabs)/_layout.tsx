@@ -1,4 +1,5 @@
 import { Tabs, useRouter } from "expo-router";
+import { GOLD } from "../../constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import { Animated } from "react-native";
@@ -75,7 +76,7 @@ export default function TabsLayout() {
             paddingHorizontal: 10,
             backgroundColor: "rgba(11, 11, 12, 0.88)",
             borderTopWidth: 1,
-            borderTopColor: "rgba(231, 193, 28, 0.12)",
+            borderTopColor: "rgba(201, 168, 76, 0.12)",
             elevation: 10,
             shadowColor: "#000000",
             shadowOpacity: 0.22,
@@ -92,7 +93,7 @@ export default function TabsLayout() {
             paddingTop: 4,
             borderRadius: 18,
           },
-          tabBarActiveTintColor: "#C9A84C",
+          tabBarActiveTintColor: GOLD,
           tabBarInactiveTintColor: "rgba(255, 255, 255, 0.58)",
           tabBarBackground: () => (
             <LinearGradient

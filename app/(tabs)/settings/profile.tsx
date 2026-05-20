@@ -1,3 +1,4 @@
+import { GOLD } from "../../../constants/colors";
 import {
   View,
   Text,
@@ -214,7 +215,7 @@ export default function ProfileSettings() {
               )}
               {uploadingAvatar && (
                 <View className="absolute inset-0 rounded-full bg-black/60 items-center justify-center">
-                  <ActivityIndicator color="#C9A84C" />
+                  <ActivityIndicator color={GOLD} />
                 </View>
               )}
             </View>
@@ -265,7 +266,7 @@ export default function ProfileSettings() {
               <View className="absolute inset-0 rounded-2xl border border-qasid-gold/30" />
               <View className="px-4 py-4 items-center flex-row justify-center">
                 {savingName ? (
-                  <ActivityIndicator size="small" color="#C9A84C" />
+                  <ActivityIndicator size="small" color={GOLD} />
                 ) : (
                   <Text className="text-qasid-gold text-base font-semibold">
                     Speichern
@@ -332,7 +333,7 @@ export default function ProfileSettings() {
                 <View className="absolute inset-0 rounded-2xl border border-qasid-gold/30" />
                 <View className="px-4 py-4 items-center">
                   {changingPassword ? (
-                    <ActivityIndicator size="small" color="#C9A84C" />
+                    <ActivityIndicator size="small" color={GOLD} />
                   ) : (
                     <Text className="text-qasid-gold text-base font-semibold">
                       Passwort ändern

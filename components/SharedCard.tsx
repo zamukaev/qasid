@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, Image, Pressable } from "react-native";
+import { GOLD } from "../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 
 import PlaceholderCover from "../assets/images/avatar.webp";
@@ -12,6 +13,7 @@ export type QasidTrackRowProps = {
   duration?: string; // "2:50"
   image?: string; // { uri } или require(...)
   order?: number; // 1-based order
+  surahNumberBadge?: number; // show round gold badge with number instead of image
   track: Track;
   handlePlayTrack: (track: any) => void;
   isPlaying?: boolean;
@@ -25,6 +27,7 @@ export const SharedCard = ({
   duration,
   image,
   order,
+  surahNumberBadge,
   track,
   handlePlayTrack,
   isPlaying,
@@ -46,8 +49,8 @@ export const SharedCard = ({
         <View className="absolute inset-0 bg-[#0B0B10]" />
         <LinearGradient
           colors={[
-            "rgba(231,193,28,0.14)",
-            "rgba(231,193,28,0.05)",
+            "rgba(201,168,76,0.14)",
+            "rgba(201,168,76,0.05)",
             "rgba(0,0,0,0.00)",
             "rgba(0,0,0,0.45)",
           ]}
@@ -63,11 +66,20 @@ export const SharedCard = ({
         />
         <View className="absolute inset-0 rounded-2xl border border-white/10" />
         <View className="flex-row items-center px-3 py-3">
-          <Image
-            source={image ? { uri: image } : PlaceholderCover}
-            className="h-12 w-12 rounded-full"
-            resizeMode="cover"
-          />
+          {surahNumberBadge != null ? (
+            <View className="h-12 w-12 rounded-full bg-qasid-gold/10 border border-qasid-gold/50 items-center justify-center">
+              <Text style={{ color: GOLD }} className="text-base font-semibold">
+                {surahNumberBadge}
+              </Text>
+            </View>
+          ) : (
+            <Image
+              source={image ? { uri: image } : PlaceholderCover}
+              className="h-12 w-12 rounded-md"
+              resizeMode="cover"
+            />
+          )}
+
           <View className="ml-3 flex-1">
             <View className="flex-row items-center">
               {isPaused && (
@@ -77,11 +89,11 @@ export const SharedCard = ({
                 />
               )}
               <Text
-                style={{ color: isPaused ? "#C9A84C" : "#DCDFE4" }}
+                style={{ color: isPaused ? GOLD : "#DCDFE4" }}
                 className="text-[16px] font-semibold text-white/90"
                 numberOfLines={1}
               >
-                {order ? `${order}. ` : ""}
+                {order && !surahNumberBadge ? `${order}. ` : ""}
                 {title}
               </Text>
             </View>

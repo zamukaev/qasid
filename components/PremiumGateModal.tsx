@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { GOLD } from "../constants/colors";
 import { useRouter } from "expo-router";
 import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
 
@@ -35,7 +36,7 @@ export function PremiumGateModal({ visible, playsLeft, onClose }: Props) {
             <View className="p-6">
               <View className="items-center mb-5">
                 <View className="w-14 h-14 rounded-full bg-qasid-gold/15 border border-qasid-gold/30 items-center justify-center mb-4">
-                  <Ionicons name="lock-closed" size={24} color="#E7C11C" />
+                  <Ionicons name="lock-closed" size={24} color={GOLD} />
                 </View>
                 <Text className="text-white text-xl font-bold text-center">
                   Daily Limit Reached
