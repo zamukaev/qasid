@@ -4,6 +4,7 @@ import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import {
   getAuth,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   FirebaseAuthTypes,
 } from "@react-native-firebase/auth";
 import { Stack } from "expo-router";
@@ -47,10 +48,24 @@ export default function EmailSignUpScreen() {
     setLoading(true);
     try {
       const auth = getAuth();
-      await createUserWithEmailAndPassword(auth, email, password);
+      const { user } = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      console.log("[Auth] signUp success:", user);
+      // Non-blocking: if this fails the user can resend from the verify screen
+      sendEmailVerification(user).catch((err) => {
+        console.error(
+          "[Auth] sendEmailVerification failed:",
+          err?.code,
+          err?.message,
+        );
+      });
     } catch (e: any) {
       const err = e as FirebaseAuthTypes.NativeFirebaseAuthError;
       const errorMessage = getFirebaseErrorMessage(err.code);
+      console.log("[Auth] signUp failed:", err.code, err.message);
       setError(errorMessage);
       setShowError(true);
     } finally {

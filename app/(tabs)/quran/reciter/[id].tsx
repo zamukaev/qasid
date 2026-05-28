@@ -800,6 +800,12 @@ export default function ReciterDetailsScreen() {
                       : "There are no recordings available for this reciter yet."}
                   </Text>
                 )}
+
+              {loadingMore && (
+                <Text className="text-qasid-gold text-sm text-center py-4">
+                  Loading more...
+                </Text>
+              )}
             </>
           )}
         </View>

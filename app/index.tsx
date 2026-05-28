@@ -31,7 +31,7 @@ export default function Welcome() {
         // RC initialization failure should not block the auth flow
       }
     } else {
-      RevenueCatService.logout();
+      await RevenueCatService.logout();
     }
   };
 
@@ -43,11 +43,23 @@ export default function Welcome() {
 
   useEffect(() => {
     if (isLoading) return;
-    const isAuthGroup = segments[0] === "(tabs)";
-    if (user && !isAuthGroup) {
+
+    const inTabs = segments[0] === "(tabs)";
+    const inVerifyEmail =
+      segments[0] === "(auth)" && segments[1] === "verify-email";
+
+    if (!user) {
+      if (inTabs || inVerifyEmail) router.replace("/");
+      return;
+    }
+
+    if (!user.emailVerified) {
+      if (!inVerifyEmail) router.replace("/verify-email");
+      return;
+    }
+
+    if (!inTabs) {
       router.replace("(tabs)/quran");
-    } else if (!user && isAuthGroup) {
-      router.replace("/");
     }
   }, [user, isLoading]);
 

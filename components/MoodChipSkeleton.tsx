@@ -1,6 +1,9 @@
-import { View } from "react-native";
+import { Animated, View } from "react-native";
+import { usePulseAnimation } from "../hooks/usePulseAnimation";
 
 export default function MoodChipSkeleton() {
+  const pulseStyle = usePulseAnimation();
+
   return (
     <View
       style={{
@@ -12,7 +15,10 @@ export default function MoodChipSkeleton() {
         borderColor: "rgba(255, 255, 255, 0.05)",
       }}
     >
-      <View className="h-4 w-20 bg-gray-700/30 rounded animate-pulse" />
+      <Animated.View
+        className="h-4 w-20 bg-gray-700/30 rounded"
+        style={pulseStyle}
+      />
     </View>
   );
 }

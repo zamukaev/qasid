@@ -35,13 +35,13 @@ export default function BannerSkeleton() {
       <View className="absolute inset-0 bg-black/30" />
       <View className="absolute inset-0 items-center justify-center px-4">
         {/* Title Skeleton */}
-        <View className="h-8 w-48 bg-gray-700/40 rounded-lg mb-3 animate-pulse" />
+        <View className="h-8 w-48 bg-gray-700/40 rounded-lg mb-3" />
         {/* Subtitle Skeleton */}
-        <View className="h-4 w-32 bg-gray-700/30 rounded animate-pulse" />
+        <View className="h-4 w-32 bg-gray-700/30 rounded" />
       </View>
       {/* Play Button Skeleton */}
       <View className="absolute bottom-4 w-1/2 left-1/4">
-        <View className="h-12 bg-gray-700/30 rounded-xl animate-pulse" />
+        <View className="h-12 bg-gray-700/30 rounded-xl" />
       </View>
     </View>
   );

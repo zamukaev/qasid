@@ -22,16 +22,15 @@ configureReanimatedLogger({
 });
 
 export default function RootLayout() {
+  const iosApiKey = process.env.EXPO_PUBLIC_IOS_API_KEY;
+  const androidApiKey = process.env.EXPO_PUBLIC_ANDROID_API_KEY;
+
   useEffect(() => {
     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
 
-    // Platform-specific API keys
-    const iosApiKey = "test_EdKpJMOxxEmeVEdSEDZnxswKOVJ";
-    const androidApiKey = "test_EdKpJMOxxEmeVEdSEDZnxswKOVJ";
-
-    if (Platform.OS === "ios") {
+    if (Platform.OS === "ios" && iosApiKey) {
       Purchases.configure({ apiKey: iosApiKey });
-    } else if (Platform.OS === "android") {
+    } else if (Platform.OS === "android" && androidApiKey) {
       Purchases.configure({ apiKey: androidApiKey });
     }
   }, []);

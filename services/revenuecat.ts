@@ -7,6 +7,7 @@ import { useUserStore } from "../stores/userStore";
 
 const ENTITLEMENT_ID = "qasid Premium";
 let listenerRegistered = false;
+let isIdentifiedUser = false;
 
 function syncPlanFromCustomerInfo(info: CustomerInfo): void {
   const entitlement = info.entitlements.active[ENTITLEMENT_ID];
@@ -27,6 +28,7 @@ function syncPlanFromCustomerInfo(info: CustomerInfo): void {
 
 export async function initialize(userId: string): Promise<void> {
   await Purchases.logIn(userId);
+  isIdentifiedUser = true;
 
   if (!listenerRegistered) {
     Purchases.addCustomerInfoUpdateListener(syncPlanFromCustomerInfo);
@@ -38,13 +40,12 @@ export async function initialize(userId: string): Promise<void> {
 }
 
 export async function logout(): Promise<void> {
+  if (!isIdentifiedUser) return;
+  isIdentifiedUser = false;
   try {
-    const isAnonymous = await Purchases.isAnonymous();
-    if (!isAnonymous) {
-      await Purchases.logOut();
-    }
+    await Purchases.logOut();
   } catch {
-    // ignore unexpected errors
+    // logOut() can throw in edge cases — safe to ignore
   }
 }
 
