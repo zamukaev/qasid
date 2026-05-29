@@ -31,6 +31,7 @@ import {
   ShowError,
   ReciterHeaderSkeleton,
 } from "../../../../components";
+import { DownloadButton } from "../../../../components/DownloadButton";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 import {
   PlayButton,
@@ -416,6 +417,19 @@ export default function ArtistScreen() {
                       artist: artist?.name_en,
                       uri: nasheed.audioUrl,
                     }}
+                    rightAction={
+                      nasheed.audioUrl ? (
+                        <DownloadButton
+                          track={{
+                            id: trackId,
+                            title: nasheed.title,
+                            artist: artist?.name_en,
+                            isNasheed: true,
+                            uri: nasheed.audioUrl,
+                          }}
+                        />
+                      ) : undefined
+                    }
                   />
                 );
               })}

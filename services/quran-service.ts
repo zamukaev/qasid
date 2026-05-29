@@ -394,6 +394,7 @@ export async function fetchSurahs(
         ? await getDownloadURL(ref(storage, data.image_path))
         : undefined;
       return {
+        id: data.id,
         audio_path: data.audio_path,
         surah_number: data.surah_number,
         image_path: imageUrl,

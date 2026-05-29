@@ -98,7 +98,7 @@ export default function Nasheeds() {
         <ContinueListeningBlock variant="nasheeds" />
         <ArtistRailSection
           large
-          title="Playlists"
+          title="Featured Playlists"
           artists={playlists}
           isLoading={isLoadingPlaylists}
           onPressItem={(id) =>

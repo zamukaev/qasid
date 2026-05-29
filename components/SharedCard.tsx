@@ -19,6 +19,7 @@ export type QasidTrackRowProps = {
   isPlaying?: boolean;
   isPaused?: boolean;
   className?: string; // чтобы ты мог добавлять mt/mb и т.п.
+  rightAction?: React.ReactNode;
 };
 
 export const SharedCard = ({
@@ -33,6 +34,7 @@ export const SharedCard = ({
   isPlaying,
   isPaused,
   className = "",
+  rightAction,
 }: QasidTrackRowProps) => {
   const onPlayPress = (event: any) => {
     event.stopPropagation();
@@ -107,6 +109,10 @@ export const SharedCard = ({
               </Text>
             )}
           </View>
+
+          {rightAction != null && (
+            <View className="ml-2">{rightAction}</View>
+          )}
         </View>
       </View>
     </Pressable>

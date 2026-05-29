@@ -26,6 +26,7 @@ import {
   ref,
   getDownloadURL,
 } from "@react-native-firebase/storage";
+import { getLocalPath } from "../services/download-service";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
 type RepeatMode = "sequential" | "shuffle" | "repeat-one";
@@ -77,7 +78,7 @@ const AudioPlayerContext = createContext<AudioPlayerContextValue | undefined>(
 
 const PROGRESS_STORAGE_KEY = "@qasid-reciter-progress";
 
-async function resolveTrackUrl(uri: any): Promise<string> {
+async function resolveTrackUrl(uri: any, trackId?: string): Promise<string> {
   if (!uri) return uri;
   const raw = typeof uri === "object" && uri.uri !== undefined ? uri.uri : uri;
   if (
@@ -85,6 +86,10 @@ async function resolveTrackUrl(uri: any): Promise<string> {
     !raw.startsWith("http") &&
     !raw.startsWith("file")
   ) {
+    if (trackId) {
+      const local = await getLocalPath(trackId);
+      if (local) return local;
+    }
     const storage = getStorage(getApp());
     return await getDownloadURL(ref(storage, raw));
   }
@@ -360,7 +365,7 @@ export function AudioPlayerProvider({
 
       try {
         // Resolve the tapped track URL first (fast path — often already HTTP).
-        const url = await resolveTrackUrl(track.uri);
+        const url = await resolveTrackUrl(track.uri, track.id);
 
         // Read the queue that was set synchronously by setQueue.
         const currentQueue = queueRef.current;
@@ -374,7 +379,7 @@ export function AudioPlayerProvider({
           resolvedItems = await Promise.all(
             currentQueue.map(async (t) => {
               const tUrl =
-                t.id === track.id ? url : await resolveTrackUrl(t.uri);
+                t.id === track.id ? url : await resolveTrackUrl(t.uri, t.id);
               return toRNTPTrack(t, tUrl);
             }),
           );

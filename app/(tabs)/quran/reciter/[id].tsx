@@ -39,6 +39,7 @@ import {
   SharedCardSkeleton,
   ReciterHeaderSkeleton,
 } from "../../../../components";
+import { DownloadButton } from "../../../../components/DownloadButton";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -72,18 +73,20 @@ type SourceSurahItem = {
   image_path?: string;
 };
 
-const normalizeSurahItems = (items: SourceSurahItem[]): SurahListItem[] =>
+const normalizeSurahItems = (
+  items: SourceSurahItem[],
+  reciterName?: string,
+): SurahListItem[] =>
   items
     .filter((surah) => !!surah.surah_number)
     .map((surah) => {
       const metadata = getSurahMetadata(surah.surah_number);
-
       return {
         id: surah.id,
         surahNumber: surah.surah_number,
-        englishName: `${metadata?.transliteration} ( ${metadata?.englishName} )`,
+        englishName: `${metadata?.transliteration}`,
         arabicName: metadata?.arabicName ?? "",
-        reciterName: surah.name_en?.trim() || undefined,
+        reciterName: surah.name_en?.trim() || reciterName || "",
         audioUrl: surah.audio_path ?? null,
         imageUrl: surah.image_path ?? null,
       };
@@ -150,7 +153,9 @@ export default function ReciterDetailsScreen() {
     return getDownloadURL(ref(storage, audioUrl));
   };
 
-  const getDurationMillis = async (_audioUrl: string): Promise<number | null> => {
+  const getDurationMillis = async (
+    _audioUrl: string,
+  ): Promise<number | null> => {
     return null;
   };
 
@@ -225,6 +230,7 @@ export default function ReciterDetailsScreen() {
       setSurahs(
         normalizeSurahItems(
           beautifulRecitations as unknown as SourceSurahItem[],
+          data.title_en,
         ),
       );
     } catch (fetchError) {
@@ -281,7 +287,12 @@ export default function ReciterDetailsScreen() {
         surah_count: data.surah_count ?? surahs?.length ?? 0,
       });
       setError(null);
-      setSurahs(normalizeSurahItems(surahs as unknown as SourceSurahItem[]));
+      setSurahs(
+        normalizeSurahItems(
+          surahs as unknown as SourceSurahItem[],
+          data.title_en,
+        ),
+      );
     } catch (fetchError) {
       setError(
         fetchError instanceof Error
@@ -336,7 +347,10 @@ export default function ReciterDetailsScreen() {
       if (newItems.length > 0) {
         setSurahs((prev) => [
           ...prev,
-          ...normalizeSurahItems(newItems as unknown as SourceSurahItem[]),
+          ...normalizeSurahItems(
+            newItems as unknown as SourceSurahItem[],
+            reciter?.name_en,
+          ),
         ]);
       }
     } catch (error) {
@@ -398,7 +412,10 @@ export default function ReciterDetailsScreen() {
       void addRecentReciter(loadedReciter);
       setError(null);
       setSurahs(
-        normalizeSurahItems(loadedSurahs as unknown as SourceSurahItem[]),
+        normalizeSurahItems(
+          loadedSurahs as unknown as SourceSurahItem[],
+          loadedReciter.name_en,
+        ),
       );
       setLastDoc(nextCursor);
       setHasMore(!!nextCursor);
@@ -701,11 +718,7 @@ export default function ReciterDetailsScreen() {
                 <Text className="text-m text-qasid-white">Clear Tajweed</Text>
               </View>
               <View className="flex-row items-center gap-2">
-                <MaterialCommunityIcons
-                  name="mosque"
-                  size={14}
-                  color={GOLD}
-                />
+                <MaterialCommunityIcons name="mosque" size={14} color={GOLD} />
                 <Text className="text-m text-qasid-white">
                   Daily Reflection
                 </Text>
@@ -752,9 +765,10 @@ export default function ReciterDetailsScreen() {
             ))
           ) : (
             <>
-              {filteredSurahItems.map((surah) => {
+              {filteredSurahItems.map((surah: SurahListItem) => {
                 const key = `${surah?.reciterName}-${surah.surahNumber}`;
                 const trackKey = `${reciter?.id}-${surah.id}`;
+
                 const isActive = currentTrack?.id === trackKey;
                 const progressEntry = progressMap[trackKey];
                 const knownDurationMillis =
@@ -772,8 +786,14 @@ export default function ReciterDetailsScreen() {
                     isPaused={isActive}
                     title={surah.englishName}
                     order={isRegularReciter ? undefined : surah.surahNumber}
-                    image={isRegularReciter ? undefined : (surah.imageUrl ?? undefined)}
-                    surahNumberBadge={isRegularReciter ? surah.surahNumber : undefined}
+                    image={
+                      isRegularReciter
+                        ? undefined
+                        : (surah.imageUrl ?? undefined)
+                    }
+                    surahNumberBadge={
+                      isRegularReciter ? surah.surahNumber : undefined
+                    }
                     subtitle={
                       content_type === "collection"
                         ? (surah.reciterName ?? surah.arabicName)
@@ -787,6 +807,19 @@ export default function ReciterDetailsScreen() {
                       title: surah.englishName,
                       uri: surah.audioUrl,
                     }}
+                    rightAction={
+                      surah.audioUrl ? (
+                        <DownloadButton
+                          track={{
+                            id: trackKey,
+                            surahNumber: surah.surahNumber,
+                            artist: surah.reciterName ?? reciter?.name_en,
+                            title: surah.englishName,
+                            uri: surah.audioUrl,
+                          }}
+                        />
+                      ) : undefined
+                    }
                   />
                 );
               })}
