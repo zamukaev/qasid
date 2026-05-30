@@ -3,7 +3,7 @@ import { View, Text, Image, Pressable } from "react-native";
 import { GOLD } from "../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 
-import PlaceholderCover from "../assets/images/avatar.webp";
+import NoImage from "../assets/images/no_image.webp";
 import { Track } from "../context/AudioPlayerContext";
 import { QasidLiveEqualizer } from "./QasidLiveEqualizer";
 
@@ -68,19 +68,11 @@ export const SharedCard = ({
         />
         <View className="absolute inset-0 rounded-2xl border border-white/10" />
         <View className="flex-row items-center px-3 py-3">
-          {surahNumberBadge != null ? (
-            <View className="h-12 w-12 rounded-full bg-qasid-gold/10 border border-qasid-gold/50 items-center justify-center">
-              <Text style={{ color: GOLD }} className="text-base font-semibold">
-                {surahNumberBadge}
-              </Text>
-            </View>
-          ) : (
-            <Image
-              source={image ? { uri: image } : PlaceholderCover}
-              className="h-12 w-12 rounded-md"
-              resizeMode="cover"
-            />
-          )}
+          <Image
+            source={image ? { uri: image } : NoImage}
+            className="h-12 w-12 rounded-md"
+            resizeMode="cover"
+          />
 
           <View className="ml-3 flex-1">
             <View className="flex-row items-center">
@@ -110,9 +102,7 @@ export const SharedCard = ({
             )}
           </View>
 
-          {rightAction != null && (
-            <View className="ml-2">{rightAction}</View>
-          )}
+          {rightAction != null && <View className="ml-2">{rightAction}</View>}
         </View>
       </View>
     </Pressable>

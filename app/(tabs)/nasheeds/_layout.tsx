@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import { GOLD } from "../../../constants/colors";
 import { useEffect, useRef } from "react";
+import { AppState, AppStateStatus } from "react-native";
+import TrackPlayer from "react-native-track-player";
 import { useAudioPlayer } from "../../../context/AudioPlayerContext";
 import {
   consumeManualPlayFlag,
@@ -12,6 +14,21 @@ export default function NasheedLayout() {
   const { currentTrack } = useAudioPlayer();
   const { currentPlan } = useUserStore();
   const prevTrackIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (currentPlan !== "free") return;
+
+    const subscription = AppState.addEventListener(
+      "change",
+      async (nextState: AppStateStatus) => {
+        if (nextState === "background" || nextState === "inactive") {
+          await TrackPlayer.pause();
+        }
+      }
+    );
+
+    return () => subscription.remove();
+  }, [currentPlan]);
 
   useEffect(() => {
     const currentId = currentTrack?.id ?? null;
