@@ -78,5 +78,16 @@ target 'qasid' do
         end
       end
     end
+
+    # Disable fmt consteval on all Apple clang versions — consteval is broken
+    # across multiple Xcode releases and the version-check threshold in fmt's
+    # base.h keeps being overtaken by new Xcode builds.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |cfg|
+        cfg.build_settings['OTHER_CPLUSPLUSFLAGS'] =
+          '$(inherited) -DFMT_USE_CONSTEVAL=0'
+      end
+    end
   end
 end
