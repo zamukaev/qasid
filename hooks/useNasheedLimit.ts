@@ -7,6 +7,7 @@ const FREE_DAILY_LIMIT = 5;
 // Module-level singleton so all hook instances and the layout guard share the same count.
 let _count = 0;
 let _date = "";
+let _hydrated = false;
 let _manualPlayPending = false;
 const _listeners = new Set<() => void>();
 
@@ -15,6 +16,7 @@ function today(): string {
 }
 
 function resetIfNewDay(): void {
+  if (!_hydrated) return;
   if (_date !== today()) {
     _count = 0;
     _date = today();
@@ -23,23 +25,25 @@ function resetIfNewDay(): void {
 }
 
 async function hydrate(): Promise<void> {
+  if (_hydrated) return;
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) {
       _date = today();
-      return;
-    }
-    const data = JSON.parse(raw) as { count: number; date: string };
-    if (data.date === today()) {
-      _count = data.count;
-      _date = data.date;
     } else {
-      _count = 0;
-      _date = today();
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ count: 0, date: _date }));
+      const data = JSON.parse(raw) as { count: number; date: string };
+      if (data.date === today()) {
+        _count = data.count;
+        _date = data.date;
+      } else {
+        _count = 0;
+        _date = today();
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ count: 0, date: _date }));
+      }
     }
-    _listeners.forEach((fn) => fn());
   } catch {}
+  _hydrated = true;
+  _listeners.forEach((fn) => fn());
 }
 
 // Called by handlePlayNasheed before playTrack() — tells the layout guard to skip
