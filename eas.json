@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">= 20.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true,
+      "ios": {
+        "image": "latest"
+      },
+      "env": {
+        "EXPO_PUBLIC_IOS_API_KEY": "appl_HwxGFGKnsGozFZAYWcpAsOMcYnF",
+        "EXPO_PUBLIC_ANDROID_API_KEY": "appl_HwxGFGKnsGozFZAYWcpAsOMcYnF"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -31,7 +31,6 @@ import {
   fetchFeaturedSurahs,
   getFeaturedItemById,
 } from "../../../../services/featured-service";
-import { getSurahMetadata } from "../../../../constants/surahMetadata";
 import {
   Search,
   SharedCard,
@@ -71,6 +70,9 @@ type SourceSurahItem = {
   name_en?: string;
   name_ar?: string;
   image_path?: string;
+  englishName?: string;
+  arabicName?: string;
+  transliteration?: string;
 };
 
 const normalizeSurahItems = (
@@ -80,12 +82,11 @@ const normalizeSurahItems = (
   items
     .filter((surah) => !!surah.surah_number)
     .map((surah) => {
-      const metadata = getSurahMetadata(surah.surah_number);
       return {
         id: surah.id,
         surahNumber: surah.surah_number,
-        englishName: `${metadata?.transliteration}`,
-        arabicName: metadata?.arabicName ?? "",
+        englishName: surah.transliteration ?? "",
+        arabicName: surah.name_ar ?? "",
         reciterName: surah.name_en?.trim() || reciterName || "",
         audioUrl: surah.audio_path ?? null,
         imageUrl: surah.image_path ?? null,

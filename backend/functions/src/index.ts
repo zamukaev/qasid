@@ -111,12 +111,16 @@ const matchesSurahSearch = (
 
   const surahNumber = String(data.surah_number ?? "");
   const paddedSurahNumber = surahNumber.padStart(3, "0");
+  const isNumberSearch = /^\d+$/.test(search);
+
+  if (isNumberSearch) {
+    return surahNumber === search || paddedSurahNumber === search;
+  }
 
   return (
-    normalizeText(data.title_en).includes(search) ||
-    normalizeText(data.title_ar).includes(search) ||
-    surahNumber.includes(search) ||
-    paddedSurahNumber.includes(search)
+    normalizeText(data.name_en).includes(search) ||
+    normalizeText(data.name_ar).includes(search) ||
+    normalizeText(data.transliteration).includes(search)
   );
 };
 
@@ -176,6 +180,7 @@ const mapSurah = (doc: admin.firestore.QueryDocumentSnapshot) => {
     surah_number: data.surah_number ?? 0,
     name_en: data.name_en ?? "",
     name_ar: data.name_ar ?? "",
+    transliteration: data.transliteration ?? "",
     image_path: data.image_path ?? "",
     order: data.order,
     tags: data.tags ?? [],

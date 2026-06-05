@@ -19,9 +19,11 @@
       "buildNumber": "1.0.0",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       },
-      "deploymentTarget": "13.0"
+      "deploymentTarget": "16.0"
     },
     "android": {
       "versionCode": 1,
@@ -50,6 +52,12 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "aaa30054-707b-45a2-b04b-296a236587b6"
+      }
     }
   }
 }

@@ -22,9 +22,10 @@ configureReanimatedLogger({
 });
 
 export default function RootLayout() {
-  const iosApiKey = process.env.EXPO_PUBLIC_IOS_API_KEY;
-  const androidApiKey = process.env.EXPO_PUBLIC_ANDROID_API_KEY;
-
+  //const iosApiKey = process.env.EXPO_PUBLIC_IOS_API_KEY;
+  //const androidApiKey = process.env.EXPO_PUBLIC_ANDROID_API_KEY;
+  const iosApiKey = process.env.EXPO_PUBLIC_IOS_TEST_API_KEY;
+  const androidApiKey = process.env.EXPO_PUBLIC_ANDROID_TEST_API_KEY;
   useEffect(() => {
     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
 

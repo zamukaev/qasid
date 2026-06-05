@@ -24,6 +24,7 @@ export interface ReciterCursor {
 }
 
 export interface SurahCursor {
+  id?: string;
   surah_number: number;
 }
 
@@ -36,6 +37,9 @@ export interface FirebaseSurah {
   audio_path: string;
   surah_number: number;
   image_path?: string;
+  name_en: string;
+  name_ar: string;
+  transliteration: string;
 }
 
 export interface Surah {

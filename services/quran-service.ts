@@ -14,7 +14,6 @@ import {
   serverTimestamp,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
-import { surahMetadata } from "../constants/surahMetadata";
 import {
   FirebaseReciter,
   FirebaseSurah,
@@ -117,9 +116,9 @@ const matchesSurahSearch = (surah: FirebaseSurah, search: string) => {
     return true;
   }
 
-  const metadata = surahMetadata.find((m) => m.number === surah.surah_number);
-  const englishName = normalizeSearchText(metadata?.englishName ?? "");
-  const arabicName = normalizeSearchText(metadata?.arabicName ?? "");
+  const englishName = normalizeSearchText(surah.name_en ?? "");
+  const transliteration = normalizeSearchText(surah.transliteration ?? "");
+  const arabicName = normalizeSearchText(surah.name_ar ?? "");
   const surahNumber = String(surah.surah_number ?? "");
   const paddedSurahNumber = surahNumber.padStart(3, "0");
 
@@ -127,6 +126,7 @@ const matchesSurahSearch = (surah: FirebaseSurah, search: string) => {
     englishName.includes(normalizedSearch) ||
     arabicName.includes(normalizedSearch) ||
     surahNumber.includes(normalizedSearch) ||
+    transliteration.includes(normalizedSearch) ||
     paddedSurahNumber.includes(normalizedSearch)
   );
 };
@@ -398,6 +398,9 @@ export async function fetchSurahs(
         audio_path: data.audio_path,
         surah_number: data.surah_number,
         image_path: imageUrl,
+        name_en: data.name_en,
+        name_ar: data.name_ar,
+        transliteration: data.transliteration,
       };
     }),
   );
@@ -409,7 +412,7 @@ export async function fetchSurahs(
 
   return {
     surahs,
-    nextCursor: nextCursor as any,
+    nextCursor,
   };
 }
 
@@ -427,8 +430,8 @@ export async function fetchFilteredSurahs(
     sourceType: "reciter",
   });
 
-  if (cursor?.surah_number) {
-    params.set("cursorId", cursor.surah_number.toString());
+  if (cursor?.id) {
+    params.set("cursorId", cursor.id);
   }
   if (cursor?.surah_number !== undefined) {
     params.set("cursorSurahNumber", String(cursor.surah_number));
