@@ -27,6 +27,7 @@ import {
   getDownloadURL,
 } from "@react-native-firebase/storage";
 import { getLocalPath } from "../services/download-service";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
 type RepeatMode = "sequential" | "shuffle" | "repeat-one";
@@ -159,6 +160,17 @@ export function AudioPlayerProvider({
         clearTimeout(isPlayingDebounceRef.current);
     };
   }, [isPlayingRaw]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      void activateKeepAwakeAsync();
+    } else {
+      deactivateKeepAwake();
+    }
+    return () => {
+      deactivateKeepAwake();
+    };
+  }, [isPlaying]);
 
   useTrackPlayerEvents([Event.PlaybackState], (event) => {
     if (event.state === State.Error) {
