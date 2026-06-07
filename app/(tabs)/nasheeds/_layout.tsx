@@ -12,11 +12,15 @@ import { useUserStore } from "../../../stores/userStore";
 
 export default function NasheedLayout() {
   const { currentTrack } = useAudioPlayer();
-  const { currentPlan } = useUserStore();
+  const { currentPlan, planResolved } = useUserStore();
   const prevTrackIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (currentPlan !== "free") return;
+    // Wait until RevenueCat has reported the real entitlement before treating
+    // the user as free. Otherwise a premium user is briefly seen as "free"
+    // during RC init / after a cold start, and locking the screen in that
+    // window would wrongly stop their background audio.
+    if (!planResolved || currentPlan !== "free") return;
 
     const subscription = AppState.addEventListener(
       "change",
@@ -27,7 +31,7 @@ export default function NasheedLayout() {
       },
     );
     return () => subscription.remove();
-  }, [currentPlan]);
+  }, [currentPlan, planResolved]);
 
   useEffect(() => {
     const currentId = currentTrack?.id ?? null;

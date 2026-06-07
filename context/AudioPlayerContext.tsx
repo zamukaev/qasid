@@ -185,12 +185,12 @@ export function AudioPlayerProvider({
   useTrackPlayerEvents([Event.RemoteDuck], async (event) => {
     console.info("TrackPlayer remote duck event", event);
 
-    if (event.permanent) {
-      await TrackPlayer.stop();
-      return;
-    }
-
-    if (event.paused) {
+    // NOTE: `autoHandleInterruptions: true` already pauses/resumes on
+    // interruptions, so this handler only needs to be non-destructive. Use
+    // pause() (never stop()) — stop() tears down the queue and hides the mini
+    // player, which previously made playback "disappear" on a permanent
+    // interruption. pause() keeps the track loaded so it can resume.
+    if (event.permanent || event.paused) {
       await TrackPlayer.pause();
       return;
     }

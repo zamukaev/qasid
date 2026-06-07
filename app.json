@@ -23,7 +23,8 @@
           "audio"
         ]
       },
-      "deploymentTarget": "16.0"
+      "deploymentTarget": "16.0",
+      "usesAppleSignIn": true
     },
     "android": {
       "versionCode": 1,
