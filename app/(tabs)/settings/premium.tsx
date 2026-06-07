@@ -217,17 +217,6 @@ export default function Premium() {
             transform: [{ translateX: slideAnim }],
           }}
         >
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.replace("/settings")}
-            className="pt-4 pb-1 flex-row items-center self-start"
-          >
-            <Ionicons name="chevron-back" size={22} color={GOLD} />
-            <Text className="text-qasid-gold text-base font-semibold">
-              Settings
-            </Text>
-          </TouchableOpacity>
-
           <View className="pt-6 pb-3">
             <Text className="text-qasid-white text-3xl font-bold leading-tight">
               Premium

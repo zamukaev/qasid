@@ -22,11 +22,10 @@ export default function NasheedLayout() {
       "change",
       async (nextState: AppStateStatus) => {
         if (nextState === "background" || nextState === "inactive") {
-          await TrackPlayer.pause();
+          await TrackPlayer.stop();
         }
-      }
+      },
     );
-
     return () => subscription.remove();
   }, [currentPlan]);
 
@@ -54,24 +53,27 @@ export default function NasheedLayout() {
 
   return (
     <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: "#090A07" },
-          headerTintColor: GOLD,
-          headerTitleStyle: {
-            fontWeight: "bold",
-          },
+      screenOptions={{
+        headerStyle: { backgroundColor: "#090A07" },
+        headerTintColor: GOLD,
+        headerTitleStyle: {
+          fontWeight: "bold",
+        },
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="all-artists" options={{ title: "All Artists" }} />
+      <Stack.Screen
+        name="artist/[id]"
+        options={{
+          title: "Artist",
+          headerBackTitle: "Nasheeds",
         }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="all-artists" options={{ title: "All Artists" }} />
-        <Stack.Screen
-          name="artist/[id]"
-          options={{ title: "Artist", headerBackTitle: "Artists" }}
-        />
-        <Stack.Screen
-          name="playlist/[id]"
-          options={{ title: "Playlist", headerBackTitle: "Playlists" }}
-        />
+      />
+      <Stack.Screen
+        name="playlist/[id]"
+        options={{ title: "Playlist", headerBackTitle: "Playlists" }}
+      />
     </Stack>
   );
 }
