@@ -71,6 +71,7 @@ type AudioPlayerContextValue = {
   prev: () => Promise<void>;
   progressMap: TrackProgressMap;
   clearProgress: (trackId: string) => Promise<void>;
+  clearPlayback: () => Promise<void>;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | undefined>(
@@ -575,6 +576,23 @@ export function AudioPlayerProvider({
     } catch {}
   }, []);
 
+  // ── clearPlayback ─────────────────────────────────────────────────────────
+  // Fully tears down playback: reset() stops audio, clears the RNTP queue and
+  // removes the native lock-screen / notification mini player (iOS Now Playing
+  // + Android media notification). React state is cleared too so the in-app
+  // NowPlayingBar (which renders only when currentTrack != null) disappears.
+  // Used by the free-tier nasheed background gate.
+  const clearPlayback = useCallback(async () => {
+    await TrackPlayer.reset();
+    currentTrackRef.current = null;
+    queueRef.current = [];
+    setCurrentTrack(null);
+    setQueueState([]);
+    setViewMode("hidden");
+    setPositionMillis(0);
+    setDurationMillis(0);
+  }, []);
+
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
       currentTrack,
@@ -598,6 +616,7 @@ export function AudioPlayerProvider({
       prev,
       progressMap,
       clearProgress,
+      clearPlayback,
     }),
     [
       currentTrack,
@@ -620,6 +639,7 @@ export function AudioPlayerProvider({
       prev,
       progressMap,
       clearProgress,
+      clearPlayback,
     ],
   );
 

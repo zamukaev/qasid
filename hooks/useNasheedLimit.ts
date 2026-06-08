@@ -20,7 +20,10 @@ function resetIfNewDay(): void {
   if (_date !== today()) {
     _count = 0;
     _date = today();
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ count: 0, date: _date }));
+    void AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ count: 0, date: _date }),
+    );
   }
 }
 
@@ -38,7 +41,10 @@ async function hydrate(): Promise<void> {
       } else {
         _count = 0;
         _date = today();
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ count: 0, date: _date }));
+        await AsyncStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ count: 0, date: _date }),
+        );
       }
     }
   } catch {}
@@ -62,7 +68,10 @@ export async function incrementNasheedCount(): Promise<void> {
   resetIfNewDay();
   _count++;
   _listeners.forEach((fn) => fn());
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ count: _count, date: _date }));
+  await AsyncStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ count: _count, date: _date }),
+  );
 }
 
 export function checkCanPlay(isPremium: boolean): boolean {

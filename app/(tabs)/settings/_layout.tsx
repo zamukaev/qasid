@@ -12,6 +12,7 @@ export default function SettingsLayout() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
+        headerBackButtonDisplayMode: "minimal",
       }}
     >
       <Stack.Screen

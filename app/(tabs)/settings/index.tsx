@@ -13,12 +13,25 @@ import Constants from "expo-constants";
 import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
 import { useUserStore } from "../../../stores/userStore";
+import TrackPlayer from "react-native-track-player";
 
 const PLAN_LABEL: Record<string, { name: string; description: string }> = {
-  free: { name: "Free Plan", description: "Basic access to Quran & limited features" },
-  monthly: { name: "Premium Monthly", description: "Full access, billed every month" },
-  yearly: { name: "Premium Yearly", description: "Full access, billed annually" },
-  family: { name: "Family Plan", description: "Full access for the whole family" },
+  free: {
+    name: "Free Plan",
+    description: "Basic access to Quran & limited features",
+  },
+  monthly: {
+    name: "Premium Monthly",
+    description: "Full access, billed every month",
+  },
+  yearly: {
+    name: "Premium Yearly",
+    description: "Full access, billed annually",
+  },
+  family: {
+    name: "Family Plan",
+    description: "Full access for the whole family",
+  },
 };
 
 export default function Settings() {
@@ -35,6 +48,7 @@ export default function Settings() {
         style: "destructive",
         onPress: async () => {
           try {
+            TrackPlayer.stop();
             await auth.signOut();
             clearUser();
             router.replace("/");
@@ -91,7 +105,11 @@ export default function Settings() {
             Account
           </Text>
 
-          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/(tabs)/settings/profile")} className="mb-3">
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push("/(tabs)/settings/profile")}
+            className="mb-3"
+          >
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-bg-2" />
               <LinearGradient
@@ -109,7 +127,10 @@ export default function Settings() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/(tabs)/settings/downloads")}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push("/(tabs)/settings/downloads")}
+          >
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-bg-2" />
               <LinearGradient
@@ -149,7 +170,8 @@ export default function Settings() {
             </View>
 
             <Text className="mt-3 text-sm text-white/50 leading-5">
-              {PLAN_LABEL[currentPlan]?.description ?? "Basic access to Quran & limited features"}
+              {PLAN_LABEL[currentPlan]?.description ??
+                "Basic access to Quran & limited features"}
             </Text>
 
             <TouchableOpacity
@@ -163,7 +185,9 @@ export default function Settings() {
 
                 <View className="px-4 py-4 items-center">
                   <Text className="text-qasid-gold text-base font-semibold">
-                    {currentPlan === "free" ? "Upgrade to Premium →" : "Manage Plan →"}
+                    {currentPlan === "free"
+                      ? "Upgrade to Premium →"
+                      : "Manage Plan →"}
                   </Text>
                 </View>
               </View>
