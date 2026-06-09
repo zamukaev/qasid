@@ -19,6 +19,7 @@ import TrackPlayer, {
   usePlaybackState,
   useTrackPlayerEvents,
 } from "react-native-track-player";
+import { AppState, AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp } from "@react-native-firebase/app";
 import {
@@ -134,7 +135,14 @@ export function AudioPlayerProvider({
   const lastPersistRef = useRef(0);
   const listenedMillisRef = useRef(0);
   const lastReportedPositionRef = useRef(0);
+  const latestDurationRef = useRef(0);
   const hasFinishedRef = useRef(false);
+
+  // Tracks foreground/background so we can stop the periodic AsyncStorage
+  // writes + high-frequency setState churn while the app is suspended. iOS can
+  // terminate a backgrounded app (0xdead10cc) if it holds a file lock across the
+  // suspension boundary — continuous progress persistence is exactly that risk.
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // RNTP reactive hooks
   const progress = useProgress(250);
@@ -255,21 +263,56 @@ export function AudioPlayerProvider({
   }, []);
 
   // ── Sync RNTP progress → state ───────────────────────────────────────────
+  // While backgrounded we keep RNTP playing natively but skip the React setState
+  // calls. This freezes the deps of the persistence effect below (so it stops
+  // writing to AsyncStorage every 2.5s) and removes the 4×/s render churn. The
+  // refs are still updated every tick so the final flush on background-entry and
+  // the foreground re-sync both have the latest position/duration.
   useEffect(() => {
     const posMs = Math.max(0, Math.floor(progress.position * 1000));
     const durMs = Math.max(0, Math.floor(progress.duration * 1000));
-    setPositionMillis(posMs);
-    setDurationMillis(durMs);
+    latestDurationRef.current = durMs;
+
+    const isActive = appStateRef.current === "active";
+    if (isActive) {
+      setPositionMillis(posMs);
+      setDurationMillis(durMs);
+    }
 
     if (isPlayingRaw) {
       const delta = posMs - lastReportedPositionRef.current;
       if (delta > 0) {
         listenedMillisRef.current += Math.min(delta, 2000);
-        setListenedMillis(listenedMillisRef.current);
+        if (isActive) setListenedMillis(listenedMillisRef.current);
       }
     }
     lastReportedPositionRef.current = posMs;
   }, [progress, isPlayingRaw]);
+
+  // ── Track AppState + flush progress once on background-entry ──────────────
+  // The periodic persistence below is foreground-only, so we save the current
+  // position exactly once when leaving the foreground. This is a single write at
+  // a safe moment (the "change" event fires before iOS suspends), not the
+  // continuous 2.5s write loop that risks a 0xdead10cc termination.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      const prev = appStateRef.current;
+      appStateRef.current = next;
+      if (prev === "active" && next !== "active") {
+        const track = currentTrackRef.current;
+        const pos = lastReportedPositionRef.current;
+        const dur = latestDurationRef.current;
+        if (!track || !dur || pos <= 0) return;
+        if (pos / dur >= 0.98) return;
+        setProgressMap((prevMap) => ({
+          ...prevMap,
+          [track.id]: { positionMillis: pos, durationMillis: dur },
+        }));
+        lastPersistRef.current = Date.now();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // ── Load / persist progress map ──────────────────────────────────────────
   useEffect(() => {
@@ -317,6 +360,9 @@ export function AudioPlayerProvider({
   // ── Persist playback position ────────────────────────────────────────────
   useEffect(() => {
     if (!currentTrack || !durationMillis) return;
+    // Foreground-only: in the background the final flush above already saved the
+    // position, and we must not keep writing to AsyncStorage across suspension.
+    if (appStateRef.current !== "active") return;
     const now = Date.now();
     const ratio = positionMillis / durationMillis;
 

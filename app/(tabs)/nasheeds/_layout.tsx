@@ -7,11 +7,12 @@ import {
   consumeManualPlayFlag,
   incrementNasheedCount,
 } from "../../../hooks/useNasheedLimit";
-import { useUserStore } from "../../../stores/userStore";
+import { useIsPremium, useUserStore } from "../../../stores/userStore";
 
 export default function NasheedLayout() {
   const { currentTrack, clearPlayback } = useAudioPlayer();
-  const { user, currentPlan, planResolved } = useUserStore();
+  const { planResolved } = useUserStore();
+  const isPremium = useIsPremium();
 
   const prevTrackIdRef = useRef<string | null>(null);
 
@@ -27,12 +28,7 @@ export default function NasheedLayout() {
     // the user as free. Otherwise a premium user is briefly seen as "free"
     // during RC init / after a cold start, and locking the screen in that
     // window would wrongly stop their background audio.
-    if (
-      !planResolved ||
-      currentPlan !== "free" ||
-      user?.email === "abu.safiia2016@gmail.com"
-    )
-      return;
+    if (!planResolved || isPremium) return;
 
     const subscription = AppState.addEventListener(
       "change",
@@ -40,10 +36,10 @@ export default function NasheedLayout() {
         // Only nasheeds are gated in the background. Tab layouts stay mounted
         // once visited, so without this guard the listener would also stop
         // Quran playback after the user has visited the nasheeds tab.
-        if (
-          (nextState === "background" || nextState === "inactive") &&
-          currentTrackRef.current?.isNasheed
-        ) {
+        // Only "background" — NOT "inactive". "inactive" also fires on transient
+        // states (Control Center, notification banner, incoming-call UI), which
+        // would wrongly destroy a free user's playback during those moments.
+        if (nextState === "background" && currentTrackRef.current?.isNasheed) {
           // reset() (inside clearPlayback) — not stop() — so the native
           // lock-screen mini player / now-playing widget is removed too.
           await clearPlayback();
@@ -51,7 +47,7 @@ export default function NasheedLayout() {
       },
     );
     return () => subscription.remove();
-  }, [currentPlan, planResolved, clearPlayback]);
+  }, [isPremium, planResolved, clearPlayback]);
 
   useEffect(() => {
     const currentId = currentTrack?.id ?? null;
@@ -70,10 +66,10 @@ export default function NasheedLayout() {
     if (consumeManualPlayFlag()) return;
 
     // Auto-advance: count the play (queue is pre-capped so limit can't be exceeded)
-    if (currentPlan === "free" && user?.email !== "abu.safiia2016@gmail.com") {
+    if (!isPremium) {
       void incrementNasheedCount();
     }
-  }, [currentTrack?.id, currentTrack?.isNasheed, currentPlan]);
+  }, [currentTrack?.id, currentTrack?.isNasheed, isPremium]);
 
   return (
     <Stack

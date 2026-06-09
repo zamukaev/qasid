@@ -86,3 +86,12 @@ export const useUserStore = create<UserState>((set) => ({
     set({ currentPlan: plan, planResolved: true });
   },
 }));
+
+// This email is treated as a premium user regardless of its subscription plan.
+export const PREMIUM_OVERRIDE_EMAIL = "abu.safiia2016@gmail.com";
+
+// Effective premium status: a real subscription OR the override email.
+export const useIsPremium = () =>
+  useUserStore(
+    (s) => s.currentPlan !== "free" || s.user?.email === PREMIUM_OVERRIDE_EMAIL,
+  );

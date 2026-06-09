@@ -79,14 +79,29 @@ target 'qasid' do
       end
     end
 
-    # Disable fmt consteval on all Apple clang versions — consteval is broken
-    # across multiple Xcode releases and the version-check threshold in fmt's
-    # base.h keeps being overtaken by new Xcode builds.
-    installer.pods_project.targets.each do |target|
-      next unless target.name == 'fmt'
-      target.build_configurations.each do |cfg|
-        cfg.build_settings['OTHER_CPLUSPLUSFLAGS'] =
-          '$(inherited) -DFMT_USE_CONSTEVAL=0'
+    # fmt 11.0.2 marks basic_format_string's constructor `consteval`, which the
+    # Apple clang in newer Xcode (iOS 26 SDK) rejects: "call to consteval
+    # function ... is not a constant expression".
+    #
+    # A `-DFMT_USE_CONSTEVAL=0` compiler flag does NOT work: fmt/base.h
+    # *unconditionally* (re)defines FMT_USE_CONSTEVAL from its own compiler
+    # detection (there is no #ifndef guard), so the flag is always overridden.
+    # The detection's Apple-clang exception is being skipped on this toolchain,
+    # landing on the `__cpp_consteval` branch (=1) and enabling consteval.
+    #
+    # The reliable fix is to force the detection's first branch to win, pinning
+    # FMT_USE_CONSTEVAL to 0 — exactly the non-consteval path fmt intends for
+    # Apple clang. Patch the header here (post_install runs after `pod install`
+    # lays the files down) so it also applies on EAS, which re-runs pod install.
+    fmt_base_h = installer.sandbox.root.join('fmt', 'include', 'fmt', 'base.h').to_s
+    if File.exist?(fmt_base_h)
+      src = File.read(fmt_base_h)
+      needle = '#if !defined(__cpp_lib_is_constant_evaluated)'
+      forced = '#if 1  // patched: force FMT_USE_CONSTEVAL=0 (consteval broken in Apple clang)'
+      if src.include?(needle) && !src.include?(forced)
+        # CocoaPods lays pod sources down read-only — make writable before patching.
+        File.chmod(0644, fmt_base_h)
+        File.write(fmt_base_h, src.sub(needle, forced))
       end
     end
   end

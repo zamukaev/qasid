@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useReducer } from "react";
 
 const STORAGE_KEY = "@qasid-nasheed-limit";
-const FREE_DAILY_LIMIT = 5;
+const FREE_DAILY_LIMIT = 6;
 
 // Module-level singleton so all hook instances and the layout guard share the same count.
 let _count = 0;
