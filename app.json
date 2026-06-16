@@ -48,7 +48,8 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-asset"
+      "expo-asset",
+      "./plugins/withFmtCxx17.js"
     ],
     "web": {
       "favicon": "./assets/favicon.png",
