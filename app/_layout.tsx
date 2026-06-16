@@ -22,10 +22,16 @@ configureReanimatedLogger({
 });
 
 export default function RootLayout() {
-  //const iosApiKey = process.env.EXPO_PUBLIC_IOS_API_KEY;
-  //const androidApiKey = process.env.EXPO_PUBLIC_ANDROID_API_KEY;
-  const iosApiKey = process.env.EXPO_PUBLIC_IOS_TEST_API_KEY;
-  const androidApiKey = process.env.EXPO_PUBLIC_ANDROID_TEST_API_KEY;
+  // RevenueCat aborts the app (fatalError in checkForSimulatedStoreAPIKeyInRelease)
+  // if a Test/Simulated-Store key (test_…) is used in a Release build. Select the
+  // key by build type so release/TestFlight ALWAYS uses the production appl_ key
+  // and never crashes — instead of manually toggling comments (the old footgun).
+  const iosApiKey = __DEV__
+    ? process.env.EXPO_PUBLIC_IOS_TEST_API_KEY
+    : process.env.EXPO_PUBLIC_IOS_API_KEY;
+  const androidApiKey = __DEV__
+    ? process.env.EXPO_PUBLIC_ANDROID_TEST_API_KEY
+    : process.env.EXPO_PUBLIC_ANDROID_API_KEY;
   useEffect(() => {
     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
 
