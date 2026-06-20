@@ -19,6 +19,7 @@ import TrackPlayer, {
   usePlaybackState,
   useTrackPlayerEvents,
 } from "react-native-track-player";
+import { AppState, AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp } from "@react-native-firebase/app";
 import {
@@ -27,6 +28,7 @@ import {
   getDownloadURL,
 } from "@react-native-firebase/storage";
 import { getLocalPath } from "../services/download-service";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
 type RepeatMode = "sequential" | "shuffle" | "repeat-one";
@@ -70,6 +72,7 @@ type AudioPlayerContextValue = {
   prev: () => Promise<void>;
   progressMap: TrackProgressMap;
   clearProgress: (trackId: string) => Promise<void>;
+  clearPlayback: () => Promise<void>;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | undefined>(
@@ -132,7 +135,14 @@ export function AudioPlayerProvider({
   const lastPersistRef = useRef(0);
   const listenedMillisRef = useRef(0);
   const lastReportedPositionRef = useRef(0);
+  const latestDurationRef = useRef(0);
   const hasFinishedRef = useRef(false);
+
+  // Tracks foreground/background so we can stop the periodic AsyncStorage
+  // writes + high-frequency setState churn while the app is suspended. iOS can
+  // terminate a backgrounded app (0xdead10cc) if it holds a file lock across the
+  // suspension boundary — continuous progress persistence is exactly that risk.
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // RNTP reactive hooks
   const progress = useProgress(250);
@@ -160,7 +170,21 @@ export function AudioPlayerProvider({
     };
   }, [isPlayingRaw]);
 
+  useEffect(() => {
+    if (isPlaying) {
+      void activateKeepAwakeAsync();
+    } else {
+      deactivateKeepAwake();
+    }
+    return () => {
+      deactivateKeepAwake();
+    };
+  }, [isPlaying]);
+
   useTrackPlayerEvents([Event.PlaybackState], (event) => {
+    console.info(
+      `[AUDIO] state=${event.state} appState=${appStateRef.current} @ ${new Date().toISOString()}`,
+    );
     if (event.state === State.Error) {
       console.warn("TrackPlayer playback error state", event.error);
     }
@@ -173,12 +197,12 @@ export function AudioPlayerProvider({
   useTrackPlayerEvents([Event.RemoteDuck], async (event) => {
     console.info("TrackPlayer remote duck event", event);
 
-    if (event.permanent) {
-      await TrackPlayer.stop();
-      return;
-    }
-
-    if (event.paused) {
+    // NOTE: `autoHandleInterruptions: true` already pauses/resumes on
+    // interruptions, so this handler only needs to be non-destructive. Use
+    // pause() (never stop()) — stop() tears down the queue and hides the mini
+    // player, which previously made playback "disappear" on a permanent
+    // interruption. pause() keeps the track loaded so it can resume.
+    if (event.permanent || event.paused) {
       await TrackPlayer.pause();
       return;
     }
@@ -206,8 +230,11 @@ export function AudioPlayerProvider({
           playBuffer: 2.5, // Buffer needed to resume after buffering (seconds)
           backBuffer: 10, // Buffer behind current position (seconds)
         });
-      } catch {
-        // already initialized — continue to updateOptions
+        console.info("[AUDIO] setupPlayer OK — iosCategory=Playback applied");
+      } catch (e) {
+        // Could be "already initialized" (harmless) OR a real config failure
+        // that leaves the default audio category → background gets suspended.
+        console.warn("[AUDIO] setupPlayer threw:", e);
       }
 
       if (!mounted) return;
@@ -242,21 +269,56 @@ export function AudioPlayerProvider({
   }, []);
 
   // ── Sync RNTP progress → state ───────────────────────────────────────────
+  // While backgrounded we keep RNTP playing natively but skip the React setState
+  // calls. This freezes the deps of the persistence effect below (so it stops
+  // writing to AsyncStorage every 2.5s) and removes the 4×/s render churn. The
+  // refs are still updated every tick so the final flush on background-entry and
+  // the foreground re-sync both have the latest position/duration.
   useEffect(() => {
     const posMs = Math.max(0, Math.floor(progress.position * 1000));
     const durMs = Math.max(0, Math.floor(progress.duration * 1000));
-    setPositionMillis(posMs);
-    setDurationMillis(durMs);
+    latestDurationRef.current = durMs;
+
+    const isActive = appStateRef.current === "active";
+    if (isActive) {
+      setPositionMillis(posMs);
+      setDurationMillis(durMs);
+    }
 
     if (isPlayingRaw) {
       const delta = posMs - lastReportedPositionRef.current;
       if (delta > 0) {
         listenedMillisRef.current += Math.min(delta, 2000);
-        setListenedMillis(listenedMillisRef.current);
+        if (isActive) setListenedMillis(listenedMillisRef.current);
       }
     }
     lastReportedPositionRef.current = posMs;
   }, [progress, isPlayingRaw]);
+
+  // ── Track AppState + flush progress once on background-entry ──────────────
+  // The periodic persistence below is foreground-only, so we save the current
+  // position exactly once when leaving the foreground. This is a single write at
+  // a safe moment (the "change" event fires before iOS suspends), not the
+  // continuous 2.5s write loop that risks a 0xdead10cc termination.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      const prev = appStateRef.current;
+      appStateRef.current = next;
+      if (prev === "active" && next !== "active") {
+        const track = currentTrackRef.current;
+        const pos = lastReportedPositionRef.current;
+        const dur = latestDurationRef.current;
+        if (!track || !dur || pos <= 0) return;
+        if (pos / dur >= 0.98) return;
+        setProgressMap((prevMap) => ({
+          ...prevMap,
+          [track.id]: { positionMillis: pos, durationMillis: dur },
+        }));
+        lastPersistRef.current = Date.now();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // ── Load / persist progress map ──────────────────────────────────────────
   useEffect(() => {
@@ -304,6 +366,9 @@ export function AudioPlayerProvider({
   // ── Persist playback position ────────────────────────────────────────────
   useEffect(() => {
     if (!currentTrack || !durationMillis) return;
+    // Foreground-only: in the background the final flush above already saved the
+    // position, and we must not keep writing to AsyncStorage across suspension.
+    if (appStateRef.current !== "active") return;
     const now = Date.now();
     const ratio = positionMillis / durationMillis;
 
@@ -563,6 +628,23 @@ export function AudioPlayerProvider({
     } catch {}
   }, []);
 
+  // ── clearPlayback ─────────────────────────────────────────────────────────
+  // Fully tears down playback: reset() stops audio, clears the RNTP queue and
+  // removes the native lock-screen / notification mini player (iOS Now Playing
+  // + Android media notification). React state is cleared too so the in-app
+  // NowPlayingBar (which renders only when currentTrack != null) disappears.
+  // Used by the free-tier nasheed background gate.
+  const clearPlayback = useCallback(async () => {
+    await TrackPlayer.reset();
+    currentTrackRef.current = null;
+    queueRef.current = [];
+    setCurrentTrack(null);
+    setQueueState([]);
+    setViewMode("hidden");
+    setPositionMillis(0);
+    setDurationMillis(0);
+  }, []);
+
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
       currentTrack,
@@ -586,6 +668,7 @@ export function AudioPlayerProvider({
       prev,
       progressMap,
       clearProgress,
+      clearPlayback,
     }),
     [
       currentTrack,
@@ -608,6 +691,7 @@ export function AudioPlayerProvider({
       prev,
       progressMap,
       clearProgress,
+      clearPlayback,
     ],
   );
 

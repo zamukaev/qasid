@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { useSegments } from "expo-router";
 import { useUserStore } from "../stores/userStore";
 import * as RevenueCatService from "../services/revenuecat";
+
 import "../global.css";
 
 export default function Welcome() {

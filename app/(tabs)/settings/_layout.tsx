@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { GOLD } from "../../../constants/colors";
+import { title } from "process";
 
 export default function SettingsLayout() {
   return (
@@ -11,42 +12,41 @@ export default function SettingsLayout() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
+        headerBackButtonDisplayMode: "minimal",
       }}
     >
       <Stack.Screen
         name="index"
         options={{
           headerShown: false,
+          title: "Settings",
         }}
       />
       <Stack.Screen
         name="profile"
         options={{
           title: "Profile Settings",
-          headerBackTitle: "Settings",
         }}
       />
       <Stack.Screen
         name="contact-support"
         options={{
           title: "Contact & Support",
-          headerBackTitle: "Settings",
         }}
       />
       <Stack.Screen
         name="terms-privacy"
         options={{
           title: "Terms & Privacy",
-          headerBackTitle: "Settings",
         }}
       />
       <Stack.Screen
         name="downloads"
         options={{
           title: "Downloads",
-          headerBackTitle: "Settings",
         }}
       />
+      <Stack.Screen name="premium" options={{ title: "Premium" }} />
     </Stack>
   );
 }

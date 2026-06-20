@@ -44,7 +44,7 @@ import {
 } from "../../../../services/nasheeds-service";
 import { addRecentArtist } from "../../../../services/recents-service";
 import { markManualPlay, useNasheedLimit } from "../../../../hooks/useNasheedLimit";
-import { useUserStore } from "../../../../stores/userStore";
+import { useIsPremium } from "../../../../stores/userStore";
 
 interface NasheedItem {
   id: string;
@@ -65,7 +65,7 @@ export default function ArtistScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const navigation = useNavigation();
 
-  const { currentPlan } = useUserStore();
+  const isPremium = useIsPremium();
   const { canPlay, increment, playsLeft } = useNasheedLimit();
   const [gateVisible, setGateVisible] = useState(false);
 
@@ -224,7 +224,7 @@ export default function ArtistScreen() {
       return;
     }
 
-    if (!canPlay(currentPlan !== "free")) {
+    if (!canPlay(isPremium)) {
       setGateVisible(true);
       return;
     }
@@ -243,13 +243,12 @@ export default function ArtistScreen() {
     // A newer tap arrived while we were resolving — discard this stale request.
     if (playId !== pendingPlayIdRef.current) return;
 
-    await increment();
+    if (!isPremium) await increment();
 
     const artworkUri = artist.image_path?.startsWith("http")
       ? artist.image_path
       : PlaceholderAvatar;
 
-    const isPremium = currentPlan !== "free";
     const allQueueTracks = nasheeds
       .filter((item) => !!item.audioUrl)
       .map((item) => ({

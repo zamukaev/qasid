@@ -10,6 +10,7 @@ export default function QuranLayout() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
+        headerBackButtonDisplayMode: "minimal",
       }}
     >
       <Stack.Screen
@@ -22,14 +23,12 @@ export default function QuranLayout() {
         name="all-reciters"
         options={{
           title: "All Reciters",
-          headerBackTitle: "Quran",
         }}
       />
       <Stack.Screen
         name="reciter/[id]"
         options={{
           title: "Reciter",
-          headerBackTitle: "Reciters",
         }}
       />
     </Stack>

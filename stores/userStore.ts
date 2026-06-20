@@ -16,6 +16,14 @@ interface UserState {
   isLoading: boolean;
   isAuthenticated: boolean;
   currentPlan: SubscriptionPlan;
+  /**
+   * False until RevenueCat has reported the real entitlement. `currentPlan`
+   * defaults to "free", so consumers that enforce free-tier restrictions
+   * (e.g. stopping background audio) must wait for this to be true before
+   * treating a user as free — otherwise a premium user is briefly mistreated
+   * during RC init / after a cold start.
+   */
+  planResolved: boolean;
   setUser: (firebaseUser: FirebaseAuthTypes.User | null) => void;
   updateUser: (updates: Partial<User>) => void;
   clearUser: () => void;
@@ -42,6 +50,7 @@ export const useUserStore = create<UserState>((set) => ({
   isLoading: true,
   isAuthenticated: false,
   currentPlan: "free",
+  planResolved: false,
 
   setUser: (firebaseUser) => {
     const user = mapFirebaseUser(firebaseUser);
@@ -63,6 +72,7 @@ export const useUserStore = create<UserState>((set) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      planResolved: false,
     });
   },
 
@@ -71,6 +81,17 @@ export const useUserStore = create<UserState>((set) => ({
   },
 
   setCurrentPlan: (plan) => {
-    set({ currentPlan: plan });
+    // Only RevenueCat sync paths call this, so reaching here means the real
+    // entitlement is now known.
+    set({ currentPlan: plan, planResolved: true });
   },
 }));
+
+// This email is treated as a premium user regardless of its subscription plan.
+export const PREMIUM_OVERRIDE_EMAIL = "abu.safiia2016@gmail.com";
+
+// Effective premium status: a real subscription OR the override email.
+export const useIsPremium = () =>
+  useUserStore(
+    (s) => s.currentPlan !== "free" || s.user?.email === PREMIUM_OVERRIDE_EMAIL,
+  );

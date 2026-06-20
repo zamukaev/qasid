@@ -49,7 +49,7 @@ const featureComparison: {
   premium: boolean;
 }[] = [
   { label: "Unlimited quran listening", free: true, premium: true },
-  { label: "Background playback", free: true, premium: true },
+  { label: "Background playback", free: false, premium: true },
   { label: "Unlimited nasheeds listening", free: false, premium: true },
   { label: "Offline mode", free: false, premium: true },
 ];
@@ -167,10 +167,13 @@ export default function Premium() {
     try {
       await purchasePackage(pkg);
     } catch (error: any) {
-      if (!error?.userCancelled && error?.code !== PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+      if (
+        !error?.userCancelled &&
+        error?.code !== PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
+      ) {
         Alert.alert(
           "Purchase Failed",
-          error?.message ?? "Something went wrong. Please try again."
+          error?.message ?? "Something went wrong. Please try again.",
         );
       }
     } finally {
@@ -186,7 +189,7 @@ export default function Premium() {
     } catch (error: any) {
       Alert.alert(
         "Restore Failed",
-        error?.message ?? "Could not restore purchases. Please try again."
+        error?.message ?? "Could not restore purchases. Please try again.",
       );
     } finally {
       setIsPurchasing(false);
@@ -214,17 +217,6 @@ export default function Premium() {
             transform: [{ translateX: slideAnim }],
           }}
         >
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.replace("/settings")}
-            className="pt-4 pb-1 flex-row items-center self-start"
-          >
-            <Ionicons name="chevron-back" size={22} color={GOLD} />
-            <Text className="text-qasid-gold text-base font-semibold">
-              Settings
-            </Text>
-          </TouchableOpacity>
-
           <View className="pt-6 pb-3">
             <Text className="text-qasid-white text-3xl font-bold leading-tight">
               Premium

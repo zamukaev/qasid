@@ -18,8 +18,6 @@ import {
 } from "@react-native-firebase/storage";
 import { BeautifulRecitation, FeaturedItem } from "../types/featured";
 import { FirebaseSurah, ResponseSurah, SurahCursor } from "../types/quran";
-import { surahMetadata } from "../constants/surahMetadata";
-
 const FIREBASE_PROJECT_ID = "qasid-fd80d";
 const SEARCH_SURAHS_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunctions.net/searchSurahs`;
 const SEARCH_BATCH_SIZE = 50;
@@ -34,9 +32,8 @@ const matchesSurahSearch = (surah: FirebaseSurah, search: string) => {
     return true;
   }
 
-  const metadata = surahMetadata.find((m) => m.number === surah.surah_number);
-  const englishName = normalizeSearchText(metadata?.englishName ?? "");
-  const arabicName = normalizeSearchText(metadata?.arabicName ?? "");
+  const englishName = normalizeSearchText((surah as any).englishName ?? (surah as any).title_en ?? "");
+  const arabicName = normalizeSearchText((surah as any).arabicName ?? (surah as any).title_ar ?? "");
   const surahNumber = String(surah.surah_number ?? "");
   const paddedSurahNumber = surahNumber.padStart(3, "0");
 
@@ -191,6 +188,9 @@ export async function fetchFeaturedSurahs(
         audio_path: data.audio_path,
         surah_number: data.surah_number,
         image_path: imageUrl,
+        englishName: data.englishName,
+        arabicName: data.arabicName,
+        transliteration: data.transliteration,
       };
     }),
   );

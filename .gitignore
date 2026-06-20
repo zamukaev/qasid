@@ -38,5 +38,5 @@ yarn-error.*
 *.tsbuildinfo
 
 # seed scripts — service account key must never be committed
-scripts/serviceAccountKey.json
+scripts/
 .tmp-scripts/

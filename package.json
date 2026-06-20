@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "seed:artists": "ts-node --project scripts/tsconfig.json scripts/seed-nasheed-artists.ts",
     "seed:nasheeds": "ts-node --project scripts/tsconfig.json scripts/seed-nasheeds.ts",
+    "seed:reciters": "ts-node --project scripts/tsconfig.json scripts/seed-reciters.ts",
     "version": "node scripts/bump-version.js && git add app.json",
     "postversion": "git push && git push --tags"
   },
@@ -31,6 +32,7 @@
     "expo-constants": "~17.1.7",
     "expo-file-system": "~18.1.11",
     "expo-image-picker": "~16.1.4",
+    "expo-keep-awake": "~14.1.4",
     "expo-linear-gradient": "^15.0.7",
     "expo-linking": "~7.1.7",
     "expo-router": "~5.1.4",
