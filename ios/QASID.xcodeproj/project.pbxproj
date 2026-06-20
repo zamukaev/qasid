@@ -8,30 +8,30 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		18B2DCF5CD0FBAD749DCE506 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DCFE9DFC8906A93DDC5A8E /* ExpoModulesProvider.swift */; };
+		1C0DDCC531D64F0FA804E59F /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 59C6576AD36B442F9E9F7817 /* GoogleService-Info.plist */; };
+		1D9CDC206A2EE205FDBC71CA /* Pods_QASID.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C43E331A136E8696F6159195 /* Pods_QASID.framework */; };
+		1F1BAEE8D843482C418DC7AC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AF0CBEAAEEB175FFCBCEE1C0 /* PrivacyInfo.xcprivacy */; };
+		233C4294F3A29EA42B058473 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D724292B549D06E62E2C241 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		6D86A5CEC43CAA554397611E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 374029B52AC664CE79A93F9D /* PrivacyInfo.xcprivacy */; };
-		8DABA1C7E98746DDB77439FA /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7A3D49730E574977AA01BD71 /* GoogleService-Info.plist */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		FEE8AA54ECD1008DE6D9EFD8 /* Pods_qasid.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37FB32754223044BFF2589CA /* Pods_qasid.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* qasid.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = qasid.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = qasid/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = qasid/Info.plist; sourceTree = "<group>"; };
-		366589A0C45E333AEAFA26A4 /* Pods-qasid.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-qasid.release.xcconfig"; path = "Target Support Files/Pods-qasid/Pods-qasid.release.xcconfig"; sourceTree = "<group>"; };
-		374029B52AC664CE79A93F9D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = qasid/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		37FB32754223044BFF2589CA /* Pods_qasid.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_qasid.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		63DCFE9DFC8906A93DDC5A8E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-qasid/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		7A3D49730E574977AA01BD71 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "qasid/GoogleService-Info.plist"; sourceTree = "<group>"; };
-		9EA714FC41FA273FF0ACF619 /* Pods-qasid.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-qasid.debug.xcconfig"; path = "Target Support Files/Pods-qasid/Pods-qasid.debug.xcconfig"; sourceTree = "<group>"; };
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = qasid/SplashScreen.storyboard; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* QASID.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QASID.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = QASID/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = QASID/Info.plist; sourceTree = "<group>"; };
+		3FD7BE68767BB1945BCD8B3E /* Pods-QASID.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-QASID.release.xcconfig"; path = "Target Support Files/Pods-QASID/Pods-QASID.release.xcconfig"; sourceTree = "<group>"; };
+		59C6576AD36B442F9E9F7817 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "QASID/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		8D724292B549D06E62E2C241 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-QASID/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = QASID/SplashScreen.storyboard; sourceTree = "<group>"; };
+		AF0CBEAAEEB175FFCBCEE1C0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = QASID/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		C43E331A136E8696F6159195 /* Pods_QASID.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_QASID.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = qasid/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748442D0722820044C1D9 /* qasid-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "qasid-Bridging-Header.h"; path = "qasid/qasid-Bridging-Header.h"; sourceTree = "<group>"; };
+		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = QASID/AppDelegate.swift; sourceTree = "<group>"; };
+		F11748442D0722820044C1D9 /* QASID-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "QASID-Bridging-Header.h"; path = "QASID/QASID-Bridging-Header.h"; sourceTree = "<group>"; };
+		FF282685C6901D27B38ABCB2 /* Pods-QASID.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-QASID.debug.xcconfig"; path = "Target Support Files/Pods-QASID/Pods-QASID.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,43 +39,53 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FEE8AA54ECD1008DE6D9EFD8 /* Pods_qasid.framework in Frameworks */,
+				1D9CDC206A2EE205FDBC71CA /* Pods_QASID.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* qasid */ = {
+		0DBDADC823A3CFCE58339A3D /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				FF282685C6901D27B38ABCB2 /* Pods-QASID.debug.xcconfig */,
+				3FD7BE68767BB1945BCD8B3E /* Pods-QASID.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		13B07FAE1A68108700A75B9A /* QASID */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
-				F11748442D0722820044C1D9 /* qasid-Bridging-Header.h */,
+				F11748442D0722820044C1D9 /* QASID-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				7A3D49730E574977AA01BD71 /* GoogleService-Info.plist */,
-				374029B52AC664CE79A93F9D /* PrivacyInfo.xcprivacy */,
+				59C6576AD36B442F9E9F7817 /* GoogleService-Info.plist */,
+				AF0CBEAAEEB175FFCBCEE1C0 /* PrivacyInfo.xcprivacy */,
 			);
-			name = qasid;
+			name = QASID;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				37FB32754223044BFF2589CA /* Pods_qasid.framework */,
+				C43E331A136E8696F6159195 /* Pods_QASID.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		47A614C35CAD741DE181BA32 /* qasid */ = {
+		2FBCD5AF2B2BB63003DF3F24 /* QASID */ = {
 			isa = PBXGroup;
 			children = (
-				63DCFE9DFC8906A93DDC5A8E /* ExpoModulesProvider.swift */,
+				8D724292B549D06E62E2C241 /* ExpoModulesProvider.swift */,
 			);
-			name = qasid;
+			name = QASID;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -88,12 +98,12 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* qasid */,
+				13B07FAE1A68108700A75B9A /* QASID */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				E61C437CE8CE96B502A8F613 /* Pods */,
-				BA6FCD64F217AEE053C62AE1 /* ExpoModulesProviders */,
+				0DBDADC823A3CFCE58339A3D /* Pods */,
+				EB0CE5E5CFE592561326438D /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -103,17 +113,9 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* qasid.app */,
+				13B07F961A680F5B00A75B9A /* QASID.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		BA6FCD64F217AEE053C62AE1 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				47A614C35CAD741DE181BA32 /* qasid */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -122,43 +124,41 @@
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
 			);
 			name = Supporting;
-			path = qasid/Supporting;
+			path = QASID/Supporting;
 			sourceTree = "<group>";
 		};
-		E61C437CE8CE96B502A8F613 /* Pods */ = {
+		EB0CE5E5CFE592561326438D /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				9EA714FC41FA273FF0ACF619 /* Pods-qasid.debug.xcconfig */,
-				366589A0C45E333AEAFA26A4 /* Pods-qasid.release.xcconfig */,
+				2FBCD5AF2B2BB63003DF3F24 /* QASID */,
 			);
-			name = Pods;
-			path = Pods;
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* qasid */ = {
+		13B07F861A680F5B00A75B9A /* QASID */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "qasid" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "QASID" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				5B74FC520EBD1896E3F265A8 /* [Expo] Configure project */,
+				5D58D63D6A2AB6F8C8DAF8C6 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				F358D04B67AFBA33F8DAE65F /* [CP-User] [RNFB] Core Configuration */,
-				2EED2489B4AFDFDDD2917F48 /* [CP] Embed Pods Frameworks */,
+				6F7B074AB400F9CEC408AC97 /* [CP] Embed Pods Frameworks */,
+				8F686CC6122D5FEDA81D2027 /* [CP-User] [RNFB] Core Configuration */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = qasid;
-			productName = qasid;
-			productReference = 13B07F961A680F5B00A75B9A /* qasid.app */;
+			name = QASID;
+			productName = QASID;
+			productReference = 13B07F961A680F5B00A75B9A /* QASID.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -176,7 +176,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "qasid" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "QASID" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -189,7 +189,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* qasid */,
+				13B07F861A680F5B00A75B9A /* QASID */,
 			);
 		};
 /* End PBXProject section */
@@ -202,8 +202,8 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				8DABA1C7E98746DDB77439FA /* GoogleService-Info.plist in Resources */,
-				6D86A5CEC43CAA554397611E /* PrivacyInfo.xcprivacy in Resources */,
+				1C0DDCC531D64F0FA804E59F /* GoogleService-Info.plist in Resources */,
+				1F1BAEE8D843482C418DC7AC /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,32 +240,14 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-qasid-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-QASID-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		2EED2489B4AFDFDDD2917F48 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-qasid/Pods-qasid-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-qasid/Pods-qasid-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		5B74FC520EBD1896E3F265A8 /* [Expo] Configure project */ = {
+		5D58D63D6A2AB6F8C8DAF8C6 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -282,7 +264,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-qasid/expo-configure-project.sh\"\n";
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-QASID/expo-configure-project.sh\"\n";
+		};
+		6F7B074AB400F9CEC408AC97 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-QASID/Pods-QASID-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-QASID/Pods-QASID-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -290,7 +290,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-qasid/Pods-qasid-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-QASID/Pods-QASID-resources.sh",
 				"${PODS_CONFIGURATION_BUILD_DIR}/AppAuth/AppAuthCore_Privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/BoringSSL-GRPC/openssl_grpc.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
@@ -361,10 +361,10 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-qasid/Pods-qasid-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-QASID/Pods-QASID-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		F358D04B67AFBA33F8DAE65F /* [CP-User] [RNFB] Core Configuration */ = {
+		8F686CC6122D5FEDA81D2027 /* [CP-User] [RNFB] Core Configuration */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -385,7 +385,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				18B2DCF5CD0FBAD749DCE506 /* ExpoModulesProvider.swift in Sources */,
+				233C4294F3A29EA42B058473 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -394,11 +394,11 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9EA714FC41FA273FF0ACF619 /* Pods-qasid.debug.xcconfig */;
+			baseConfigurationReference = FF282685C6901D27B38ABCB2 /* Pods-QASID.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = qasid/qasid.entitlements;
+				CODE_SIGN_ENTITLEMENTS = QASID/QASID.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -408,7 +408,7 @@
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
-				INFOPLIST_FILE = qasid/Info.plist;
+				INFOPLIST_FILE = QASID/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -422,8 +422,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.abusafiia.qasid.dev;
-				PRODUCT_NAME = qasid;
-				SWIFT_OBJC_BRIDGING_HEADER = "qasid/qasid-Bridging-Header.h";
+				PRODUCT_NAME = QASID;
+				SWIFT_OBJC_BRIDGING_HEADER = "QASID/QASID-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -433,16 +433,16 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 366589A0C45E333AEAFA26A4 /* Pods-qasid.release.xcconfig */;
+			baseConfigurationReference = 3FD7BE68767BB1945BCD8B3E /* Pods-QASID.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = qasid/qasid.entitlements;
+				CODE_SIGN_ENTITLEMENTS = QASID/QASID.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6Z569RUVAA;
-				INFOPLIST_FILE = qasid/Info.plist;
+				INFOPLIST_FILE = QASID/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -456,8 +456,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.abusafiia.qasid.dev;
-				PRODUCT_NAME = qasid;
-				SWIFT_OBJC_BRIDGING_HEADER = "qasid/qasid-Bridging-Header.h";
+				PRODUCT_NAME = QASID;
+				SWIFT_OBJC_BRIDGING_HEADER = "QASID/QASID-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -613,7 +613,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "qasid" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "QASID" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -622,7 +622,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "qasid" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "QASID" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,

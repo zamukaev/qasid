@@ -6,7 +6,6 @@ podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties
 
 ENV['RCT_NEW_ARCH_ENABLED'] = '0' if podfile_properties['newArchEnabled'] == 'false'
 ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] = podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
-ENV['USE_FRAMEWORKS'] = podfile_properties['ios.useFrameworks'] if podfile_properties['ios.useFrameworks']
 
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 install! 'cocoapods',
@@ -14,7 +13,7 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-target 'qasid' do
+target 'QASID' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -51,20 +50,14 @@ target 'qasid' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Fix for 'jsinspector-modern/ReactCdp.h' not found with use_frameworks! :static
-    if ENV['USE_FRAMEWORKS']
-      jsinspector_path = '"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspector/jsinspector_modern.framework/Headers"'
-      installer.pods_project.targets.each do |target|
-        target.build_configurations.each do |config|
-          paths = config.build_settings['HEADER_SEARCH_PATHS']
-          if paths.is_a?(Array)
-            paths << jsinspector_path unless paths.include?(jsinspector_path)
-          elsif paths.is_a?(String)
-            config.build_settings['HEADER_SEARCH_PATHS'] = paths + ' ' + jsinspector_path unless paths.include?(jsinspector_path)
-          else
-            config.build_settings['HEADER_SEARCH_PATHS'] = ['$(inherited)', jsinspector_path]
-          end
-        end
+    # fmt C++17 fix (Xcode 26.4 consteval) — MUST run AFTER react_native_post_install,
+    # which under the New Architecture forces CLANG_CXX_LANGUAGE_STANDARD = c++20 on
+    # every pod target (set_clang_cxx_language_standard_if_needed). Re-pin only fmt to
+    # c++17 so its consteval format-string path is skipped.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
       end
     end
 
@@ -76,32 +69,6 @@ target 'qasid' do
         resource_bundle_target.build_configurations.each do |config|
           config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
         end
-      end
-    end
-
-    # fmt 11.0.2 marks basic_format_string's constructor `consteval`, which the
-    # Apple clang in newer Xcode (iOS 26 SDK) rejects: "call to consteval
-    # function ... is not a constant expression".
-    #
-    # A `-DFMT_USE_CONSTEVAL=0` compiler flag does NOT work: fmt/base.h
-    # *unconditionally* (re)defines FMT_USE_CONSTEVAL from its own compiler
-    # detection (there is no #ifndef guard), so the flag is always overridden.
-    # The detection's Apple-clang exception is being skipped on this toolchain,
-    # landing on the `__cpp_consteval` branch (=1) and enabling consteval.
-    #
-    # The reliable fix is to force the detection's first branch to win, pinning
-    # FMT_USE_CONSTEVAL to 0 — exactly the non-consteval path fmt intends for
-    # Apple clang. Patch the header here (post_install runs after `pod install`
-    # lays the files down) so it also applies on EAS, which re-runs pod install.
-    fmt_base_h = installer.sandbox.root.join('fmt', 'include', 'fmt', 'base.h').to_s
-    if File.exist?(fmt_base_h)
-      src = File.read(fmt_base_h)
-      needle = '#if !defined(__cpp_lib_is_constant_evaluated)'
-      forced = '#if 1  // patched: force FMT_USE_CONSTEVAL=0 (consteval broken in Apple clang)'
-      if src.include?(needle) && !src.include?(forced)
-        # CocoaPods lays pod sources down read-only — make writable before patching.
-        File.chmod(0644, fmt_base_h)
-        File.write(fmt_base_h, src.sub(needle, forced))
       end
     end
   end

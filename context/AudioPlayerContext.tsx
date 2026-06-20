@@ -182,6 +182,9 @@ export function AudioPlayerProvider({
   }, [isPlaying]);
 
   useTrackPlayerEvents([Event.PlaybackState], (event) => {
+    console.info(
+      `[AUDIO] state=${event.state} appState=${appStateRef.current} @ ${new Date().toISOString()}`,
+    );
     if (event.state === State.Error) {
       console.warn("TrackPlayer playback error state", event.error);
     }
@@ -227,8 +230,11 @@ export function AudioPlayerProvider({
           playBuffer: 2.5, // Buffer needed to resume after buffering (seconds)
           backBuffer: 10, // Buffer behind current position (seconds)
         });
-      } catch {
-        // already initialized — continue to updateOptions
+        console.info("[AUDIO] setupPlayer OK — iosCategory=Playback applied");
+      } catch (e) {
+        // Could be "already initialized" (harmless) OR a real config failure
+        // that leaves the default audio category → background gets suspended.
+        console.warn("[AUDIO] setupPlayer threw:", e);
       }
 
       if (!mounted) return;
