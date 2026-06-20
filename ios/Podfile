@@ -50,6 +50,17 @@ target 'QASID' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
+    # fmt C++17 fix (Xcode 26.4 consteval) — MUST run AFTER react_native_post_install,
+    # which under the New Architecture forces CLANG_CXX_LANGUAGE_STANDARD = c++20 on
+    # every pod target (set_clang_cxx_language_standard_if_needed). Re-pin only fmt to
+    # c++17 so its consteval format-string path is skipped.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
+
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results
@@ -58,18 +69,6 @@ target 'QASID' do
         resource_bundle_target.build_configurations.each do |config|
           config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
         end
-      end
-    end
-
-    # Xcode 26.4 (Apple Clang 21) rejects fmt 11.0.2's consteval format-string
-    # checks ("call to consteval function ... is not a constant expression").
-    # Compile only the fmt pod as C++17 so the consteval (C++20) path is skipped
-    # and fmt falls back to runtime format validation. Drop this once React
-    # Native ships a newer fmt that builds cleanly under the latest Xcode.
-    installer.pods_project.targets.each do |target|
-      next unless target.name == 'fmt'
-      target.build_configurations.each do |config|
-        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
       end
     end
   end
