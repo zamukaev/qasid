@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { SafeAreaView, ScrollView } from "react-native";
+import { Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
   ShowError,
@@ -7,7 +8,12 @@ import {
   BrowseAllArtistsPreview,
   ContinueListeningBlock,
 } from "../../../components";
-import { NasheedArtist, Playlist } from "../../../types/nasheed";
+import { GOLD } from "../../../constants/colors";
+import {
+  GeneratedPlaylist,
+  NasheedArtist,
+  Playlist,
+} from "../../../types/nasheed";
 import {
   fetchNasheedArtists,
   fetchPopularArtists,
@@ -15,6 +21,19 @@ import {
 } from "../../../services/nasheeds-service";
 import { fetchRecentArtists } from "../../../services/recents-service";
 import { fetchPlaylists } from "../../../services/playlists-service";
+import { fetchGeneratedPlaylists } from "../../../services/recommendations-service";
+
+// Generated playlists carry a `key` (not `id`); ArtistRailSection only reads
+// id/name_en/image_path, so a light projection is enough.
+const toRailItem = (p: GeneratedPlaylist): Playlist =>
+  ({
+    id: p.key,
+    name_en: p.name_en,
+    name_ar: p.name_ar,
+    desc: p.desc,
+    image_path: p.image_path,
+    is_active: p.is_active,
+  }) as unknown as Playlist;
 
 export default function Nasheeds() {
   const router = useRouter();
@@ -23,6 +42,8 @@ export default function Nasheeds() {
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
   const [recentArtists, setRecentArtists] = useState<NasheedArtist[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [generated, setGenerated] = useState<GeneratedPlaylist[]>([]);
+  const [isLoadingGenerated, setIsLoadingGenerated] = useState(true);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(true);
   const [isLoadingMain, setIsLoadingMain] = useState(true);
   const [isLoadingNew, setIsLoadingNew] = useState(true);
@@ -69,6 +90,18 @@ export default function Nasheeds() {
     }
   }, []);
 
+  const loadGenerated = useCallback(async () => {
+    setIsLoadingGenerated(true);
+    try {
+      const data = await fetchGeneratedPlaylists();
+      setGenerated(data);
+    } catch (error) {
+      console.error("Error loading generated playlists:", error);
+    } finally {
+      setIsLoadingGenerated(false);
+    }
+  }, []);
+
   const loadRecents = useCallback(async () => {
     try {
       const artists = await fetchRecentArtists();
@@ -83,7 +116,20 @@ export default function Nasheeds() {
     void loadNew();
     void loadRecents();
     void loadPlaylists();
-  }, [loadMain, loadNew, loadRecents, loadPlaylists]);
+    void loadGenerated();
+  }, [loadMain, loadNew, loadRecents, loadPlaylists, loadGenerated]);
+
+  const trendingItems = generated
+    .filter((p) => p.type === "trending")
+    .map(toRailItem);
+  const topItems = generated.filter((p) => p.type === "top").map(toRailItem);
+  const moodItems = generated.filter((p) => p.type === "mood").map(toRailItem);
+
+  const openGenerated = (id: string) =>
+    router.push({
+      pathname: "/(tabs)/nasheeds/generated/[key]",
+      params: { key: id },
+    });
 
   if (errorMessage) {
     return <ShowError message={errorMessage} />;
@@ -96,6 +142,55 @@ export default function Nasheeds() {
         contentContainerStyle={{ paddingBottom: 44 }}
       >
         <ContinueListeningBlock variant="nasheeds" />
+
+        <View className="flex-row px-4 mt-2" style={{ gap: 12 }}>
+          <Pressable
+            onPress={() => router.push("/(tabs)/nasheeds/mix")}
+            className="flex-1 flex-row items-center rounded-2xl border border-qasid-gold/30 bg-qasid-gold/10 px-4 py-4 active:opacity-80"
+          >
+            <Ionicons name="sparkles" size={20} color={GOLD} />
+            <Text className="ml-2 text-qasid-white font-semibold">
+              Weekly Mix
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/(tabs)/nasheeds/favorites")}
+            className="flex-1 flex-row items-center rounded-2xl border border-qasid-gold/30 bg-qasid-gold/10 px-4 py-4 active:opacity-80"
+          >
+            <Ionicons name="heart" size={20} color={GOLD} />
+            <Text className="ml-2 text-qasid-white font-semibold">
+              Favorites
+            </Text>
+          </Pressable>
+        </View>
+
+        {(isLoadingGenerated || trendingItems.length > 0) && (
+          <ArtistRailSection
+            large
+            title="Trending"
+            artists={trendingItems}
+            isLoading={isLoadingGenerated}
+            onPressItem={openGenerated}
+          />
+        )}
+        {(isLoadingGenerated || topItems.length > 0) && (
+          <ArtistRailSection
+            large
+            title="Top Charts"
+            artists={topItems}
+            isLoading={isLoadingGenerated}
+            onPressItem={openGenerated}
+          />
+        )}
+        {(isLoadingGenerated || moodItems.length > 0) && (
+          <ArtistRailSection
+            title="Moods"
+            artists={moodItems}
+            isLoading={isLoadingGenerated}
+            onPressItem={openGenerated}
+          />
+        )}
+
         <ArtistRailSection
           large
           title="Featured Playlists"

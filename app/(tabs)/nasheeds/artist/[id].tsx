@@ -32,6 +32,7 @@ import {
   ReciterHeaderSkeleton,
 } from "../../../../components";
 import { DownloadButton } from "../../../../components/DownloadButton";
+import { FavoriteButton } from "../../../../components/FavoriteButton";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 import {
   PlayButton,
@@ -43,6 +44,7 @@ import {
   trackArtistPlayback,
 } from "../../../../services/nasheeds-service";
 import { addRecentArtist } from "../../../../services/recents-service";
+import { fetchFavoriteIds } from "../../../../services/favorites-service";
 import { markManualPlay, useNasheedLimit } from "../../../../hooks/useNasheedLimit";
 import { useIsPremium } from "../../../../stores/userStore";
 
@@ -51,6 +53,7 @@ interface NasheedItem {
   title: string;
   audioUrl: string | null;
   imageUrl: string | null;
+  raw: Nasheed;
 }
 
 const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
@@ -59,6 +62,7 @@ const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
     title: item.title_en,
     audioUrl: item.audio_path ?? null,
     imageUrl: item.image_path ?? null,
+    raw: item,
   }));
 
 export default function ArtistScreen() {
@@ -71,6 +75,7 @@ export default function ArtistScreen() {
 
   const [artist, setArtist] = useState<NasheedArtist | null>(null);
   const [nasheeds, setNasheeds] = useState<NasheedItem[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastCursor, setLastCursor] = useState<NasheedCursor | undefined>(
@@ -173,6 +178,9 @@ export default function ArtistScreen() {
 
       setArtist(artistData);
       void addRecentArtist(artistData);
+      void fetchFavoriteIds().then((ids) => {
+        if (isMountedRef.current) setFavoriteIds(ids);
+      });
       setNasheeds(normalizeNasheeds(nasheedData));
       setLastCursor(nextCursor);
       setHasMore(!!nextCursor);
@@ -417,17 +425,23 @@ export default function ArtistScreen() {
                       uri: nasheed.audioUrl,
                     }}
                     rightAction={
-                      nasheed.audioUrl ? (
-                        <DownloadButton
-                          track={{
-                            id: trackId,
-                            title: nasheed.title,
-                            artist: artist?.name_en,
-                            isNasheed: true,
-                            uri: nasheed.audioUrl,
-                          }}
+                      <View className="flex-row items-center">
+                        <FavoriteButton
+                          nasheed={nasheed.raw}
+                          initialFavorite={favoriteIds.has(nasheed.id)}
                         />
-                      ) : undefined
+                        {nasheed.audioUrl ? (
+                          <DownloadButton
+                            track={{
+                              id: trackId,
+                              title: nasheed.title,
+                              artist: artist?.name_en,
+                              isNasheed: true,
+                              uri: nasheed.audioUrl,
+                            }}
+                          />
+                        ) : null}
+                      </View>
                     }
                   />
                 );
