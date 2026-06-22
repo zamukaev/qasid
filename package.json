@@ -10,6 +10,7 @@
     "seed:artists": "ts-node --project scripts/tsconfig.json scripts/seed-nasheed-artists.ts",
     "seed:nasheeds": "ts-node --project scripts/tsconfig.json scripts/seed-nasheeds.ts",
     "seed:reciters": "ts-node --project scripts/tsconfig.json scripts/seed-reciters.ts",
+    "backfill:nasheeds": "ts-node --project scripts/tsconfig.json scripts/backfill-nasheed-metadata.ts",
     "version": "node scripts/bump-version.js && git add app.json",
     "postversion": "git push && git push --tags"
   },

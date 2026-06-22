@@ -73,6 +73,25 @@ export async function fetchFavoriteIds(): Promise<Set<string>> {
   );
 }
 
+// Lightweight read for the home-screen Favorites tile: just the newest few
+// cover image paths, instead of pulling every favorited nasheed.
+export async function fetchFavoriteCovers(max = 4): Promise<string[]> {
+  const userId = getAuth().currentUser?.uid;
+  if (!userId) return [];
+
+  const q = query(
+    favoritesCollection(userId),
+    orderBy("favoritedAt", "desc"),
+    limit(max),
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+    .map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) =>
+      String(d.data().image_path ?? ""),
+    )
+    .filter((path: string) => path.length > 0);
+}
+
 export async function fetchFavorites(): Promise<Nasheed[]> {
   const userId = getAuth().currentUser?.uid;
   if (!userId) return [];

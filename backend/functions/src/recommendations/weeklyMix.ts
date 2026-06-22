@@ -133,7 +133,10 @@ const buildMix = async (uid: string): Promise<RecommendedTrack[]> => {
   }
 
   // Score and dedup candidates.
-  const candidates = new Map<string, {track: RecommendedTrack; score: number}>();
+  const candidates = new Map<
+    string,
+    {track: RecommendedTrack; score: number}
+  >();
   for (const snap of snaps) {
     for (const doc of snap.docs) {
       if (candidates.has(doc.id)) continue;
