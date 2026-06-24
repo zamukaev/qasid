@@ -50,6 +50,15 @@ export default function ProfileSettings() {
     type: "error" | "success" | "warning" | "info";
   }>({ visible: false, message: "", type: "error" });
 
+  const trimmedName = name.trim();
+  const canSaveName =
+    trimmedName.length > 0 && trimmedName !== (user?.displayName ?? "").trim();
+
+  const canChangePassword =
+    currentPassword.length > 0 &&
+    newPassword.length > 0 &&
+    confirmPassword.length > 0;
+
   const showToast = (
     message: string,
     type: "error" | "success" | "warning" | "info" = "error"
@@ -259,7 +268,8 @@ export default function ProfileSettings() {
           <TouchableOpacity
             onPress={handleSaveName}
             activeOpacity={0.8}
-            disabled={savingName}
+            disabled={savingName || !canSaveName}
+            style={{ opacity: !canSaveName ? 0.4 : 1 }}
           >
             <View className="relative overflow-hidden rounded-2xl">
               <View className="absolute inset-0 bg-qasid-gold/10" />
@@ -326,7 +336,8 @@ export default function ProfileSettings() {
             <TouchableOpacity
               onPress={handleChangePassword}
               activeOpacity={0.8}
-              disabled={changingPassword}
+              disabled={changingPassword || !canChangePassword}
+              style={{ opacity: !canChangePassword ? 0.4 : 1 }}
             >
               <View className="relative overflow-hidden rounded-2xl">
                 <View className="absolute inset-0 bg-qasid-gold/10" />
