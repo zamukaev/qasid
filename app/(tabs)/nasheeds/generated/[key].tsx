@@ -11,22 +11,32 @@ import { resolveStorageUrl } from "../../../../services/storage";
 
 const toCollectionTrack = async (
   track: RecommendedTrack,
-): Promise<CollectionTrack> => ({
-  id: track.id,
-  title: track.title_en,
-  artist: track.name_en,
-  audioUrl: track.audio_path ? await resolveStorageUrl(track.audio_path) : null,
-  imageUrl: track.image_path ? await resolveStorageUrl(track.image_path) : null,
-  nasheed: {
-    id: track.id,
-    name_en: track.name_en,
-    title_en: track.title_en,
-    audio_path: track.audio_path,
-    image_path: track.image_path,
-    artist_id: track.artist_id,
-    moods: track.moods as any,
-  },
-});
+): Promise<CollectionTrack | null> => {
+  try {
+    const [audioUrl, imageUrl] = await Promise.all([
+      track.audio_path ? resolveStorageUrl(track.audio_path) : Promise.resolve(null),
+      track.image_path ? resolveStorageUrl(track.image_path) : Promise.resolve(null),
+    ]);
+    return {
+      id: track.id,
+      title: track.title_en,
+      artist: track.name_en,
+      audioUrl,
+      imageUrl,
+      nasheed: {
+        id: track.id,
+        name_en: track.name_en,
+        title_en: track.title_en,
+        audio_path: track.audio_path,
+        image_path: track.image_path,
+        artist_id: track.artist_id,
+        moods: track.moods as any,
+      },
+    };
+  } catch {
+    return null;
+  }
+};
 
 export default function GeneratedPlaylistScreen() {
   const { key } = useLocalSearchParams<{ key?: string }>();
@@ -58,10 +68,11 @@ export default function GeneratedPlaylistScreen() {
           if (isMountedRef.current) setError("Playlist not found.");
           return;
         }
-        const [normalized, favIds] = await Promise.all([
+        const [rawNormalized, favIds] = await Promise.all([
           Promise.all((data.tracks ?? []).map(toCollectionTrack)),
           fetchFavoriteIds(),
         ]);
+        const normalized = rawNormalized.filter(Boolean) as CollectionTrack[];
         if (!isMountedRef.current) return;
         setPlaylist(data);
         setTracks(normalized);
