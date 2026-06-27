@@ -8,6 +8,7 @@ import {
   Dimensions,
   PanResponder,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import Fontisto from "@expo/vector-icons/Fontisto";
 import Feather from "@expo/vector-icons/Feather";
@@ -28,6 +29,7 @@ export default function FullScreenPlayer() {
     togglePlayPause,
     repeatMode,
     setRepeatMode,
+    embeddedArtwork,
   } = useAudioPlayer();
 
   const progress = useMemo(() => {
@@ -173,9 +175,25 @@ export default function FullScreenPlayer() {
                 backgroundColor: "rgba(20, 20, 22, 0.8)",
                 alignItems: "center",
                 justifyContent: "center",
+                overflow: "hidden",
               }}
             >
-              <Ionicons name="musical-notes" size={100} color={GOLD} />
+              {(() => {
+                const artUri =
+                  embeddedArtwork ??
+                  (typeof currentTrack?.artworkUri === "string"
+                    ? currentTrack.artworkUri
+                    : currentTrack?.artworkUri?.uri ?? null);
+                return artUri ? (
+                  <Image
+                    source={{ uri: artUri }}
+                    style={{ width: 280, height: 280, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Ionicons name="musical-notes" size={100} color={GOLD} />
+                );
+              })()}
             </View>
           </View>
         </View>
