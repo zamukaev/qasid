@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { GOLD } from "../constants/colors";
 import { AudioPlayerProvider } from "../context/AudioPlayerContext";
+import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -33,7 +34,7 @@ export default function RootLayout() {
     ? process.env.EXPO_PUBLIC_ANDROID_TEST_API_KEY
     : process.env.EXPO_PUBLIC_ANDROID_API_KEY;
   useEffect(() => {
-    Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+    Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.VERBOSE : LOG_LEVEL.ERROR);
 
     if (Platform.OS === "ios" && iosApiKey) {
       Purchases.configure({ apiKey: iosApiKey });
@@ -42,18 +43,20 @@ export default function RootLayout() {
     }
   }, []);
   return (
-    <AudioPlayerProvider>
-      <Stack
-        screenOptions={{
-          headerShown: true,
-          headerStyle: { backgroundColor: "#090A07" },
-          headerTintColor: GOLD,
-          headerBackButtonDisplayMode: "minimal",
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
-    </AudioPlayerProvider>
+    <AppErrorBoundary>
+      <AudioPlayerProvider>
+        <Stack
+          screenOptions={{
+            headerShown: true,
+            headerStyle: { backgroundColor: "#090A07" },
+            headerTintColor: GOLD,
+            headerBackButtonDisplayMode: "minimal",
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </AudioPlayerProvider>
+    </AppErrorBoundary>
   );
 }

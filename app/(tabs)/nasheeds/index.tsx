@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { SafeAreaView, ScrollView } from "react-native";
+import { SafeAreaView, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import {
   ShowError,
@@ -7,7 +7,12 @@ import {
   BrowseAllArtistsPreview,
   ContinueListeningBlock,
 } from "../../../components";
-import { NasheedArtist, Playlist } from "../../../types/nasheed";
+import { useAuth } from "../../../hooks/useAuth";
+import {
+  GeneratedPlaylist,
+  NasheedArtist,
+  Playlist,
+} from "../../../types/nasheed";
 import {
   fetchNasheedArtists,
   fetchPopularArtists,
@@ -15,14 +20,36 @@ import {
 } from "../../../services/nasheeds-service";
 import { fetchRecentArtists } from "../../../services/recents-service";
 import { fetchPlaylists } from "../../../services/playlists-service";
+import {
+  fetchGeneratedPlaylists,
+  fetchWeeklyMix,
+} from "../../../services/recommendations-service";
+import { fetchFavoriteCovers } from "../../../services/favorites-service";
+
+// Generated playlists carry a `key` (not `id`); ArtistRailSection only reads
+// id/name_en/image_path, so a light projection is enough.
+const toRailItem = (p: GeneratedPlaylist): Playlist =>
+  ({
+    id: p.key,
+    name_en: p.name_en,
+    name_ar: p.name_ar,
+    desc: p.desc,
+    image_path: p.image_path,
+    is_active: p.is_active,
+  }) as unknown as Playlist;
 
 export default function Nasheeds() {
   const router = useRouter();
+  const { user } = useAuth();
   const [popularArtists, setPopularArtists] = useState<NasheedArtist[]>([]);
   const [newArtists, setNewArtists] = useState<NasheedArtist[]>([]);
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
   const [recentArtists, setRecentArtists] = useState<NasheedArtist[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [generated, setGenerated] = useState<GeneratedPlaylist[]>([]);
+  const [mixCovers, setMixCovers] = useState<string[]>([]);
+  const [favCovers, setFavCovers] = useState<string[]>([]);
+  const [isLoadingGenerated, setIsLoadingGenerated] = useState(true);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(true);
   const [isLoadingMain, setIsLoadingMain] = useState(true);
   const [isLoadingNew, setIsLoadingNew] = useState(true);
@@ -69,6 +96,39 @@ export default function Nasheeds() {
     }
   }, []);
 
+  const loadGenerated = useCallback(async () => {
+    setIsLoadingGenerated(true);
+    try {
+      const data = await fetchGeneratedPlaylists();
+      setGenerated(data);
+    } catch (error) {
+      console.error("Error loading generated playlists:", error);
+    } finally {
+      setIsLoadingGenerated(false);
+    }
+  }, []);
+
+  // Cover art for the "For You" tiles. Best-effort: a gradient fallback is used
+  // when either source is empty, so failures here are non-fatal. The weekly mix
+  // is read from cache only (no generation) to keep the home load light.
+  const loadForYouCovers = useCallback(async () => {
+    try {
+      const [mix, favs] = await Promise.all([
+        fetchWeeklyMix(),
+        fetchFavoriteCovers(),
+      ]);
+      setMixCovers(
+        (mix?.tracks ?? [])
+          .slice(0, 4)
+          .map((t) => t.image_path ?? "")
+          .filter((p) => p.length > 0),
+      );
+      setFavCovers(favs);
+    } catch (error) {
+      console.error("Error loading For You covers:", error);
+    }
+  }, []);
+
   const loadRecents = useCallback(async () => {
     try {
       const artists = await fetchRecentArtists();
@@ -83,7 +143,35 @@ export default function Nasheeds() {
     void loadNew();
     void loadRecents();
     void loadPlaylists();
-  }, [loadMain, loadNew, loadRecents, loadPlaylists]);
+    void loadGenerated();
+    void loadForYouCovers();
+  }, [
+    loadMain,
+    loadNew,
+    loadRecents,
+    loadPlaylists,
+    loadGenerated,
+    loadForYouCovers,
+  ]);
+
+  const trendingItems = generated
+    .filter((p) => p.type === "trending")
+    .map(toRailItem);
+  const topItems = generated.filter((p) => p.type === "top").map(toRailItem);
+  const moodItems = generated.filter((p) => p.type === "mood").map(toRailItem);
+
+  const openGenerated = (id: string) =>
+    router.push({
+      pathname: "/(tabs)/nasheeds/generated/[key]",
+      params: { key: id },
+    });
+
+  const firstName = user?.displayName?.trim().split(/\s+/)[0];
+  const madeForTitle = firstName ? `Made for ${firstName}` : "Made for You";
+  const forYouItems = [
+    { id: "weekly-mix", name_en: "Weekly Mix", image_path: mixCovers[0] },
+    { id: "favorites", name_en: "Favorites", image_path: favCovers[0] },
+  ] as unknown as Playlist[];
 
   if (errorMessage) {
     return <ShowError message={errorMessage} />;
@@ -96,6 +184,47 @@ export default function Nasheeds() {
         contentContainerStyle={{ paddingBottom: 44 }}
       >
         <ContinueListeningBlock variant="nasheeds" />
+
+        <ArtistRailSection
+          large
+          title={madeForTitle}
+          artists={forYouItems}
+          onPressItem={(id) =>
+            router.push(
+              id === "weekly-mix"
+                ? "/(tabs)/nasheeds/mix"
+                : "/(tabs)/nasheeds/favorites",
+            )
+          }
+        />
+
+        {(isLoadingGenerated || trendingItems.length > 0) && (
+          <ArtistRailSection
+            large
+            title="Trending"
+            artists={trendingItems}
+            isLoading={isLoadingGenerated}
+            onPressItem={openGenerated}
+          />
+        )}
+        {(isLoadingGenerated || topItems.length > 0) && (
+          <ArtistRailSection
+            large
+            title="Top Charts"
+            artists={topItems}
+            isLoading={isLoadingGenerated}
+            onPressItem={openGenerated}
+          />
+        )}
+        {(isLoadingGenerated || moodItems.length > 0) && (
+          <ArtistRailSection
+            title="Moods"
+            artists={moodItems}
+            isLoading={isLoadingGenerated}
+            onPressItem={openGenerated}
+          />
+        )}
+
         <ArtistRailSection
           large
           title="Featured Playlists"

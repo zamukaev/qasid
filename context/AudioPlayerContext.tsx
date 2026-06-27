@@ -60,6 +60,7 @@ type AudioPlayerContextValue = {
   viewMode: PlayerViewMode;
   queue: Track[];
   repeatMode: RepeatMode;
+  embeddedArtwork: string | null;
   playTrack: (track: Track, startPositionMillis?: number) => Promise<void>;
   togglePlayPause: () => Promise<void>;
   pause: () => Promise<void>;
@@ -131,6 +132,7 @@ export function AudioPlayerProvider({
   const queueRef = useRef<Track[]>([]);
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>("sequential");
   const repeatModeRef = useRef<RepeatMode>("sequential");
+  const [embeddedArtwork, setEmbeddedArtwork] = useState<string | null>(null);
   const [progressMap, setProgressMap] = useState<TrackProgressMap>({});
   const lastPersistRef = useRef(0);
   const listenedMillisRef = useRef(0);
@@ -192,6 +194,11 @@ export function AudioPlayerProvider({
 
   useTrackPlayerEvents([Event.PlaybackError], (event) => {
     console.warn("TrackPlayer playback error", event.code, event.message);
+  });
+
+  useTrackPlayerEvents([Event.MetadataCommonReceived], (event) => {
+    const uri = event.metadata?.artworkUri;
+    if (uri) setEmbeddedArtwork(uri);
   });
 
   useTrackPlayerEvents([Event.RemoteDuck], async (event) => {
@@ -427,6 +434,7 @@ export function AudioPlayerProvider({
       lastReportedPositionRef.current = startPositionMillis ?? 0;
       setListenedMillis(0);
       setDidJustFinish(false);
+      setEmbeddedArtwork(null);
 
       try {
         // Resolve the tapped track URL first (fast path — often already HTTP).
@@ -656,6 +664,7 @@ export function AudioPlayerProvider({
       viewMode,
       queue,
       repeatMode,
+      embeddedArtwork,
       playTrack,
       togglePlayPause,
       pause,
@@ -680,6 +689,7 @@ export function AudioPlayerProvider({
       viewMode,
       queue,
       repeatMode,
+      embeddedArtwork,
       playTrack,
       togglePlayPause,
       pause,

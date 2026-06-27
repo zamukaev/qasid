@@ -13,6 +13,48 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "artist_plays",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "nasheeds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "artist_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "popularity_score",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "nasheeds",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "moods",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "popularity_score",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

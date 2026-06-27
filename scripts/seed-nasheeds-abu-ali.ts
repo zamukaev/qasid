@@ -46,20 +46,24 @@ const NAME_EN = "Ahmed Bukhatir";
 const BASE_PATH = "nasheeds/ahmed_bukhatir";
 const DOC_PREFIX = "ahmed_bukhatir";
 
+// Mood taxonomy — must stay in sync with Mood in types/nasheed.ts.
+type NasheedMood = "calm" | "motivational" | "sleep" | "focus";
+
 interface NasheedInput {
   title_en: string;
   audio_filename: string; // e.g. "ana_maradun.mp3"
+  moods?: NasheedMood[]; // curated — drives mood playlists & radio
 }
 
 const tracks: NasheedInput[] = [
-  { title_en: "Ya Adheeman", audio_filename: "ya_adheeman.mp3" },
-  { title_en: "Al Hejaab", audio_filename: "al_hejaab.mp3" },
-  { title_en: "Daar Aa Ghoroor", audio_filename: "daar_aa_ghoroor.mp3" },
-  { title_en: "Fartaqi", audio_filename: "fartaqi.mp3" },
-  { title_en: "Fartaqi Ya Eid", audio_filename: "fartaqi_ya_eid.mp3" },
-  { title_en: "Ketaab Allah", audio_filename: "ketaab_allah.mp3" },
-  { title_en: "Taaleb Al Elm", audio_filename: "taaleb_al_elm.mp3" },
-  { title_en: "Ya Man Yara", audio_filename: "ya_man_yara.mp3" },
+  { title_en: "Ya Adheeman", audio_filename: "ya_adheeman.mp3", moods: ["calm", "focus"] },
+  { title_en: "Al Hejaab", audio_filename: "al_hejaab.mp3", moods: ["focus", "motivational"] },
+  { title_en: "Daar Aa Ghoroor", audio_filename: "daar_aa_ghoroor.mp3", moods: ["focus", "calm"] },
+  { title_en: "Fartaqi", audio_filename: "fartaqi.mp3", moods: ["motivational"] },
+  { title_en: "Fartaqi Ya Eid", audio_filename: "fartaqi_ya_eid.mp3", moods: ["calm", "motivational"] },
+  { title_en: "Ketaab Allah", audio_filename: "ketaab_allah.mp3", moods: ["calm", "focus"] },
+  { title_en: "Taaleb Al Elm", audio_filename: "taaleb_al_elm.mp3", moods: ["motivational", "focus"] },
+  { title_en: "Ya Man Yara", audio_filename: "ya_man_yara.mp3", moods: ["calm", "focus"] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -77,16 +81,36 @@ async function seedNasheeds(): Promise<void> {
     const track = tracks[i];
     const docId = `${DOC_PREFIX}_${String(i + 1).padStart(3, "0")}`;
 
-    const data = {
+    const docRef = nasheedsCol.doc(docId);
+    const existing = await docRef.get();
+
+    // Content + curated metadata is always (re)written.
+    const data: Record<string, unknown> = {
       artist_id: ARTIST_ID,
       audio_path: `${BASE_PATH}/${track.audio_filename}`,
       id: docId,
       image_path: "",
       name_en: NAME_EN,
       title_en: track.title_en,
+      moods: track.moods ?? [],
     };
 
-    await nasheedsCol.doc(docId).set(data);
+    // Counters are initialized only when missing so re-seeding never wipes
+    // metrics accumulated in production.
+    const counters = [
+      "popularity_score",
+      "trending_score",
+      "play_count",
+      "qualified_play_count",
+      "completed_play_count",
+      "favorite_count",
+    ];
+    const existingData = existing.data() ?? {};
+    for (const field of counters) {
+      if (existingData[field] === undefined) data[field] = 0;
+    }
+
+    await docRef.set(data, { merge: true });
     console.log(`  ✓  ${docId}  →  "${track.title_en}"`);
   }
 
