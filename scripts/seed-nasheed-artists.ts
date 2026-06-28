@@ -44,19 +44,11 @@ const db = admin.firestore();
 // Data types
 // ---------------------------------------------------------------------------
 
-interface TrackInput {
-  title_en: string;
-  title_ar: string;
-  audio_path: string;
-  duration?: number;
-}
-
 interface ArtistInput {
   id: string;
   name_en: string;
   name_ar: string;
   language: string;
-  tracks: TrackInput[];
 }
 
 // ---------------------------------------------------------------------------
@@ -65,48 +57,10 @@ interface ArtistInput {
 
 const artists: ArtistInput[] = [
   {
-    id: "alafasy",
-    name_en: "Mishary Rashid Alafasy",
-    name_ar: "مشاري راشد العفاسي",
+    id: "osama-al-safi",
+    name_en: "osama al-safi",
+    name_ar: "أسامة الصافي",
     language: "ar",
-    tracks: [
-      {
-        title_en: "Ya Nabi Salam Alayka",
-        title_ar: "يا نبي سلام عليك",
-        audio_path: "artists/alafasy/tracks/ya-nabi-salam-alayka.mp3",
-      },
-      {
-        title_en: "Asma Allah Alhusna",
-        title_ar: "أسماء الله الحسنى",
-        audio_path: "artists/alafasy/tracks/asma-allah-alhusna.mp3",
-      },
-    ],
-  },
-  {
-    id: "abu-ali",
-    name_en: "Abu Ali",
-    name_ar: "أبو علي",
-    language: "ar",
-    tracks: [
-      {
-        title_en: "Track 1",
-        title_ar: "مقطع 1",
-        audio_path: "artists/abu-ali/tracks/track-1.mp3",
-      },
-    ],
-  },
-  {
-    id: "red-leon",
-    name_en: "Red Leon",
-    name_ar: "ريد ليون",
-    language: "ge",
-    tracks: [
-      {
-        title_en: "Track 1",
-        title_ar: "مقطع 1",
-        audio_path: "artists/red-leon/tracks/track-1.mp3",
-      },
-    ],
   },
 ];
 
@@ -136,6 +90,7 @@ async function seedArtists(): Promise<void> {
     const artistRef = artistsCol.doc(artist.id);
 
     const artistData = {
+      id: artist.id,
       name_en: artist.name_en,
       name_ar: artist.name_ar,
       image_path: "",
@@ -153,26 +108,6 @@ async function seedArtists(): Promise<void> {
 
     await artistRef.set(artistData);
     console.log(`  ✓  artist: ${artist.id}  (${artist.name_en})`);
-
-    const tracksCol = artistRef.collection("tracks");
-
-    for (const track of artist.tracks) {
-      const trackId = toSlug(track.title_en);
-      const trackData = {
-        title_en: track.title_en,
-        title_ar: track.title_ar,
-        audio_path: track.audio_path,
-        duration: track.duration ?? 0,
-        is_active: true,
-        popularity_score: 0,
-        play_count: 0,
-        createdAt: admin.firestore.Timestamp.now(),
-        publishedAt: admin.firestore.Timestamp.now(),
-      };
-
-      await tracksCol.doc(trackId).set(trackData);
-      console.log(`      ✓  track: ${trackId}`);
-    }
   }
 
   console.log("\nDone. Structure: artists/{artistId}/tracks/{trackId}\n");

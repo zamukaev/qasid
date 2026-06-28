@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
-import {
-  CollectionTrack,
-  TrackCollectionScreen,
-} from "../../../../components";
-import { GeneratedPlaylist, RecommendedTrack } from "../../../../types/nasheed";
+import { CollectionTrack, TrackCollectionScreen } from "../../../../components";
+import { GeneratedPlaylist, Mood, RecommendedTrack } from "../../../../types/nasheed";
 import { fetchGeneratedPlaylistByKey } from "../../../../services/recommendations-service";
 import { fetchFavoriteIds } from "../../../../services/favorites-service";
 import { resolveStorageUrl } from "../../../../services/storage";
@@ -14,9 +11,14 @@ const toCollectionTrack = async (
 ): Promise<CollectionTrack | null> => {
   try {
     const [audioUrl, imageUrl] = await Promise.all([
-      track.audio_path ? resolveStorageUrl(track.audio_path) : Promise.resolve(null),
-      track.image_path ? resolveStorageUrl(track.image_path) : Promise.resolve(null),
+      track.audio_path
+        ? resolveStorageUrl(track.audio_path)
+        : Promise.resolve(null),
+      track.image_path
+        ? resolveStorageUrl(track.image_path)
+        : Promise.resolve(null),
     ]);
+
     return {
       id: track.id,
       title: track.title_en,
@@ -30,10 +32,14 @@ const toCollectionTrack = async (
         audio_path: track.audio_path,
         image_path: track.image_path,
         artist_id: track.artist_id,
-        moods: track.moods as any,
+        moods: track.moods as Mood[],
       },
     };
-  } catch {
+  } catch (e) {
+    console.error(
+      `Failed to resolve storage URLs for track ${track.id}: ${track.audio_path}, ${track.image_path}`,
+      e,
+    );
     return null;
   }
 };

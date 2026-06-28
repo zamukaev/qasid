@@ -53,7 +53,6 @@ export default function EmailSignUpScreen() {
         email,
         password,
       );
-      console.log("[Auth] signUp success:", user);
       // Non-blocking: if this fails the user can resend from the verify screen
       sendEmailVerification(user).catch((err) => {
         console.error(
@@ -65,7 +64,6 @@ export default function EmailSignUpScreen() {
     } catch (e: any) {
       const err = e as FirebaseAuthTypes.NativeFirebaseAuthError;
       const errorMessage = getFirebaseErrorMessage(err.code);
-      console.log("[Auth] signUp failed:", err.code, err.message);
       setError(errorMessage);
       setShowError(true);
     } finally {

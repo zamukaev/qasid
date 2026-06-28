@@ -168,7 +168,6 @@ export default function ArtistScreen() {
     try {
       const [artistData, { nasheeds: nasheedData, nextCursor }] =
         await Promise.all([fetchArtistById(id), fetchArtistNasheeds(id)]);
-      console.log("Fetched artist data:", nasheedData.length);
       if (!isMountedRef.current) return;
 
       if (!artistData) {

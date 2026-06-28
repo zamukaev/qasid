@@ -32,7 +32,7 @@ interface UserState {
 }
 
 const mapFirebaseUser = (
-  firebaseUser: FirebaseAuthTypes.User | null
+  firebaseUser: FirebaseAuthTypes.User | null,
 ): User | null => {
   if (!firebaseUser) return null;
 
@@ -88,10 +88,13 @@ export const useUserStore = create<UserState>((set) => ({
 }));
 
 // This email is treated as a premium user regardless of its subscription plan.
-export const PREMIUM_OVERRIDE_EMAIL = "abu.safiia2016@gmail.com";
+export const PREMIUM_OVERRIDE_EMAILS =
+  process.env.EXPO_PUBLIC_PREMIUM_ACCOUNTS?.split(",") ?? [];
 
 // Effective premium status: a real subscription OR the override email.
 export const useIsPremium = () =>
   useUserStore(
-    (s) => s.currentPlan !== "free" || s.user?.email === PREMIUM_OVERRIDE_EMAIL,
+    (s) =>
+      s.currentPlan !== "free" ||
+      PREMIUM_OVERRIDE_EMAILS.includes(s.user?.email || ""),
   );

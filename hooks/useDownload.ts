@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { useUserStore } from "../stores/userStore";
+import { useIsPremium, useUserStore } from "../stores/userStore";
 import {
   getLocalPath,
   downloadTrack,
@@ -16,7 +16,7 @@ export function useDownload(track: Track) {
   const router = useRouter();
   const [status, setStatus] = useState<DownloadStatus>("idle");
   const [progress, setProgress] = useState(0);
-
+  const isPremium = useIsPremium();
   useEffect(() => {
     let cancelled = false;
     getLocalPath(track.id).then((path) => {
@@ -28,7 +28,7 @@ export function useDownload(track: Track) {
   }, [track.id]);
 
   const download = useCallback(async () => {
-    if (currentPlan === "free") {
+    if (!isPremium) {
       Alert.alert(
         "Premium Required",
         "Offline listening is a premium feature. Upgrade to download tracks for offline playback.",
@@ -58,7 +58,7 @@ export function useDownload(track: Track) {
         "Could not download the track. Please check your connection and try again.",
       );
     }
-  }, [currentPlan, status, track, router]);
+  }, [isPremium, status, track, router]);
 
   const remove = useCallback(async () => {
     await deleteDownload(track.id);

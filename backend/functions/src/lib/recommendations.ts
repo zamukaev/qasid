@@ -55,6 +55,41 @@ export const resolveTracks = async (
     .filter((t): t is RecommendedTrack => !!t);
 };
 
+// Returns the image_path of the artist with the highest popularity_score
+// among the artists referenced in the given tracks.
+export const resolveTopArtistImagePath = async (
+  tracks: RecommendedTrack[],
+): Promise<string> => {
+  const artistIds = [
+    ...new Set(tracks.map((t) => t.artist_id).filter(Boolean)),
+  ];
+  if (artistIds.length === 0) return "";
+
+  const firestore = db();
+  const col = firestore.collection("artists");
+  const refs = artistIds.map((id) => col.doc(id));
+  const snaps = await firestore.getAll(...refs);
+
+  let topImage = "";
+  let topScore = -Infinity;
+  for (const snap of snaps) {
+    if (!snap.exists) continue;
+    const data = snap.data();
+    if (!data) continue;
+    const score: number =
+      typeof data.popularity_score === "number" ? data.popularity_score : 0;
+    if (
+      score > topScore &&
+      typeof data.image_path === "string" &&
+      data.image_path
+    ) {
+      topScore = score;
+      topImage = data.image_path;
+    }
+  }
+  return topImage;
+};
+
 export type GeneratedPlaylistType = "trending" | "top" | "mood";
 
 export interface GeneratedPlaylistMeta {

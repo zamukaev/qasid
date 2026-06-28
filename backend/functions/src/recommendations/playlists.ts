@@ -5,6 +5,7 @@ import {
   GENERATED_PLAYLIST_META,
   RecommendedTrack,
   resolveTracks,
+  resolveTopArtistImagePath,
   toRecommendedTrack,
 } from "../lib/recommendations";
 
@@ -88,6 +89,7 @@ const fetchMoodTracks = async (
 const writePlaylist = async (key: string, tracks: RecommendedTrack[]) => {
   const meta = GENERATED_PLAYLIST_META.find((m) => m.key === key);
   if (!meta) return;
+  const imagePath = await resolveTopArtistImagePath(tracks);
   await db()
     .collection("generated_playlists")
     .doc(key)
@@ -99,7 +101,7 @@ const writePlaylist = async (key: string, tracks: RecommendedTrack[]) => {
         name_ar: meta.name_ar,
         desc: meta.desc,
         period: meta.period ?? null,
-        image_path: tracks.find((t) => t.image_path)?.image_path ?? "",
+        image_path: imagePath,
         tracks,
         track_count: tracks.length,
         is_active: true,
