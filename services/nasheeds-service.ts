@@ -236,6 +236,16 @@ export async function fetchArtistById(
   return { id: docSnap.id, ...data, image_path: imagePath } as NasheedArtist;
 }
 
+export async function fetchArtistImagePath(
+  artistId: string,
+): Promise<string | null> {
+  const db = getFirestore(getApp());
+  const docSnap = await getDoc(doc(db, "artists", artistId));
+  if (!docSnap.exists()) return null;
+  const data = docSnap.data() as { image_path?: string };
+  return data.image_path ?? null;
+}
+
 export async function trackArtistPlayback({
   artistId,
   nasheedId,

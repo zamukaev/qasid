@@ -12,11 +12,13 @@ import { useRouter } from "expo-router";
 import { useSegments } from "expo-router";
 import { useUserStore } from "../stores/userStore";
 import * as RevenueCatService from "../services/revenuecat";
+import { fetchPremiumOverrideEmails } from "../services/config-service";
 
 import "../global.css";
 
 export default function Welcome() {
-  const { user, isLoading, setUser, setLoading } = useUserStore();
+  const { user, isLoading, setUser, setLoading, setPremiumOverrideEmails } =
+    useUserStore();
 
   const router = useRouter();
   const segments = useSegments();
@@ -30,6 +32,12 @@ export default function Welcome() {
         await RevenueCatService.initialize(firebaseUser.uid);
       } catch {
         // RC initialization failure should not block the auth flow
+      }
+      try {
+        const emails = await fetchPremiumOverrideEmails();
+        setPremiumOverrideEmails(emails);
+      } catch {
+        // config fetch failure is non-fatal
       }
     } else {
       await RevenueCatService.logout();

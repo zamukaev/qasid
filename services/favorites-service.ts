@@ -15,6 +15,7 @@ import {
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
 import { Nasheed } from "../types/nasheed";
+import { fetchArtistImagePath } from "./nasheeds-service";
 
 const FAVORITES_LIMIT = 200;
 
@@ -73,8 +74,8 @@ export async function fetchFavoriteIds(): Promise<Set<string>> {
   );
 }
 
-// Lightweight read for the home-screen Favorites tile: just the newest few
-// cover image paths, instead of pulling every favorited nasheed.
+// Lightweight read for the home-screen Favorites tile: returns the artist
+// image path for the most recently favorited nasheed's artist.
 export async function fetchFavoriteCovers(max = 4): Promise<string[]> {
   const userId = getAuth().currentUser?.uid;
   if (!userId) return [];
@@ -82,14 +83,17 @@ export async function fetchFavoriteCovers(max = 4): Promise<string[]> {
   const q = query(
     favoritesCollection(userId),
     orderBy("favoritedAt", "desc"),
-    limit(max),
+    limit(1),
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) =>
-      String(d.data().image_path ?? ""),
-    )
-    .filter((path: string) => path.length > 0);
+  const firstDoc = snapshot.docs[0];
+  if (!firstDoc) return [];
+
+  const artistId = String(firstDoc.data().artist_id ?? "");
+  if (!artistId) return [];
+
+  const imagePath = await fetchArtistImagePath(artistId);
+  return imagePath ? [imagePath] : [];
 }
 
 export async function fetchFavorites(): Promise<Nasheed[]> {

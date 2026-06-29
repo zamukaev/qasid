@@ -24,11 +24,13 @@ interface UserState {
    * during RC init / after a cold start.
    */
   planResolved: boolean;
+  premiumOverrideEmails: string[];
   setUser: (firebaseUser: FirebaseAuthTypes.User | null) => void;
   updateUser: (updates: Partial<User>) => void;
   clearUser: () => void;
   setLoading: (loading: boolean) => void;
   setCurrentPlan: (plan: SubscriptionPlan) => void;
+  setPremiumOverrideEmails: (emails: string[]) => void;
 }
 
 const mapFirebaseUser = (
@@ -51,6 +53,7 @@ export const useUserStore = create<UserState>((set) => ({
   isAuthenticated: false,
   currentPlan: "free",
   planResolved: false,
+  premiumOverrideEmails: [],
 
   setUser: (firebaseUser) => {
     const user = mapFirebaseUser(firebaseUser);
@@ -85,16 +88,16 @@ export const useUserStore = create<UserState>((set) => ({
     // entitlement is now known.
     set({ currentPlan: plan, planResolved: true });
   },
+
+  setPremiumOverrideEmails: (emails) => {
+    set({ premiumOverrideEmails: emails });
+  },
 }));
 
-// This email is treated as a premium user regardless of its subscription plan.
-export const PREMIUM_OVERRIDE_EMAILS =
-  process.env.EXPO_PUBLIC_PREMIUM_ACCOUNTS?.split(",") ?? [];
-
-// Effective premium status: a real subscription OR the override email.
+// Effective premium status: a real subscription OR an override email from Firestore.
 export const useIsPremium = () =>
   useUserStore(
     (s) =>
       s.currentPlan !== "free" ||
-      PREMIUM_OVERRIDE_EMAILS.includes(s.user?.email || ""),
+      s.premiumOverrideEmails.includes(s.user?.email || ""),
   );

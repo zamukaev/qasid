@@ -10,6 +10,7 @@ import {
 } from "../../../../services/recommendations-service";
 import { fetchFavoriteIds } from "../../../../services/favorites-service";
 import { resolveStorageUrl } from "../../../../services/storage";
+import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
 
 const toCollectionTrack = async (
   track: RecommendedTrack,
@@ -43,6 +44,7 @@ const toCollectionTrack = async (
 export default function WeeklyMixScreen() {
   const [tracks, setTracks] = useState<CollectionTrack[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [headerImagePath, setHeaderImagePath] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
@@ -64,14 +66,17 @@ export default function WeeklyMixScreen() {
         if (raw.length === 0) {
           raw = await generateWeeklyMix();
         }
-        const [rawNormalized, favIds] = await Promise.all([
+        const firstArtistId = raw[0]?.artist_id ?? null;
+        const [rawNormalized, favIds, artistImage] = await Promise.all([
           Promise.all(raw.map(toCollectionTrack)),
           fetchFavoriteIds(),
+          firstArtistId ? fetchArtistImagePath(firstArtistId) : Promise.resolve(null),
         ]);
         const normalized = rawNormalized.filter(Boolean) as CollectionTrack[];
         if (!isMountedRef.current) return;
         setTracks(normalized);
         setFavoriteIds(favIds);
+        setHeaderImagePath(artistImage ?? undefined);
         setError(null);
       } catch (e) {
         if (isMountedRef.current) {
@@ -92,6 +97,7 @@ export default function WeeklyMixScreen() {
       title="Your Weekly Mix"
       subtitle={`${tracks.length} Nasheeds`}
       description="A fresh personalized mix, updated for you."
+      headerImagePath={headerImagePath}
       trackPrefix="weekly-mix"
       tracks={tracks}
       loading={loading}

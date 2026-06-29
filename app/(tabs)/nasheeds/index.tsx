@@ -17,6 +17,7 @@ import {
   fetchNasheedArtists,
   fetchPopularArtists,
   fetchNewArtists,
+  fetchArtistImagePath,
 } from "../../../services/nasheeds-service";
 import { fetchRecentArtists } from "../../../services/recents-service";
 import { fetchPlaylists } from "../../../services/playlists-service";
@@ -117,12 +118,11 @@ export default function Nasheeds() {
         fetchWeeklyMix(),
         fetchFavoriteCovers(),
       ]);
-      setMixCovers(
-        (mix?.tracks ?? [])
-          .slice(0, 4)
-          .map((t) => t.image_path ?? "")
-          .filter((p) => p.length > 0),
-      );
+      const firstArtistId = mix?.tracks?.[0]?.artist_id ?? null;
+      const mixArtistImage = firstArtistId
+        ? await fetchArtistImagePath(firstArtistId)
+        : null;
+      setMixCovers(mixArtistImage ? [mixArtistImage] : []);
       setFavCovers(favs);
     } catch (error) {
       console.error("Error loading For You covers:", error);
