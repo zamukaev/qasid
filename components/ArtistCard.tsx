@@ -1,6 +1,7 @@
 import { Pressable, View, Image, Text } from "react-native";
 import { GOLD, GOLD_RIPPLE_20 } from "../constants/colors";
-import { useReciterImageSource } from "../hooks/useReciterImageSource";
+import { useImageLoadState } from "../hooks/useImageLoadState";
+import ImageShimmerOverlay from "./ImageShimmerOverlay";
 import { NasheedArtist } from "../types/nasheed";
 
 interface ArtistCardProps {
@@ -9,7 +10,9 @@ interface ArtistCardProps {
 }
 
 function ArtistCard({ artist, onPress }: ArtistCardProps) {
-  const imageSource = useReciterImageSource(artist.image_path);
+  const { source, showSkeleton, onLoad, onError } = useImageLoadState(
+    artist.image_path,
+  );
 
   return (
     <Pressable
@@ -31,9 +34,12 @@ function ArtistCard({ artist, onPress }: ArtistCardProps) {
       >
         <Image
           className="w-full h-full"
-          source={imageSource}
+          source={source}
+          onLoad={onLoad}
+          onError={onError}
           resizeMode="cover"
         />
+        <ImageShimmerOverlay visible={showSkeleton} rounded="xl" />
       </View>
       <Text
         className="text-white/90 text-center text-xs font-medium mt-2"

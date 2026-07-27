@@ -35,27 +35,35 @@ interface TrendingMaps {
 }
 
 // Aggregate the last 7 days of artist_plays into today / week trending maps.
+// Streamed (rather than a single .get()) so memory stays bounded to one doc
+// at a time as artist_plays grows with user activity.
 const aggregateTrending = async (now: number): Promise<TrendingMaps> => {
   const firestore = db();
   const cutoff = admin.firestore.Timestamp.fromMillis(now - WEEK_MS);
-  const snapshot = await firestore
-    .collection("artist_plays")
-    .where("createdAt", ">=", cutoff)
-    .get();
-
   const acc: TrendingMaps = {today: new Map(), week: new Map()};
-  for (const doc of snapshot.docs) {
-    const data = doc.data();
-    const nasheedId = typeof data.nasheedId === "string" ? data.nasheedId : "";
-    const weight = getPlaybackScoreIncrement(data.eventType);
-    if (!nasheedId || weight === 0) continue;
-    const ageMs = now - getTimestampDate(data.createdAt).getTime();
-    if (ageMs < 0) continue;
-    addWeighted(acc.week, nasheedId, weight * decay(ageMs, WEEK_MS));
-    if (ageMs <= DAY_MS) {
-      addWeighted(acc.today, nasheedId, weight * decay(ageMs, DAY_MS));
-    }
-  }
+
+  await new Promise<void>((resolve, reject) => {
+    firestore
+      .collection("artist_plays")
+      .where("createdAt", ">=", cutoff)
+      .stream()
+      .on("data", (doc: admin.firestore.QueryDocumentSnapshot) => {
+        const data = doc.data();
+        const nasheedId =
+          typeof data.nasheedId === "string" ? data.nasheedId : "";
+        const weight = getPlaybackScoreIncrement(data.eventType);
+        if (!nasheedId || weight === 0) return;
+        const ageMs = now - getTimestampDate(data.createdAt).getTime();
+        if (ageMs < 0) return;
+        addWeighted(acc.week, nasheedId, weight * decay(ageMs, WEEK_MS));
+        if (ageMs <= DAY_MS) {
+          addWeighted(acc.today, nasheedId, weight * decay(ageMs, DAY_MS));
+        }
+      })
+      .on("error", reject)
+      .on("end", resolve);
+  });
+
   return acc;
 };
 
@@ -85,8 +93,12 @@ const fetchMoodTracks = async (
     .filter((t): t is RecommendedTrack => !!t);
 };
 
+const playlistMetaByKey = new Map(
+  GENERATED_PLAYLIST_META.map((m) => [m.key, m]),
+);
+
 const writePlaylist = async (key: string, tracks: RecommendedTrack[]) => {
-  const meta = GENERATED_PLAYLIST_META.find((m) => m.key === key);
+  const meta = playlistMetaByKey.get(key);
   if (!meta) return;
   await db()
     .collection("generated_playlists")

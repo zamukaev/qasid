@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { CollectionTrack, TrackCollectionScreen } from "../../../../components";
 import { GeneratedPlaylist, Mood, RecommendedTrack } from "../../../../types/nasheed";
 import { fetchGeneratedPlaylistByKey } from "../../../../services/recommendations-service";
 import { fetchFavoriteIds } from "../../../../services/favorites-service";
 import { resolveStorageUrl } from "../../../../services/storage";
+import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
 
 const toCollectionTrack = async (
   track: RecommendedTrack,
@@ -47,11 +48,13 @@ const toCollectionTrack = async (
 export default function GeneratedPlaylistScreen() {
   const { key } = useLocalSearchParams<{ key?: string }>();
   const [playlist, setPlaylist] = useState<GeneratedPlaylist | null>(null);
+  const [coverImagePath, setCoverImagePath] = useState<string | undefined>();
   const [tracks, setTracks] = useState<CollectionTrack[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -60,55 +63,64 @@ export default function GeneratedPlaylistScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!key) {
-        setError("Playlist not specified.");
-        setLoading(false);
+  const load = useCallback(async () => {
+    if (!key) {
+      setError("Playlist not specified.");
+      setLoading(false);
+      return;
+    }
+    if (!hasLoadedRef.current) setLoading(true);
+    try {
+      const data = await fetchGeneratedPlaylistByKey(key);
+      if (!data) {
+        if (isMountedRef.current) setError("Playlist not found.");
         return;
       }
-      setLoading(true);
-      try {
-        const data = await fetchGeneratedPlaylistByKey(key);
-        if (!data) {
-          if (isMountedRef.current) setError("Playlist not found.");
-          return;
-        }
-        const [rawNormalized, favIds] = await Promise.all([
-          Promise.all((data.tracks ?? []).map(toCollectionTrack)),
-          fetchFavoriteIds(),
-        ]);
-        const normalized = rawNormalized.filter(Boolean) as CollectionTrack[];
-        if (!isMountedRef.current) return;
-        setPlaylist(data);
-        setTracks(normalized);
-        setFavoriteIds(favIds);
-        setError(null);
-      } catch (e) {
-        if (isMountedRef.current) {
-          console.error("Error loading generated playlist:", e);
-          setError(
-            e instanceof Error ? e.message : "Unable to load playlist data.",
-          );
-        }
-      } finally {
-        if (isMountedRef.current) setLoading(false);
+      // Trending/Top playlists show their first track's artist photo as
+      // the header cover (moods keep their own image_path, unchanged).
+      const artistId =
+        data.type !== "mood" ? data.tracks?.[0]?.artist_id : undefined;
+      const [rawNormalized, favIds, artistImagePath] = await Promise.all([
+        Promise.all((data.tracks ?? []).map(toCollectionTrack)),
+        fetchFavoriteIds(),
+        artistId ? fetchArtistImagePath(artistId) : Promise.resolve(null),
+      ]);
+      const normalized = rawNormalized.filter(Boolean) as CollectionTrack[];
+      if (!isMountedRef.current) return;
+      setPlaylist(data);
+      setCoverImagePath(artistImagePath ?? data.image_path);
+      setTracks(normalized);
+      setFavoriteIds(favIds);
+      setError(null);
+    } catch (e) {
+      if (isMountedRef.current) {
+        console.error("Error loading generated playlist:", e);
+        setError(
+          e instanceof Error ? e.message : "Unable to load playlist data.",
+        );
       }
-    };
-    void load();
+    } finally {
+      hasLoadedRef.current = true;
+      if (isMountedRef.current) setLoading(false);
+    }
   }, [key]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <TrackCollectionScreen
       title={playlist?.name_en ?? "Playlist"}
       subtitle={`${tracks.length} Nasheeds`}
       description={playlist?.desc}
-      headerImagePath={playlist?.image_path}
+      headerImagePath={coverImagePath}
       trackPrefix={`generated-${key}`}
       tracks={tracks}
       loading={loading}
       error={error}
       favoriteIds={favoriteIds}
+      onRefresh={load}
     />
   );
 }

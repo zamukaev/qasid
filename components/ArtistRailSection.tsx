@@ -3,8 +3,10 @@ import { Image, Pressable, Text, View } from "react-native";
 import { GOLD, GOLD_RIPPLE_20 } from "../constants/colors";
 import { useRouter } from "expo-router";
 import { NasheedArtist, Playlist } from "../types/nasheed";
-import { useReciterImageSource } from "../hooks/useReciterImageSource";
+import { useImageLoadState } from "../hooks/useImageLoadState";
 import HorizontalRailSection from "./HorizontalRailSection";
+import CompactArtistCardSkeleton from "./CompactArtistCardSkeleton";
+import ImageShimmerOverlay from "./ImageShimmerOverlay";
 
 type CardSize = { cardWidth: number; imageSize: number };
 
@@ -20,20 +22,6 @@ interface CardVariantProps {
   small?: boolean;
 }
 
-function CompactArtistCardSkeleton({ circle, large, small }: CardVariantProps) {
-  const { cardWidth, imageSize } = resolveSize(large, small);
-  return (
-    <View style={{ width: cardWidth }} className="items-center">
-      <View
-        className={`${circle ? "rounded-full" : "rounded-xl"} bg-gray-700/30 animate-pulse mb-2`}
-        style={{ width: imageSize, height: imageSize }}
-      />
-      <View className="h-3 w-20 bg-gray-700/30 rounded mb-1 animate-pulse" />
-      <View className="h-2 w-14 bg-gray-700/30 rounded animate-pulse" />
-    </View>
-  );
-}
-
 interface CompactArtistCardProps extends CardVariantProps {
   artist: NasheedArtist | Playlist;
   onPress?: (id: string) => void;
@@ -47,7 +35,9 @@ function CompactArtistCard({
   onPress,
 }: CompactArtistCardProps) {
   const router = useRouter();
-  const imageSource = useReciterImageSource(artist.image_path);
+  const { source, showSkeleton, onLoad, onError } = useImageLoadState(
+    artist.image_path,
+  );
   const { cardWidth, imageSize } = resolveSize(large, small);
 
   return (
@@ -77,9 +67,15 @@ function CompactArtistCard({
         }}
       >
         <Image
-          source={imageSource}
+          source={source}
+          onLoad={onLoad}
+          onError={onError}
           className="w-full h-full"
           resizeMode="cover"
+        />
+        <ImageShimmerOverlay
+          visible={showSkeleton}
+          rounded={circle ? "full" : "xl"}
         />
       </View>
       <Text

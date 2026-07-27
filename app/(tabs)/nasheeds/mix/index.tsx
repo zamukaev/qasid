@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CollectionTrack,
   TrackCollectionScreen,
@@ -48,6 +48,7 @@ export default function WeeklyMixScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -56,41 +57,43 @@ export default function WeeklyMixScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        // Prefer the cached mix; generate a fresh one if none exists yet.
-        const cached = await fetchWeeklyMix();
-        let raw: RecommendedTrack[] = cached?.tracks ?? [];
-        if (raw.length === 0) {
-          raw = await generateWeeklyMix();
-        }
-        const firstArtistId = raw[0]?.artist_id ?? null;
-        const [rawNormalized, favIds, artistImage] = await Promise.all([
-          Promise.all(raw.map(toCollectionTrack)),
-          fetchFavoriteIds(),
-          firstArtistId ? fetchArtistImagePath(firstArtistId) : Promise.resolve(null),
-        ]);
-        const normalized = rawNormalized.filter(Boolean) as CollectionTrack[];
-        if (!isMountedRef.current) return;
-        setTracks(normalized);
-        setFavoriteIds(favIds);
-        setHeaderImagePath(artistImage ?? undefined);
-        setError(null);
-      } catch (e) {
-        if (isMountedRef.current) {
-          console.error("Error loading weekly mix:", e);
-          setError(
-            e instanceof Error ? e.message : "Unable to load your weekly mix.",
-          );
-        }
-      } finally {
-        if (isMountedRef.current) setLoading(false);
+  const load = useCallback(async () => {
+    if (!hasLoadedRef.current) setLoading(true);
+    try {
+      // Prefer the cached mix; generate a fresh one if none exists yet.
+      const cached = await fetchWeeklyMix();
+      let raw: RecommendedTrack[] = cached?.tracks ?? [];
+      if (raw.length === 0) {
+        raw = await generateWeeklyMix();
       }
-    };
-    void load();
+      const firstArtistId = raw[0]?.artist_id ?? null;
+      const [rawNormalized, favIds, artistImage] = await Promise.all([
+        Promise.all(raw.map(toCollectionTrack)),
+        fetchFavoriteIds(),
+        firstArtistId ? fetchArtistImagePath(firstArtistId) : Promise.resolve(null),
+      ]);
+      const normalized = rawNormalized.filter(Boolean) as CollectionTrack[];
+      if (!isMountedRef.current) return;
+      setTracks(normalized);
+      setFavoriteIds(favIds);
+      setHeaderImagePath(artistImage ?? undefined);
+      setError(null);
+    } catch (e) {
+      if (isMountedRef.current) {
+        console.error("Error loading weekly mix:", e);
+        setError(
+          e instanceof Error ? e.message : "Unable to load your weekly mix.",
+        );
+      }
+    } finally {
+      hasLoadedRef.current = true;
+      if (isMountedRef.current) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <TrackCollectionScreen
@@ -104,6 +107,7 @@ export default function WeeklyMixScreen() {
       error={error}
       favoriteIds={favoriteIds}
       emptyMessage="Listen to a few nasheeds to build your weekly mix."
+      onRefresh={load}
     />
   );
 }

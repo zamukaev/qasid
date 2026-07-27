@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CollectionTrack,
   TrackCollectionScreen,
@@ -30,6 +30,7 @@ export default function FavoritesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -38,34 +39,36 @@ export default function FavoritesScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const favorites = await fetchFavorites();
-        const firstArtistId = favorites[0]?.artist_id ?? null;
-        const [normalized, artistImage] = await Promise.all([
-          Promise.all(favorites.map(toCollectionTrack)),
-          firstArtistId ? fetchArtistImagePath(firstArtistId) : Promise.resolve(null),
-        ]);
-        if (!isMountedRef.current) return;
-        setTracks(normalized);
-        setFavoriteIds(new Set(favorites.map((f) => f.id)));
-        setHeaderImagePath(artistImage ?? undefined);
-        setError(null);
-      } catch (e) {
-        if (isMountedRef.current) {
-          console.error("Error loading favorites:", e);
-          setError(
-            e instanceof Error ? e.message : "Unable to load your favorites.",
-          );
-        }
-      } finally {
-        if (isMountedRef.current) setLoading(false);
+  const load = useCallback(async () => {
+    if (!hasLoadedRef.current) setLoading(true);
+    try {
+      const favorites = await fetchFavorites();
+      const firstArtistId = favorites[0]?.artist_id ?? null;
+      const [normalized, artistImage] = await Promise.all([
+        Promise.all(favorites.map(toCollectionTrack)),
+        firstArtistId ? fetchArtistImagePath(firstArtistId) : Promise.resolve(null),
+      ]);
+      if (!isMountedRef.current) return;
+      setTracks(normalized);
+      setFavoriteIds(new Set(favorites.map((f) => f.id)));
+      setHeaderImagePath(artistImage ?? undefined);
+      setError(null);
+    } catch (e) {
+      if (isMountedRef.current) {
+        console.error("Error loading favorites:", e);
+        setError(
+          e instanceof Error ? e.message : "Unable to load your favorites.",
+        );
       }
-    };
-    void load();
+    } finally {
+      hasLoadedRef.current = true;
+      if (isMountedRef.current) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <TrackCollectionScreen
@@ -78,6 +81,7 @@ export default function FavoritesScreen() {
       error={error}
       favoriteIds={favoriteIds}
       emptyMessage="You haven't favorited any nasheeds yet."
+      onRefresh={load}
     />
   );
 }

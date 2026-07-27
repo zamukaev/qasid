@@ -4,7 +4,9 @@ import { GOLD, GOLD_RIPPLE_20 } from "../constants/colors";
 import { useRouter } from "expo-router";
 import { NasheedArtist } from "../types/nasheed";
 import HomeSectionShell from "./HomeSectionShell";
-import { useReciterImageSource } from "../hooks/useReciterImageSource";
+import { useImageLoadState } from "../hooks/useImageLoadState";
+import CompactArtistCardSkeleton from "./CompactArtistCardSkeleton";
+import ImageShimmerOverlay from "./ImageShimmerOverlay";
 
 const CARD_GAP = 0;
 const TEXT_AREA = 52;
@@ -20,26 +22,15 @@ interface CardVariantProps {
   small?: boolean;
 }
 
-function CompactArtistCardSkeleton({ large, small }: CardVariantProps) {
-  const { cardWidth, imageSize } = resolveSize(large, small);
-  return (
-    <View style={{ width: cardWidth }} className="items-center">
-      <View
-        className="rounded-xl bg-gray-700/30 animate-pulse mb-2"
-        style={{ width: imageSize, height: imageSize }}
-      />
-      <View className="h-3 w-20 bg-gray-700/30 rounded animate-pulse" />
-    </View>
-  );
-}
-
 function ArtistBrowseCard({
   artist,
   large,
   small,
 }: { artist: NasheedArtist } & CardVariantProps) {
   const router = useRouter();
-  const imageSource = useReciterImageSource(artist.image_path);
+  const { source, showSkeleton, onLoad, onError } = useImageLoadState(
+    artist.image_path,
+  );
   const { cardWidth, imageSize } = resolveSize(large, small);
 
   return (
@@ -66,10 +57,13 @@ function ArtistBrowseCard({
         }}
       >
         <Image
-          source={imageSource}
+          source={source}
+          onLoad={onLoad}
+          onError={onError}
           className="w-full h-full"
           resizeMode="cover"
         />
+        <ImageShimmerOverlay visible={showSkeleton} rounded="xl" />
       </View>
       <Text
         className={`text-white/90 text-center leading-4 ${large ? "text-sm" : "text-xs"}`}

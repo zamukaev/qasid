@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Text, View, FlatList } from "react-native";
+import { Text, View, FlatList, RefreshControl } from "react-native";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import {
   Search,
   ShowError,
   ReciterGridCardSkeleton,
 } from "../../../components";
+import { GOLD } from "../../../constants/colors";
 import { NasheedArtist, ResponseArtists } from "../../../types/nasheed";
 
 import {
@@ -32,6 +33,7 @@ export default function AllArtists() {
   const [hasMore, setHasMore] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const latestSearchRef = useRef("");
@@ -120,6 +122,17 @@ export default function AllArtists() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setHasMore(true);
+    setNextCursor(undefined);
+    try {
+      await loadArtists(false, latestSearchRef.current);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     latestSearchRef.current = "";
     loadArtists(false, "");
@@ -171,10 +184,23 @@ export default function AllArtists() {
           gap: 16,
         }}
         columnWrapperStyle={{ gap: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        }
         ListFooterComponent={
           loadingMore ? (
-            <View className="py-4 items-center">
-              <Text className="text-qasid-gold text-sm">Loading more...</Text>
+            <View
+              className="flex-row justify-between"
+              style={{ paddingHorizontal: 0, paddingTop: 4 }}
+            >
+              <ReciterGridCardSkeleton square />
+              <ReciterGridCardSkeleton square />
+              <ReciterGridCardSkeleton square />
             </View>
           ) : !loading && artists.length === 0 ? (
             <View className="py-8 items-center">
@@ -197,7 +223,7 @@ export default function AllArtists() {
         }}
         renderItem={({ item }) => {
           if (loading || isSearching || typeof item === "number") {
-            return <ReciterGridCardSkeleton />;
+            return <ReciterGridCardSkeleton square />;
           }
           return (
             <ArtistCard

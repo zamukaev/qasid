@@ -16,6 +16,8 @@ export { default as ContinueListeningBlock } from "./ContinueListeningBlock";
 export { default as ReciterRailSection } from "./ReciterRailSection";
 export { default as BrowseAllRecitersPreview } from "./BrowseAllRecitersPreview";
 export { default as ArtistRailSection } from "./ArtistRailSection";
+export { default as CompactArtistCardSkeleton } from "./CompactArtistCardSkeleton";
+export { default as ImageShimmerOverlay } from "./ImageShimmerOverlay";
 export { default as BrowseAllArtistsPreview } from "./BrowseAllArtistsPreview";
 export { SharedCard } from "./SharedCard";
 export { default as SharedCardSkeleton } from "./SharedCardSkeleton";

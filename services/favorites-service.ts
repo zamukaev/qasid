@@ -74,11 +74,15 @@ export async function fetchFavoriteIds(): Promise<Set<string>> {
   );
 }
 
-// Lightweight read for the home-screen Favorites tile: returns the artist
-// image path for the most recently favorited nasheed's artist.
-export async function fetchFavoriteCovers(max = 4): Promise<string[]> {
+// Lightweight read for the home-screen Favorites tile: reports whether the
+// user has any favorites at all (so the tile can be hidden when empty) and
+// the artist image path for the most recently favorited nasheed's artist.
+export async function fetchFavoriteCovers(): Promise<{
+  hasFavorites: boolean;
+  cover: string | null;
+}> {
   const userId = getAuth().currentUser?.uid;
-  if (!userId) return [];
+  if (!userId) return { hasFavorites: false, cover: null };
 
   const q = query(
     favoritesCollection(userId),
@@ -87,13 +91,13 @@ export async function fetchFavoriteCovers(max = 4): Promise<string[]> {
   );
   const snapshot = await getDocs(q);
   const firstDoc = snapshot.docs[0];
-  if (!firstDoc) return [];
+  if (!firstDoc) return { hasFavorites: false, cover: null };
 
   const artistId = String(firstDoc.data().artist_id ?? "");
-  if (!artistId) return [];
+  if (!artistId) return { hasFavorites: true, cover: null };
 
   const imagePath = await fetchArtistImagePath(artistId);
-  return imagePath ? [imagePath] : [];
+  return { hasFavorites: true, cover: imagePath ?? null };
 }
 
 export async function fetchFavorites(): Promise<Nasheed[]> {

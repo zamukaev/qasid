@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import {
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   Text,
@@ -13,11 +14,12 @@ import { GOLD } from "../constants/colors";
 import PlaceholderAvatar from "../assets/images/avatar.webp";
 import { Nasheed } from "../types/nasheed";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
-import { useReciterImageSource } from "../hooks/useReciterImageSource";
+import { useImageLoadState } from "../hooks/useImageLoadState";
 import { SharedCard } from "./SharedCard";
 import SharedCardSkeleton from "./SharedCardSkeleton";
 import ShowError from "./ShowError";
 import ReciterHeaderSkeleton from "./ReciterHeaderSkeleton";
+import ImageShimmerOverlay from "./ImageShimmerOverlay";
 import { FavoriteButton } from "./FavoriteButton";
 import { PremiumGateModal } from "./PremiumGateModal";
 import { PlayButton, PlayButtonVariant } from "./PlayButton";
@@ -45,6 +47,7 @@ interface Props {
   emptyMessage?: string;
   showFavorites?: boolean;
   favoriteIds?: Set<string>;
+  onRefresh?: () => Promise<void>;
 }
 
 export function TrackCollectionScreen({
@@ -59,11 +62,13 @@ export function TrackCollectionScreen({
   emptyMessage = "No nasheeds here yet.",
   showFavorites = true,
   favoriteIds,
+  onRefresh,
 }: Props) {
   const isPremium = useIsPremium();
   const { canPlay, increment, playsLeft } = useNasheedLimit();
   const [gateVisible, setGateVisible] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const pendingPlayIdRef = useRef(0);
@@ -78,7 +83,12 @@ export function TrackCollectionScreen({
     viewMode,
   } = useAudioPlayer();
 
-  const headerImageSource = useReciterImageSource(headerImagePath);
+  const {
+    source: headerImageSource,
+    showSkeleton: headerImageLoading,
+    onLoad: onHeaderImageLoad,
+    onError: onHeaderImageError,
+  } = useImageLoadState(headerImagePath);
 
   const handlePlay = async (track: CollectionTrack) => {
     if (!track.audioUrl) return;
@@ -144,6 +154,16 @@ export function TrackCollectionScreen({
     setShowScrollToTop(offsetY > 400);
   };
 
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (error) return <ShowError message={error} />;
 
   const isCollectionPlaying =
@@ -163,6 +183,16 @@ export function TrackCollectionScreen({
         }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={GOLD}
+              colors={[GOLD]}
+            />
+          ) : undefined
+        }
       >
         {loading ? (
           <ReciterHeaderSkeleton />
@@ -170,8 +200,10 @@ export function TrackCollectionScreen({
           <View className="px-5 pt-6">
             <View className="flex-row items-center">
               <View
-                className="mr-4"
+                className="mr-4 overflow-hidden rounded-xl"
                 style={{
+                  width: 112,
+                  height: 112,
                   shadowColor: GOLD,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.35,
@@ -180,8 +212,11 @@ export function TrackCollectionScreen({
               >
                 <Image
                   source={headerImageSource}
+                  onLoad={onHeaderImageLoad}
+                  onError={onHeaderImageError}
                   className="h-28 w-28 rounded-xl border border-qasid-gold/30"
                 />
+                <ImageShimmerOverlay visible={headerImageLoading} rounded="xl" />
               </View>
               <View className="flex-1">
                 <Text className="text-2xl text-qasid-white font-bold mb-1">

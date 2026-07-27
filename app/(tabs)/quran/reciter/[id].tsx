@@ -8,6 +8,7 @@ import {
 } from "@react-native-firebase/storage";
 import {
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   Text,
@@ -113,6 +114,7 @@ export default function ReciterDetailsScreen() {
   const [durationMap, setDurationMap] = useState<Record<string, number>>({});
   const [surahs, setSurahs] = useState<SurahListItem[]>([]);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const playbackTrackingRef = useRef<
@@ -436,6 +438,15 @@ export default function ReciterDetailsScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchReciter();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const filteredSurahItems = surahs;
 
   const handlePlaySurah = async (surah: SurahListItem) => {
@@ -682,6 +693,14 @@ export default function ReciterDetailsScreen() {
         contentContainerStyle={{ paddingBottom: contentBottomPadding }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        }
       >
         {loading ? (
           <ReciterHeaderSkeleton />

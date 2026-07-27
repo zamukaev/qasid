@@ -90,6 +90,8 @@ const buildMix = async (uid: string): Promise<RecommendedTrack[]> => {
 
   const topArtistIds = topKeys(artistWeights, TOP_ARTISTS);
   const topMoods = topKeys(moodWeights, TOP_MOODS);
+  const topArtistIdSet = new Set(topArtistIds);
+  const topMoodSet = new Set(topMoods);
 
   // Gather candidates from three sources in parallel.
   const queries: Promise<admin.firestore.QuerySnapshot>[] = [];
@@ -143,9 +145,9 @@ const buildMix = async (uid: string): Promise<RecommendedTrack[]> => {
       const track = toRecommendedTrack(doc);
       if (!track) continue;
       const data = doc.data();
-      const artistMatch = topArtistIds.includes(track.artist_id) ? 3 : 0;
+      const artistMatch = topArtistIdSet.has(track.artist_id) ? 3 : 0;
       const trackMoods = Array.isArray(data.moods) ? data.moods : [];
-      const moodMatch = trackMoods.some((m: string) => topMoods.includes(m)) ?
+      const moodMatch = trackMoods.some((m: string) => topMoodSet.has(m)) ?
         2 :
         0;
       const popularity =

@@ -14,7 +14,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.abusafiia.qasid.dev",
       "buildNumber": "1",
       "googleServicesFile": "./GoogleService-Info.plist",

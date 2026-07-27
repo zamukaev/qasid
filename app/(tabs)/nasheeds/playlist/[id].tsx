@@ -8,6 +8,7 @@ import {
 } from "@react-native-firebase/storage";
 import {
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   Text,
@@ -20,12 +21,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Playlist, Nasheed } from "../../../../types/nasheed";
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
 import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
-import { useReciterImageSource } from "../../../../hooks/useReciterImageSource";
+import { useImageLoadState } from "../../../../hooks/useImageLoadState";
 import {
   SharedCard,
   SharedCardSkeleton,
   ShowError,
   ReciterHeaderSkeleton,
+  ImageShimmerOverlay,
 } from "../../../../components";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 import {
@@ -86,6 +88,7 @@ export default function PlaylistScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isMountedRef = useRef(true);
@@ -102,14 +105,19 @@ export default function PlaylistScreen() {
   } = useAudioPlayer();
 
   const trackPrefix = `playlist-${id}`;
-  const playlistImageSource = useReciterImageSource(playlist?.image_path);
+  const {
+    source: playlistImageSource,
+    showSkeleton: playlistImageLoading,
+    onLoad: onPlaylistImageLoad,
+    onError: onPlaylistImageError,
+  } = useImageLoadState(playlist?.image_path);
 
   const loadPlaylist = async () => {
     if (!id) {
       setError("Playlist not specified.");
       return;
     }
-    setLoading(true);
+    if (!playlist) setLoading(true);
     try {
       const [playlistData, nasheedData] = await Promise.all([
         fetchPlaylistById(id),
@@ -134,6 +142,15 @@ export default function PlaylistScreen() {
       }
     } finally {
       if (isMountedRef.current) setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadPlaylist();
+    } finally {
+      if (isMountedRef.current) setRefreshing(false);
     }
   };
 
@@ -239,6 +256,14 @@ export default function PlaylistScreen() {
         }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        }
       >
         {loading ? (
           <ReciterHeaderSkeleton />
@@ -246,8 +271,10 @@ export default function PlaylistScreen() {
           <View className="px-5 pt-6">
             <View className="flex-row items-center">
               <View
-                className="mr-4"
+                className="mr-4 overflow-hidden rounded-xl"
                 style={{
+                  width: 112,
+                  height: 112,
                   shadowColor: GOLD,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.35,
@@ -256,7 +283,13 @@ export default function PlaylistScreen() {
               >
                 <Image
                   source={playlistImageSource}
+                  onLoad={onPlaylistImageLoad}
+                  onError={onPlaylistImageError}
                   className="h-28 w-28 rounded-xl border border-qasid-gold/30"
+                />
+                <ImageShimmerOverlay
+                  visible={playlistImageLoading}
+                  rounded="xl"
                 />
               </View>
               <View className="flex-1">

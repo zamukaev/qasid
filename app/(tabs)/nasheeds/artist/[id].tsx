@@ -8,6 +8,7 @@ import {
 } from "@react-native-firebase/storage";
 import {
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   Text,
@@ -84,6 +85,7 @@ export default function ArtistScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isMountedRef = useRef(true);
@@ -164,7 +166,7 @@ export default function ArtistScreen() {
       setError("Artist not specified.");
       return;
     }
-    setLoading(true);
+    if (!artist) setLoading(true);
     try {
       const [artistData, { nasheeds: nasheedData, nextCursor }] =
         await Promise.all([fetchArtistById(id), fetchArtistNasheeds(id)]);
@@ -193,6 +195,15 @@ export default function ArtistScreen() {
       }
     } finally {
       if (isMountedRef.current) setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadArtist();
+    } finally {
+      if (isMountedRef.current) setRefreshing(false);
     }
   };
 
@@ -341,9 +352,17 @@ export default function ArtistScreen() {
         contentContainerStyle={{ paddingBottom: contentBottomPadding }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        }
       >
         {loading ? (
-          <ReciterHeaderSkeleton />
+          <ReciterHeaderSkeleton circle />
         ) : (
           <View className="px-5 pt-6">
             <View className="flex-row items-center">
@@ -453,9 +472,10 @@ export default function ArtistScreen() {
               )}
 
               {loadingMore && (
-                <Text className="text-qasid-gold text-sm text-center py-4">
-                  Loading more...
-                </Text>
+                <>
+                  <SharedCardSkeleton />
+                  <SharedCardSkeleton />
+                </>
               )}
             </>
           )}
