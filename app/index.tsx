@@ -13,6 +13,7 @@ import { useSegments } from "expo-router";
 import { useUserStore } from "../stores/userStore";
 import * as RevenueCatService from "../services/revenuecat";
 import { fetchPremiumOverrideEmails } from "../services/config-service";
+import { hydrateAndSyncSubscription } from "../services/notifications-service";
 
 import "../global.css";
 
@@ -38,6 +39,11 @@ export default function Welcome() {
         setPremiumOverrideEmails(emails);
       } catch {
         // config fetch failure is non-fatal
+      }
+      try {
+        await hydrateAndSyncSubscription();
+      } catch {
+        // notification subscription failure should not block the auth flow
       }
     } else {
       await RevenueCatService.logout();

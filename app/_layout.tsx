@@ -2,15 +2,18 @@ import { Stack } from "expo-router";
 import { GOLD } from "../constants/colors";
 import { AudioPlayerProvider } from "../context/AudioPlayerContext";
 import { AppErrorBoundary } from "../components/AppErrorBoundary";
+import { ErrorAlert } from "../components";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
 
 import { Platform } from "react-native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import Purchases, { LOG_LEVEL } from "react-native-purchases";
+import { getApp } from "@react-native-firebase/app";
+import { getMessaging, onMessage } from "@react-native-firebase/messaging";
 
 import "../global.css";
 
@@ -42,6 +45,21 @@ export default function RootLayout() {
       Purchases.configure({ apiKey: androidApiKey });
     }
   }, []);
+
+  const [foregroundMessage, setForegroundMessage] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    // FCM does not show a system notification while the app is foregrounded,
+    // so surface it ourselves via the existing toast component.
+    return onMessage(getMessaging(getApp()), async (message) => {
+      const title = message.notification?.title;
+      const body = message.notification?.body;
+      if (!title && !body) return;
+      setForegroundMessage([title, body].filter(Boolean).join(" — "));
+    });
+  }, []);
   return (
     <AppErrorBoundary>
       <AudioPlayerProvider>
@@ -56,6 +74,12 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
+        <ErrorAlert
+          visible={foregroundMessage !== null}
+          message={foregroundMessage ?? ""}
+          type="info"
+          onClose={() => setForegroundMessage(null)}
+        />
       </AudioPlayerProvider>
     </AppErrorBoundary>
   );

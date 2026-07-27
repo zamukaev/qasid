@@ -9,7 +9,10 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APS_ENVIRONMENT": "production"
+      }
     },
     "production": {
       "autoIncrement": true,
@@ -18,7 +21,8 @@
       },
       "env": {
         "EXPO_PUBLIC_IOS_API_KEY": "appl_HwxGFGKnsGozFZAYWcpAsOMcYnF",
-        "EXPO_PUBLIC_ANDROID_API_KEY": "appl_HwxGFGKnsGozFZAYWcpAsOMcYnF"
+        "EXPO_PUBLIC_ANDROID_API_KEY": "appl_HwxGFGKnsGozFZAYWcpAsOMcYnF",
+        "APS_ENVIRONMENT": "production"
       }
     }
   },

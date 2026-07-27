@@ -14,6 +14,9 @@ export {onReciterPlaybackCreated} from "./playback/reciter";
 // Favorites aggregation
 export {onFavoriteWritten} from "./favorites/aggregate";
 
+// New content notifications
+export {onReciterCreated, onArtistCreated} from "./notifications/newContent";
+
 // Recommendation system
 export {dailyRecommendationJob} from "./recommendations/playlists";
 export {generateWeeklyMix} from "./recommendations/weeklyMix";
