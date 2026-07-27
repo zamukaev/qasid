@@ -19,7 +19,8 @@
       "buildNumber": "1",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "remote-notification"]
+        "UIBackgroundModes": ["audio", "remote-notification"],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "deploymentTarget": "16.0",
       "usesAppleSignIn": true
