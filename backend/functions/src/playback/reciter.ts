@@ -40,8 +40,18 @@ export const onReciterPlaybackCreated = onDocumentCreated(
     const lockRef = firestore.collection("reciter_playback_locks").doc(lockId);
 
     await firestore.runTransaction(async (transaction) => {
-      const lockSnapshot = await transaction.get(lockRef);
+      const [lockSnapshot, reciterSnapshot] = await Promise.all([
+        transaction.get(lockRef),
+        transaction.get(reciterRef),
+      ]);
       if (lockSnapshot.exists) {
+        return;
+      }
+      if (!reciterSnapshot.exists) {
+        console.warn("Skipping reciter playback event for unknown reciter", {
+          playId: snapshot.id,
+          reciterId,
+        });
         return;
       }
       transaction.set(

@@ -27,17 +27,17 @@ export const PlayButton = ({
       className={`${kind === PlayButtonVariant.PRIMARY ? "bg-qasid-gold" : "border border-qasid-gold"} rounded-2xl py-3 items-center justify-center flex-row ${clasName}`}
       onPress={handlePlayAll}
     >
+      <Ionicons
+        name={isPlaying ? "pause" : "play"}
+        size={16}
+        color={kind === PlayButtonVariant.PRIMARY ? "#000000" : GOLD}
+        style={{ marginRight: 8 }}
+      />
       <Text
         className={`${kind === PlayButtonVariant.PRIMARY ? "text-qasid-black" : "text-qasid-gold"} font-semibold text-base`}
       >
         {label}
       </Text>
-      <Ionicons
-        name={isPlaying ? "pause" : "play"}
-        size={16}
-        color={kind === PlayButtonVariant.PRIMARY ? "#000000" : GOLD}
-        style={{ marginLeft: 8 }}
-      />
     </TouchableOpacity>
   );
 };

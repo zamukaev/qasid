@@ -425,7 +425,7 @@ export default function ReciterDetailsScreen() {
       }
 
       setReciter({
-        id: data.id,
+        id: target,
         name_en: data.title_en,
         name_ar: data.title_ar,
         image_path: data.image_path,
@@ -516,7 +516,9 @@ export default function ReciterDetailsScreen() {
     }
 
     const requestId = ++requestIdRef.current;
-    const showInitialLoader = reciter?.id !== id && !backendSearchQuery;
+    const resolvedReciterId = content_type === "reciter" ? target : id;
+    const showInitialLoader =
+      reciter?.id !== resolvedReciterId && !backendSearchQuery;
 
     if (!!content_type && !!target) {
       if (content_type === "collection") {
@@ -878,7 +880,7 @@ export default function ReciterDetailsScreen() {
               <PlayButton
                 clasName="mb-4 mb-4"
                 handlePlayAll={handlePlayAll}
-                label="Play"
+                label="Play all"
                 kind={PlayButtonVariant.PRIMARY}
                 isPlaying={
                   isPlaying &&

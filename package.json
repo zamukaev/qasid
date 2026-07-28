@@ -13,6 +13,7 @@
     "backfill:nasheeds": "ts-node --project scripts/tsconfig.json scripts/backfill-nasheed-metadata.ts",
     "refresh:playlists": "ts-node --project scripts/tsconfig.json scripts/refresh-generated-playlists.ts",
     "audit:playlists": "ts-node --project scripts/tsconfig.json scripts/audit-playlist-paths.ts",
+    "audit:reciters": "ts-node --project scripts/tsconfig.json scripts/audit-phantom-reciters.ts",
     "verify:storage": "ts-node --project scripts/tsconfig.json scripts/verify-storage-paths.ts",
     "version": "node scripts/bump-version.js && git add app.json",
     "postversion": "git push && git push --tags"

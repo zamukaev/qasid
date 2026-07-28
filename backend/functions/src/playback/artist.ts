@@ -60,8 +60,26 @@ export const onArtistPlaybackCreated = onDocumentCreated(
     };
 
     await firestore.runTransaction(async (transaction) => {
-      const lockSnapshot = await transaction.get(lockRef);
+      const [lockSnapshot, artistSnapshot, nasheedSnapshot] =
+        await Promise.all([
+          transaction.get(lockRef),
+          transaction.get(artistRef),
+          transaction.get(nasheedRef),
+        ]);
       if (lockSnapshot.exists) {
+        return;
+      }
+      if (!artistSnapshot.exists || !nasheedSnapshot.exists) {
+        console.warn(
+          "Skipping artist playback event for unknown artist/nasheed",
+          {
+            playId: snapshot.id,
+            artistId,
+            nasheedId,
+            artistExists: artistSnapshot.exists,
+            nasheedExists: nasheedSnapshot.exists,
+          },
+        );
         return;
       }
       transaction.set(artistRef, counterUpdate, {merge: true});
