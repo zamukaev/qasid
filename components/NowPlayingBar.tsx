@@ -5,19 +5,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import { LayoutChangeEvent, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useAudioPlayer } from "../context/AudioPlayerContext";
+import {
+  useAudioPlayer,
+  useAudioProgress,
+} from "../context/AudioPlayerContext";
 
 export default function NowPlayingBar() {
   const insets = useSafeAreaInsets();
-  const {
-    currentTrack,
-    isPlaying,
-    togglePlayPause,
-    setViewMode,
-    positionMillis,
-    durationMillis,
-    seekTo,
-  } = useAudioPlayer();
+  const { currentTrack, isPlaying, togglePlayPause, setViewMode, seekTo } =
+    useAudioPlayer();
+  const { positionMillis, durationMillis } = useAudioProgress();
 
   const [sliderValue, setSliderValue] = useState(0);
   const [barWidth, setBarWidth] = useState(0);

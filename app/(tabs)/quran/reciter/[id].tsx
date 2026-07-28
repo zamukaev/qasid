@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { GOLD } from "../../../../constants/colors";
 import { getApp } from "@react-native-firebase/app";
 import {
@@ -24,7 +31,10 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { FirebaseReciter } from "../../../../types/quran";
 
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
-import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
+import {
+  useAudioPlayer,
+  useAudioProgress,
+} from "../../../../context/AudioPlayerContext";
 import { formatMillis } from "../../../../utils/formatMillis";
 import {
   fetchBeautifulCollectionPage,
@@ -94,6 +104,146 @@ const normalizeSurahItems = (
       };
     });
 
+/**
+ * Isolated so the ~4x/s `listenedMillis` progress ticks only re-render this
+ * (invisible) tracker, not the parent screen with its full surah list. Keyed
+ * by `reciter.id` in the parent so its tracking-state ref resets per reciter.
+ */
+function ReciterPlaybackTracker({
+  reciterId,
+  contentType,
+  currentTrackId,
+}: {
+  reciterId?: string;
+  contentType?: string;
+  currentTrackId?: string;
+}) {
+  const { listenedMillis, didJustFinish } = useAudioProgress();
+  const trackingStateRef = useRef<
+    Record<string, { started: boolean; qualified: boolean; completed: boolean }>
+  >({});
+
+  useEffect(() => {
+    if (!reciterId || contentType === "collection" || !currentTrackId) return;
+
+    const trackPrefix = `${reciterId}-`;
+    if (!currentTrackId.startsWith(trackPrefix)) return;
+
+    const surahId = currentTrackId.slice(trackPrefix.length);
+    if (!surahId) return;
+
+    const trackingState = trackingStateRef.current[currentTrackId] ?? {
+      started: false,
+      qualified: false,
+      completed: false,
+    };
+
+    const syncPlaybackEvent = async (
+      eventType: "started" | "qualified" | "completed",
+    ) => {
+      try {
+        await trackReciterPlayback({
+          reciterId,
+          surahId,
+          eventType,
+          playedSeconds: Math.floor(listenedMillis / 1000),
+        });
+      } catch (trackingError) {
+        console.warn("Failed to track reciter playback", trackingError);
+      }
+    };
+
+    if (!trackingState.started && listenedMillis >= 10000) {
+      trackingState.started = true;
+      trackingStateRef.current[currentTrackId] = trackingState;
+      void syncPlaybackEvent("started");
+    }
+
+    if (!trackingState.qualified && listenedMillis >= 30000) {
+      trackingState.qualified = true;
+      trackingStateRef.current[currentTrackId] = trackingState;
+      void syncPlaybackEvent("qualified");
+    }
+
+    if (!trackingState.completed && didJustFinish) {
+      trackingState.completed = true;
+      trackingStateRef.current[currentTrackId] = trackingState;
+      void syncPlaybackEvent("completed");
+    }
+  }, [contentType, currentTrackId, didJustFinish, listenedMillis, reciterId]);
+
+  return null;
+}
+
+type SurahListRowProps = {
+  surah: SurahListItem;
+  trackKey: string;
+  reciterNameEn?: string;
+  isRegularReciter: boolean;
+  isCollection: boolean;
+  isActive: boolean;
+  isPlayingRow: boolean;
+  durationLabel?: string;
+  onPlay: (surah: SurahListItem) => void;
+};
+
+/**
+ * Memoized so the parent's map only re-executes this row's own render when
+ * ITS props actually change — otherwise the whole surah list would redo
+ * work (including any debug logging) on every parent re-render, e.g. the
+ * periodic progressMap persistence tick while a track plays.
+ */
+const SurahListRow = memo(function SurahListRow({
+  surah,
+  trackKey,
+  reciterNameEn,
+  isRegularReciter,
+  isCollection,
+  isActive,
+  isPlayingRow,
+  durationLabel,
+  onPlay,
+}: SurahListRowProps) {
+  return (
+    <SharedCard
+      className="mb-1"
+      handlePlayTrack={() => onPlay(surah)}
+      isPlaying={isPlayingRow}
+      isPaused={isActive}
+      title={surah.englishName}
+      order={isRegularReciter ? undefined : surah.surahNumber}
+      image={isRegularReciter ? undefined : (surah.imageUrl ?? undefined)}
+      surahNumberBadge={isRegularReciter ? surah.surahNumber : undefined}
+      subtitle={
+        isCollection
+          ? (surah.reciterName ?? surah.arabicName)
+          : surah.arabicName
+      }
+      duration={durationLabel}
+      track={{
+        id: trackKey,
+        surahNumber: surah.surahNumber,
+        artist: surah.reciterName ?? reciterNameEn,
+        title: surah.englishName,
+        uri: surah.audioUrl,
+      }}
+      rightAction={
+        surah.audioUrl ? (
+          <DownloadButton
+            track={{
+              id: trackKey,
+              surahNumber: surah.surahNumber,
+              artist: surah.reciterName ?? reciterNameEn,
+              title: surah.englishName,
+              uri: surah.audioUrl,
+            }}
+          />
+        ) : undefined
+      }
+    />
+  );
+});
+
 export default function ReciterDetailsScreen() {
   const { id, content_type, target } = useLocalSearchParams<{
     id?: string;
@@ -117,17 +267,10 @@ export default function ReciterDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView | null>(null);
-  const playbackTrackingRef = useRef<
-    Record<
-      string,
-      {
-        started: boolean;
-        qualified: boolean;
-        completed: boolean;
-      }
-    >
-  >({});
   const durationMapRef = useRef<Record<string, number>>({});
+  const progressMapRef = useRef<
+    Record<string, { positionMillis: number; durationMillis: number }>
+  >({});
   const durationInFlightRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
   const requestIdRef = useRef(0);
@@ -141,14 +284,15 @@ export default function ReciterDetailsScreen() {
     isPlaying,
     viewMode,
     progressMap,
-    positionMillis,
-    durationMillis,
-    listenedMillis,
-    didJustFinish,
+    getPlaybackSnapshot,
   } = useAudioPlayer();
 
   const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
   const backendSearchQuery = debouncedSearchQuery.trim();
+
+  useEffect(() => {
+    progressMapRef.current = progressMap;
+  }, [progressMap]);
 
   const resolveAudioUrl = async (audioUrl: string) => {
     if (audioUrl.startsWith("http")) return audioUrl;
@@ -348,13 +492,14 @@ export default function ReciterDetailsScreen() {
       setHasMore(!!nextCursor);
 
       if (newItems.length > 0) {
-        setSurahs((prev) => [
-          ...prev,
-          ...normalizeSurahItems(
+        setSurahs((prev) => {
+          const existingIds = new Set(prev.map((s) => s.id));
+          const fresh = normalizeSurahItems(
             newItems as unknown as SourceSurahItem[],
             reciter?.name_en,
-          ),
-        ]);
+          ).filter((s) => !existingIds.has(s.id));
+          return [...prev, ...fresh];
+        });
       }
     } catch (error) {
       setError("Unable to load more items.");
@@ -449,100 +594,120 @@ export default function ReciterDetailsScreen() {
 
   const filteredSurahItems = surahs;
 
-  const handlePlaySurah = async (surah: SurahListItem) => {
-    if (!reciter || !surah.audioUrl) return;
+  // Wrapped in useCallback with a stable identity — reads progressMap via a
+  // ref (progressMapRef) instead of closing over the reactive state, so this
+  // handler doesn't get recreated every ~2.5s while a track plays (which
+  // would otherwise defeat SurahListRow's memoization for every row).
+  const handlePlaySurah = useCallback(
+    async (surah: SurahListItem) => {
+      if (!reciter || !surah.audioUrl) return;
 
-    let audioUrl = surah.audioUrl;
-    if (!audioUrl.startsWith("http")) {
-      try {
-        const storage = getStorage(getApp());
-        audioUrl = await getDownloadURL(ref(storage, audioUrl));
-      } catch (e) {
-        setError("Unable to load audio URL.");
-        console.error("Failed to resolve audio URL", e);
-        return;
-      }
-    }
-
-    const trackId = `${reciter.id}-${surah.id}`;
-    const savedProgress = progressMap[trackId];
-    const hasSavedPosition =
-      savedProgress &&
-      savedProgress.positionMillis > 0 &&
-      savedProgress.durationMillis > 0 &&
-      savedProgress.positionMillis <
-        savedProgress.durationMillis - 5000; /* leave 5s margin */
-    const resumePosition = hasSavedPosition
-      ? savedProgress.positionMillis
-      : undefined;
-
-    // Если трек уже активен
-    if (currentTrack?.id === trackId) {
-      if (isPlaying) {
-        // Если играет, ставим на паузу
-        await pause();
-      } else {
-        // Если не играет, проверяем, закончился ли трек
-        // Проверяем через позицию: если позиция близка к концу или равна длительности
-        const isFinished =
-          (durationMillis > 0 &&
-            positionMillis > 0 &&
-            positionMillis >= durationMillis - 100) || // Трек закончился (текущая позиция)
-          (savedProgress &&
-            savedProgress.durationMillis > 0 &&
-            savedProgress.positionMillis >= savedProgress.durationMillis - 100); // Или сохраненная позиция в конце
-
-        if (isFinished && !hasSavedPosition) {
-          // Трек закончился и нет сохраненной позиции - перезапускаем с начала
-          // Это работает для всех треков, включая последний
-          const track = {
-            id: trackId,
-            title: surah.englishName,
-            artist: surah.reciterName ?? reciter.name_en,
-            artworkUri: surah.imageUrl ?? PlaceholderAvatar,
-            uri: { uri: audioUrl },
-          };
-          await playTrack(track);
-        } else {
-          // Трек не закончился или есть сохраненная позиция - возобновляем
-          if (resumePosition) {
-            await seekTo(resumePosition);
-          }
-          await resume();
+      let audioUrl = surah.audioUrl;
+      if (!audioUrl.startsWith("http")) {
+        try {
+          const storage = getStorage(getApp());
+          audioUrl = await getDownloadURL(ref(storage, audioUrl));
+        } catch (e) {
+          setError("Unable to load audio URL.");
+          console.error("Failed to resolve audio URL", e);
+          return;
         }
       }
-      return;
-    }
 
-    const queueTracks = filteredSurahItems
-      .filter((item) => !!item.audioUrl)
-      .map((item) => ({
-        id: `${reciter.id}-${item.id}`,
-        title: item.englishName,
-        artist: item.reciterName ?? reciter.name_en,
-        artworkUri: item.imageUrl ?? PlaceholderAvatar,
-        uri: { uri: item.audioUrl as string },
-      }));
-    setQueue(queueTracks);
+      const trackId = `${reciter.id}-${surah.id}`;
+      const savedProgress = progressMapRef.current[trackId];
+      const hasSavedPosition =
+        savedProgress &&
+        savedProgress.positionMillis > 0 &&
+        savedProgress.durationMillis > 0 &&
+        savedProgress.positionMillis <
+          savedProgress.durationMillis - 5000; /* leave 5s margin */
+      const resumePosition = hasSavedPosition
+        ? savedProgress.positionMillis
+        : undefined;
 
-    const track = {
-      id: trackId,
-      title: surah.englishName,
-      artist: surah.reciterName ?? reciter.name_en,
-      artworkUri: surah.imageUrl ?? PlaceholderAvatar,
-      uri: { uri: audioUrl },
-    };
-    await playTrack(track, resumePosition);
-  };
+      // Если трек уже активен
+      if (currentTrack?.id === trackId) {
+        if (isPlaying) {
+          // Если играет, ставим на паузу
+          await pause();
+        } else {
+          // Если не играет, проверяем, закончился ли трек
+          // Проверяем через позицию: если позиция близка к концу или равна длительности
+          const { positionMillis, durationMillis } = getPlaybackSnapshot();
+          const isFinished =
+            (durationMillis > 0 &&
+              positionMillis > 0 &&
+              positionMillis >= durationMillis - 100) || // Трек закончился (текущая позиция)
+            (savedProgress &&
+              savedProgress.durationMillis > 0 &&
+              savedProgress.positionMillis >=
+                savedProgress.durationMillis - 100); // Или сохраненная позиция в конце
 
-  const handlePlayAll = async () => {
+          if (isFinished && !hasSavedPosition) {
+            // Трек закончился и нет сохраненной позиции - перезапускаем с начала
+            // Это работает для всех треков, включая последний
+            const track = {
+              id: trackId,
+              title: surah.englishName,
+              artist: surah.reciterName ?? reciter.name_en,
+              artworkUri: surah.imageUrl ?? PlaceholderAvatar,
+              uri: { uri: audioUrl },
+            };
+            await playTrack(track);
+          } else {
+            // Трек не закончился или есть сохраненная позиция - возобновляем
+            if (resumePosition) {
+              await seekTo(resumePosition);
+            }
+            await resume();
+          }
+        }
+        return;
+      }
+
+      const queueTracks = filteredSurahItems
+        .filter((item) => !!item.audioUrl)
+        .map((item) => ({
+          id: `${reciter.id}-${item.id}`,
+          title: item.englishName,
+          artist: item.reciterName ?? reciter.name_en,
+          artworkUri: item.imageUrl ?? PlaceholderAvatar,
+          uri: { uri: item.audioUrl as string },
+        }));
+      setQueue(queueTracks);
+
+      const track = {
+        id: trackId,
+        title: surah.englishName,
+        artist: surah.reciterName ?? reciter.name_en,
+        artworkUri: surah.imageUrl ?? PlaceholderAvatar,
+        uri: { uri: audioUrl },
+      };
+      await playTrack(track, resumePosition);
+    },
+    [
+      reciter,
+      currentTrack?.id,
+      isPlaying,
+      filteredSurahItems,
+      getPlaybackSnapshot,
+      setQueue,
+      playTrack,
+      seekTo,
+      resume,
+      pause,
+    ],
+  );
+
+  const handlePlayAll = useCallback(async () => {
     if (filteredSurahItems.length === 0 || !reciter) return;
 
     // Всегда запускаем первый трек с начала
     const first = filteredSurahItems.find((item) => item.audioUrl);
     if (!first) return;
     await handlePlaySurah(first);
-  };
+  }, [filteredSurahItems, reciter, handlePlaySurah]);
 
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
@@ -576,7 +741,6 @@ export default function ReciterDetailsScreen() {
   useEffect(() => {
     setSearchQuery("");
     setDurationMap({});
-    playbackTrackingRef.current = {};
     durationMapRef.current = {};
   }, [reciter?.id]);
 
@@ -628,55 +792,6 @@ export default function ReciterDetailsScreen() {
     };
   }, [filteredSurahItems, reciter, loading]);
 
-  useEffect(() => {
-    if (!reciter || content_type === "collection" || !currentTrack?.id) return;
-
-    const trackPrefix = `${reciter.id}-`;
-    if (!currentTrack.id.startsWith(trackPrefix)) return;
-
-    const surahId = currentTrack.id.slice(trackPrefix.length);
-    if (!surahId) return;
-
-    const trackingState = playbackTrackingRef.current[currentTrack.id] ?? {
-      started: false,
-      qualified: false,
-      completed: false,
-    };
-
-    const syncPlaybackEvent = async (
-      eventType: "started" | "qualified" | "completed",
-    ) => {
-      try {
-        await trackReciterPlayback({
-          reciterId: reciter.id,
-          surahId,
-          eventType,
-          playedSeconds: Math.floor(listenedMillis / 1000),
-        });
-      } catch (trackingError) {
-        console.warn("Failed to track reciter playback", trackingError);
-      }
-    };
-
-    if (!trackingState.started && listenedMillis >= 10000) {
-      trackingState.started = true;
-      playbackTrackingRef.current[currentTrack.id] = trackingState;
-      void syncPlaybackEvent("started");
-    }
-
-    if (!trackingState.qualified && listenedMillis >= 30000) {
-      trackingState.qualified = true;
-      playbackTrackingRef.current[currentTrack.id] = trackingState;
-      void syncPlaybackEvent("qualified");
-    }
-
-    if (!trackingState.completed && didJustFinish) {
-      trackingState.completed = true;
-      playbackTrackingRef.current[currentTrack.id] = trackingState;
-      void syncPlaybackEvent("completed");
-    }
-  }, [content_type, currentTrack?.id, didJustFinish, listenedMillis, reciter]);
-
   if (error) {
     return <ShowError message={error} />;
   }
@@ -687,6 +802,12 @@ export default function ReciterDetailsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
+      <ReciterPlaybackTracker
+        key={reciter?.id}
+        reciterId={reciter?.id}
+        contentType={content_type}
+        currentTrackId={currentTrack?.id}
+      />
       <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <ScrollView
         ref={scrollViewRef}
@@ -786,9 +907,7 @@ export default function ReciterDetailsScreen() {
           ) : (
             <>
               {filteredSurahItems.map((surah: SurahListItem) => {
-                const key = `${surah?.reciterName}-${surah.surahNumber}`;
                 const trackKey = `${reciter?.id}-${surah.id}`;
-
                 const isActive = currentTrack?.id === trackKey;
                 const progressEntry = progressMap[trackKey];
                 const knownDurationMillis =
@@ -796,50 +915,19 @@ export default function ReciterDetailsScreen() {
                 const durationLabel = knownDurationMillis
                   ? formatMillis(knownDurationMillis)
                   : undefined;
-                const isRegularReciter = !content_type;
+
                 return (
-                  <SharedCard
-                    className="mb-1"
-                    key={key}
-                    handlePlayTrack={() => handlePlaySurah(surah)}
-                    isPlaying={isPlaying && isActive}
-                    isPaused={isActive}
-                    title={surah.englishName}
-                    order={isRegularReciter ? undefined : surah.surahNumber}
-                    image={
-                      isRegularReciter
-                        ? undefined
-                        : (surah.imageUrl ?? undefined)
-                    }
-                    surahNumberBadge={
-                      isRegularReciter ? surah.surahNumber : undefined
-                    }
-                    subtitle={
-                      content_type === "collection"
-                        ? (surah.reciterName ?? surah.arabicName)
-                        : surah.arabicName
-                    }
-                    duration={durationLabel}
-                    track={{
-                      id: trackKey,
-                      surahNumber: surah.surahNumber,
-                      artist: surah.reciterName ?? reciter?.name_en,
-                      title: surah.englishName,
-                      uri: surah.audioUrl,
-                    }}
-                    rightAction={
-                      surah.audioUrl ? (
-                        <DownloadButton
-                          track={{
-                            id: trackKey,
-                            surahNumber: surah.surahNumber,
-                            artist: surah.reciterName ?? reciter?.name_en,
-                            title: surah.englishName,
-                            uri: surah.audioUrl,
-                          }}
-                        />
-                      ) : undefined
-                    }
+                  <SurahListRow
+                    key={trackKey}
+                    surah={surah}
+                    trackKey={trackKey}
+                    reciterNameEn={reciter?.name_en}
+                    isRegularReciter={!content_type}
+                    isCollection={content_type === "collection"}
+                    isActive={isActive}
+                    isPlayingRow={isPlaying && isActive}
+                    durationLabel={durationLabel}
+                    onPlay={handlePlaySurah}
                   />
                 );
               })}

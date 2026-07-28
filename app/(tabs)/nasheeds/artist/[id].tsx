@@ -25,7 +25,10 @@ import {
   NasheedCursor,
 } from "../../../../types/nasheed";
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
-import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
+import {
+  useAudioPlayer,
+  useAudioProgress,
+} from "../../../../context/AudioPlayerContext";
 import {
   SharedCard,
   SharedCardSkeleton,
@@ -46,7 +49,10 @@ import {
 } from "../../../../services/nasheeds-service";
 import { addRecentArtist } from "../../../../services/recents-service";
 import { fetchFavoriteIds } from "../../../../services/favorites-service";
-import { markManualPlay, useNasheedLimit } from "../../../../hooks/useNasheedLimit";
+import {
+  markManualPlay,
+  useNasheedLimit,
+} from "../../../../hooks/useNasheedLimit";
 import { useIsPremium } from "../../../../stores/userStore";
 
 interface NasheedItem {
@@ -65,6 +71,73 @@ const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
     imageUrl: item.image_path ?? null,
     raw: item,
   }));
+
+/**
+ * Isolated so the ~4x/s `listenedMillis` progress ticks only re-render this
+ * (invisible) tracker, not the parent screen with its full nasheed list.
+ * Keyed by `artist.id` in the parent so its tracking-state ref resets per artist.
+ */
+function ArtistPlaybackTracker({
+  artistId,
+  currentTrackId,
+}: {
+  artistId?: string;
+  currentTrackId?: string;
+}) {
+  const { listenedMillis, didJustFinish } = useAudioProgress();
+  const trackingStateRef = useRef<
+    Record<string, { started: boolean; qualified: boolean; completed: boolean }>
+  >({});
+
+  useEffect(() => {
+    if (!artistId || !currentTrackId) return;
+
+    const prefix = `${artistId}-`;
+    if (!currentTrackId.startsWith(prefix)) return;
+
+    const nasheedId = currentTrackId.slice(prefix.length);
+    if (!nasheedId) return;
+
+    const state = trackingStateRef.current[currentTrackId] ?? {
+      started: false,
+      qualified: false,
+      completed: false,
+    };
+
+    const track = async (eventType: "started" | "qualified" | "completed") => {
+      try {
+        await trackArtistPlayback({
+          artistId,
+          nasheedId,
+          eventType,
+          playedSeconds: Math.floor(listenedMillis / 1000),
+        });
+      } catch (e) {
+        console.warn("Failed to track artist playback", e);
+      }
+    };
+
+    if (!state.started && listenedMillis >= 10000) {
+      state.started = true;
+      trackingStateRef.current[currentTrackId] = state;
+      void track("started");
+    }
+
+    if (!state.qualified && listenedMillis >= 30000) {
+      state.qualified = true;
+      trackingStateRef.current[currentTrackId] = state;
+      void track("qualified");
+    }
+
+    if (!state.completed && didJustFinish) {
+      state.completed = true;
+      trackingStateRef.current[currentTrackId] = state;
+      void track("completed");
+    }
+  }, [artistId, currentTrackId, didJustFinish, listenedMillis]);
+
+  return null;
+}
 
 export default function ArtistScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -99,60 +172,7 @@ export default function ArtistScreen() {
     resume,
     isPlaying,
     viewMode,
-    listenedMillis,
-    didJustFinish,
   } = useAudioPlayer();
-
-  const playbackTrackingRef = useRef<
-    Record<string, { started: boolean; qualified: boolean; completed: boolean }>
-  >({});
-
-  useEffect(() => {
-    if (!artist?.id || !currentTrack?.id) return;
-
-    const prefix = `${artist.id}-`;
-    if (!currentTrack.id.startsWith(prefix)) return;
-
-    const nasheedId = currentTrack.id.slice(prefix.length);
-    if (!nasheedId) return;
-
-    const state = playbackTrackingRef.current[currentTrack.id] ?? {
-      started: false,
-      qualified: false,
-      completed: false,
-    };
-
-    const track = async (eventType: "started" | "qualified" | "completed") => {
-      try {
-        await trackArtistPlayback({
-          artistId: artist.id,
-          nasheedId,
-          eventType,
-          playedSeconds: Math.floor(listenedMillis / 1000),
-        });
-      } catch (e) {
-        console.warn("Failed to track artist playback", e);
-      }
-    };
-
-    if (!state.started && listenedMillis >= 10000) {
-      state.started = true;
-      playbackTrackingRef.current[currentTrack.id] = state;
-      void track("started");
-    }
-
-    if (!state.qualified && listenedMillis >= 30000) {
-      state.qualified = true;
-      playbackTrackingRef.current[currentTrack.id] = state;
-      void track("qualified");
-    }
-
-    if (!state.completed && didJustFinish) {
-      state.completed = true;
-      playbackTrackingRef.current[currentTrack.id] = state;
-      void track("completed");
-    }
-  }, [artist?.id, currentTrack?.id, didJustFinish, listenedMillis]);
 
   const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
 
@@ -342,6 +362,11 @@ export default function ArtistScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
+      <ArtistPlaybackTracker
+        key={artist?.id}
+        artistId={artist?.id}
+        currentTrackId={currentTrack?.id}
+      />
       <PremiumGateModal
         visible={gateVisible}
         playsLeft={playsLeft}

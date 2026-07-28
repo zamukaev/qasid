@@ -14,14 +14,15 @@ import Fontisto from "@expo/vector-icons/Fontisto";
 import Feather from "@expo/vector-icons/Feather";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import { useAudioPlayer } from "../context/AudioPlayerContext";
+import {
+  useAudioPlayer,
+  useAudioProgress,
+} from "../context/AudioPlayerContext";
 
 export default function FullScreenPlayer() {
   const {
     currentTrack,
     isPlaying,
-    positionMillis,
-    durationMillis,
     seekTo,
     setViewMode,
     next,
@@ -31,6 +32,7 @@ export default function FullScreenPlayer() {
     setRepeatMode,
     embeddedArtwork,
   } = useAudioPlayer();
+  const { positionMillis, durationMillis } = useAudioProgress();
 
   const progress = useMemo(() => {
     if (!durationMillis) return 0;
@@ -183,7 +185,7 @@ export default function FullScreenPlayer() {
                   embeddedArtwork ??
                   (typeof currentTrack?.artworkUri === "string"
                     ? currentTrack.artworkUri
-                    : currentTrack?.artworkUri?.uri ?? null);
+                    : (currentTrack?.artworkUri?.uri ?? null));
                 return artUri ? (
                   <Image
                     source={{ uri: artUri }}

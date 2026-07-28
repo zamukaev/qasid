@@ -53,10 +53,6 @@ type TrackProgressMap = Record<string, TrackProgressEntry>;
 type AudioPlayerContextValue = {
   currentTrack: Track | null;
   isPlaying: boolean;
-  positionMillis: number;
-  durationMillis: number;
-  listenedMillis: number;
-  didJustFinish: boolean;
   viewMode: PlayerViewMode;
   queue: Track[];
   repeatMode: RepeatMode;
@@ -74,11 +70,32 @@ type AudioPlayerContextValue = {
   progressMap: TrackProgressMap;
   clearProgress: (trackId: string) => Promise<void>;
   clearPlayback: () => Promise<void>;
+  /** Non-reactive read of the latest position/duration — for on-demand checks
+   *  (e.g. "did this track finish?") that shouldn't subscribe to the 4x/s
+   *  progress ticks. Use `useAudioProgress()` instead if you need to render
+   *  a live-updating position/duration (e.g. a progress bar). */
+  getPlaybackSnapshot: () => { positionMillis: number; durationMillis: number };
+};
+
+// High-frequency fields (~4x/s while playing) live in a separate context so
+// that consumers which only need currentTrack/isPlaying/queue/etc. (e.g. a
+// screen rendering a long list) don't re-render on every progress tick.
+// Only mount a `useAudioProgress()` consumer where you actually render a
+// live position/duration (progress bars, sliders).
+type AudioProgressContextValue = {
+  positionMillis: number;
+  durationMillis: number;
+  listenedMillis: number;
+  didJustFinish: boolean;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | undefined>(
   undefined,
 );
+
+const AudioProgressContext = createContext<
+  AudioProgressContextValue | undefined
+>(undefined);
 
 const PROGRESS_STORAGE_KEY = "@qasid-reciter-progress";
 
@@ -653,14 +670,22 @@ export function AudioPlayerProvider({
     setDurationMillis(0);
   }, []);
 
+  // Reads the refs kept up to date every tick (see the progress-sync effect
+  // above) without subscribing to the fast-changing state — safe to call
+  // on-demand (e.g. from a tap handler) without pulling the caller into the
+  // 4x/s progress churn.
+  const getPlaybackSnapshot = useCallback(
+    () => ({
+      positionMillis: lastReportedPositionRef.current,
+      durationMillis: latestDurationRef.current,
+    }),
+    [],
+  );
+
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
       currentTrack,
       isPlaying,
-      positionMillis,
-      durationMillis,
-      listenedMillis,
-      didJustFinish,
       viewMode,
       queue,
       repeatMode,
@@ -678,14 +703,11 @@ export function AudioPlayerProvider({
       progressMap,
       clearProgress,
       clearPlayback,
+      getPlaybackSnapshot,
     }),
     [
       currentTrack,
       isPlaying,
-      positionMillis,
-      durationMillis,
-      listenedMillis,
-      didJustFinish,
       viewMode,
       queue,
       repeatMode,
@@ -702,12 +724,20 @@ export function AudioPlayerProvider({
       progressMap,
       clearProgress,
       clearPlayback,
+      getPlaybackSnapshot,
     ],
+  );
+
+  const progressValue = useMemo<AudioProgressContextValue>(
+    () => ({ positionMillis, durationMillis, listenedMillis, didJustFinish }),
+    [positionMillis, durationMillis, listenedMillis, didJustFinish],
   );
 
   return (
     <AudioPlayerContext.Provider value={value}>
-      {children}
+      <AudioProgressContext.Provider value={progressValue}>
+        {children}
+      </AudioProgressContext.Provider>
     </AudioPlayerContext.Provider>
   );
 }
@@ -716,6 +746,17 @@ export function useAudioPlayer() {
   const ctx = useContext(AudioPlayerContext);
   if (!ctx)
     throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
+  return ctx;
+}
+
+/** Live position/duration/listened-time, ticking ~4x/s while playing. Only
+ *  use this in components that render a live progress bar/slider — anything
+ *  else should use `useAudioPlayer().getPlaybackSnapshot()` instead so it
+ *  doesn't re-render on every tick. */
+export function useAudioProgress() {
+  const ctx = useContext(AudioProgressContext);
+  if (!ctx)
+    throw new Error("useAudioProgress must be used within AudioPlayerProvider");
   return ctx;
 }
 

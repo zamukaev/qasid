@@ -5,7 +5,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { useAudioPlayer } from "../context/AudioPlayerContext";
+import {
+  useAudioPlayer,
+  useAudioProgress,
+} from "../context/AudioPlayerContext";
 import { Progressbar } from "./Progressbar";
 
 type Variant = "quran" | "nasheeds";
@@ -39,15 +42,9 @@ export default function ContinueListeningBlock({
   variant?: Variant;
 }) {
   const router = useRouter();
-  const {
-    currentTrack,
-    positionMillis,
-    resume,
-    pause,
-    isPlaying,
-    durationMillis,
-    playTrack,
-  } = useAudioPlayer();
+  const { currentTrack, resume, pause, isPlaying, playTrack } =
+    useAudioPlayer();
+  const { positionMillis, durationMillis } = useAudioProgress();
 
   const config = VARIANT_CONFIG[variant];
   const hasHistory = Boolean(currentTrack);
@@ -120,11 +117,7 @@ export default function ContinueListeningBlock({
                     },
                   ]}
                 >
-                  <Ionicons
-                    name={"library-outline"}
-                    size={24}
-                    color={GOLD}
-                  />
+                  <Ionicons name={"library-outline"} size={24} color={GOLD} />
                 </Pressable>
               ) : (
                 <Pressable
