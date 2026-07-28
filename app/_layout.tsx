@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import Purchases, { LOG_LEVEL } from "react-native-purchases";
 import { getApp } from "@react-native-firebase/app";
 import { getMessaging, onMessage } from "@react-native-firebase/messaging";
+import { hydrateStorageUrlCache } from "../services/storage";
 
 import "../global.css";
 
@@ -36,6 +37,12 @@ export default function RootLayout() {
   const androidApiKey = __DEV__
     ? process.env.EXPO_PUBLIC_ANDROID_TEST_API_KEY
     : process.env.EXPO_PUBLIC_ANDROID_API_KEY;
+  // Overlap the cache's disk read with app boot rather than paying for it on
+  // the first screen that resolves a Storage path.
+  useEffect(() => {
+    void hydrateStorageUrlCache();
+  }, []);
+
   useEffect(() => {
     Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.VERBOSE : LOG_LEVEL.ERROR);
 

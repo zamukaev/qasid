@@ -1,9 +1,13 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  FlatList,
   Image,
+  ListRenderItemInfo,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
   RefreshControl,
   SafeAreaView,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -13,27 +17,37 @@ import { Ionicons } from "@expo/vector-icons";
 import { GOLD } from "../constants/colors";
 import PlaceholderAvatar from "../assets/images/avatar.webp";
 import { Nasheed } from "../types/nasheed";
+import { NasheedTrackMeta } from "../utils/nasheedTrack";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useImageLoadState } from "../hooks/useImageLoadState";
-import { SharedCard } from "./SharedCard";
+import { useProgressiveStorageUrls } from "../hooks/useProgressiveStorageUrls";
+import { resolveStorageUrlPrioritized } from "../services/storage";
 import SharedCardSkeleton from "./SharedCardSkeleton";
 import ShowError from "./ShowError";
 import ReciterHeaderSkeleton from "./ReciterHeaderSkeleton";
 import ImageShimmerOverlay from "./ImageShimmerOverlay";
-import { FavoriteButton } from "./FavoriteButton";
 import { PremiumGateModal } from "./PremiumGateModal";
 import { PlayButton, PlayButtonVariant } from "./PlayButton";
+import { TrackCollectionRow } from "./TrackCollectionRow";
 import { markManualPlay, useNasheedLimit } from "../hooks/useNasheedLimit";
 import { useIsPremium } from "../stores/userStore";
 
-export interface CollectionTrack {
-  id: string;
-  title: string;
-  artist: string;
-  audioUrl: string | null;
-  imageUrl: string | null;
+export interface CollectionTrack extends NasheedTrackMeta {
   nasheed: Nasheed;
 }
+
+const SKELETON_ROW_COUNT = 8;
+const SCROLL_TO_TOP_THRESHOLD_PX = 400;
+const SCROLL_EVENT_THROTTLE_MS = 32;
+
+// Roughly one viewport plus a row, so the first commit stays small.
+const INITIAL_ROWS_TO_RENDER = 12;
+const ROWS_PER_RENDER_BATCH = 10;
+const CELL_BATCHING_PERIOD_MS = 50;
+// Default is 21 viewports of retained rows; 7 keeps ~5x less mounted.
+const LIST_WINDOW_SIZE = 7;
+
+const keyExtractor = (track: CollectionTrack) => track.id;
 
 interface Props {
   title: string;
@@ -70,8 +84,9 @@ export function TrackCollectionScreen({
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView | null>(null);
+  const listRef = useRef<FlatList<CollectionTrack> | null>(null);
   const pendingPlayIdRef = useRef(0);
+  const showScrollToTopRef = useRef(false);
 
   const {
     playTrack,
@@ -90,8 +105,26 @@ export function TrackCollectionScreen({
     onError: onHeaderImageError,
   } = useImageLoadState(headerImagePath);
 
+  // Artwork resolves after the list has painted, never before it.
+  const imagePaths = useMemo(() => tracks.map((t) => t.imagePath), [tracks]);
+  const imageUrls = useProgressiveStorageUrls(imagePaths);
+
+  const fallbackArt = headerImagePath?.startsWith("http")
+    ? headerImagePath
+    : PlaceholderAvatar;
+
+  const artworkFor = (track: CollectionTrack) =>
+    (track.imagePath ? imageUrls.get(track.imagePath) : undefined) ??
+    fallbackArt;
+
+  // Rebuilt per track list rather than per play tap.
+  const playableTracks = useMemo(
+    () => tracks.filter((item) => !!item.audioPath),
+    [tracks],
+  );
+
   const handlePlay = async (track: CollectionTrack) => {
-    if (!track.audioUrl) return;
+    if (!track.audioPath) return;
     const trackId = `${trackPrefix}-${track.id}`;
 
     if (currentTrack?.id === trackId) {
@@ -104,25 +137,32 @@ export function TrackCollectionScreen({
       return;
     }
 
+    // Jumps the resolution queue so a play tap never waits behind the
+    // background artwork resolutions kicked off above.
     const playId = ++pendingPlayIdRef.current;
+    let audioUrl: string;
+    try {
+      audioUrl = await resolveStorageUrlPrioritized(track.audioPath);
+    } catch {
+      return;
+    }
+    // A newer tap won while we were resolving.
     if (playId !== pendingPlayIdRef.current) return;
 
+    // Only after a successful resolve — otherwise a network blip burns one of
+    // a free user's daily plays.
     if (!isPremium) await increment();
 
-    const fallbackArt = headerImagePath?.startsWith("http")
-      ? headerImagePath
-      : PlaceholderAvatar;
-
-    const allQueueTracks = tracks
-      .filter((item) => !!item.audioUrl)
-      .map((item) => ({
-        id: `${trackPrefix}-${item.id}`,
-        title: item.title,
-        artist: item.artist,
-        artworkUri: item.imageUrl ?? fallbackArt,
-        isNasheed: true,
-        uri: { uri: item.audioUrl as string },
-      }));
+    const allQueueTracks = playableTracks.map((item) => ({
+      id: `${trackPrefix}-${item.id}`,
+      title: item.title,
+      artist: item.artist,
+      artworkUri: artworkFor(item),
+      isNasheed: true,
+      // Raw paths are fine here: playTrack resolves them lazily, and that path
+      // also honours locally downloaded files.
+      uri: { uri: item.audioPath as string },
+    }));
 
     const selectedIndex = allQueueTracks.findIndex((t) => t.id === trackId);
     const queueTracks = isPremium
@@ -138,21 +178,42 @@ export function TrackCollectionScreen({
       id: trackId,
       title: track.title,
       artist: track.artist,
-      artworkUri: track.imageUrl ?? fallbackArt,
+      artworkUri: artworkFor(track),
       isNasheed: true,
-      uri: { uri: track.audioUrl as string },
+      uri: { uri: audioUrl },
     });
   };
 
-  const handlePlayAll = async () => {
-    const first = tracks.find((t) => t.audioUrl);
-    if (first) await handlePlay(first);
-  };
+  // handlePlay closes over tracks, playsLeft, isPremium and playback state, so
+  // it cannot be a stable useCallback. Rows and the memoized header instead get
+  // stable wrappers that read the latest version through a ref.
+  const handlePlayRef = useRef(handlePlay);
+  const playableTracksRef = useRef(playableTracks);
+  useEffect(() => {
+    handlePlayRef.current = handlePlay;
+    playableTracksRef.current = playableTracks;
+  });
 
-  const handleScroll = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
-    setShowScrollToTop(offsetY > 400);
-  };
+  const onPlay = useCallback((nasheedId: string) => {
+    const track = playableTracksRef.current.find((t) => t.id === nasheedId);
+    if (track) void handlePlayRef.current(track);
+  }, []);
+
+  const handlePlayAll = useCallback(() => {
+    const first = playableTracksRef.current[0];
+    if (first) void handlePlayRef.current(first);
+  }, []);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next =
+        (event.nativeEvent.contentOffset?.y ?? 0) > SCROLL_TO_TOP_THRESHOLD_PX;
+      if (next === showScrollToTopRef.current) return;
+      showScrollToTopRef.current = next;
+      setShowScrollToTop(next);
+    },
+    [],
+  );
 
   const handleRefresh = async () => {
     if (!onRefresh) return;
@@ -164,46 +225,23 @@ export function TrackCollectionScreen({
     }
   };
 
-  if (error) return <ShowError message={error} />;
-
   const isCollectionPlaying =
     isPlaying && !!currentTrack?.id.startsWith(trackPrefix);
 
-  return (
-    <SafeAreaView className="flex-1 bg-qasid-black">
-      <PremiumGateModal
-        visible={gateVisible}
-        playsLeft={playsLeft}
-        onClose={() => setGateVisible(false)}
-      />
-      <ScrollView
-        ref={scrollViewRef}
-        contentContainerStyle={{
-          paddingBottom: viewMode === "hidden" ? 32 : 128,
-        }}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        refreshControl={
-          onRefresh ? (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={GOLD}
-              colors={[GOLD]}
-            />
-          ) : undefined
-        }
-      >
+  // A memoized element, not an inline component: an inline component's identity
+  // changes every render and would remount the header image on every state
+  // change, flickering the artwork.
+  const listHeader = useMemo(
+    () => (
+      <>
         {loading ? (
           <ReciterHeaderSkeleton />
         ) : (
-          <View className="px-5 pt-6">
+          <View className="pt-6">
             <View className="flex-row items-center">
               <View
-                className="mr-4 overflow-hidden rounded-xl"
+                className=" mr-4"
                 style={{
-                  width: 112,
-                  height: 112,
                   shadowColor: GOLD,
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.35,
@@ -214,9 +252,12 @@ export function TrackCollectionScreen({
                   source={headerImageSource}
                   onLoad={onHeaderImageLoad}
                   onError={onHeaderImageError}
-                  className="h-28 w-28 rounded-xl border border-qasid-gold/30"
+                  className="h-40 w-40 rounded-xl border border-qasid-gold/20"
                 />
-                <ImageShimmerOverlay visible={headerImageLoading} rounded="xl" />
+                <ImageShimmerOverlay
+                  visible={headerImageLoading}
+                  rounded="xl"
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-2xl text-qasid-white font-bold mb-1">
@@ -245,64 +286,124 @@ export function TrackCollectionScreen({
           </View>
         )}
 
-        <View className="mt-8 px-5">
-          <View className="mb-4">
-            <Text className="text-qasid-white text-xl font-semibold">
-              Nasheeds
-            </Text>
-          </View>
-
-          {loading ? (
-            Array.from({ length: 8 }).map((_, i) => (
-              <View key={`skeleton-${i}`} className="mb-1">
-                <SharedCardSkeleton />
-              </View>
-            ))
-          ) : (
-            <>
-              {tracks.map((track) => {
-                const trackId = `${trackPrefix}-${track.id}`;
-                const isActive = currentTrack?.id === trackId;
-                return (
-                  <SharedCard
-                    className="mb-1"
-                    key={track.id}
-                    handlePlayTrack={() => handlePlay(track)}
-                    isPlaying={isPlaying && isActive}
-                    isPaused={isActive}
-                    title={track.title}
-                    image={track.imageUrl ?? undefined}
-                    subtitle={track.artist}
-                    track={{
-                      id: trackId,
-                      title: track.title,
-                      artist: track.artist,
-                      uri: track.audioUrl,
-                    }}
-                    rightAction={
-                      showFavorites ? (
-                        <FavoriteButton
-                          nasheed={track.nasheed}
-                          initialFavorite={favoriteIds?.has(track.id)}
-                        />
-                      ) : undefined
-                    }
-                  />
-                );
-              })}
-
-              {tracks.length === 0 && !loading && (
-                <Text className="text-qasid-white/70 text-base">
-                  {emptyMessage}
-                </Text>
-              )}
-            </>
-          )}
+        <View className="mt-8 mb-4">
+          <Text className="text-qasid-white text-xl font-semibold">
+            Nasheeds
+          </Text>
         </View>
-      </ScrollView>
+      </>
+    ),
+    [
+      loading,
+      headerImageSource,
+      headerImageLoading,
+      onHeaderImageLoad,
+      onHeaderImageError,
+      title,
+      subtitle,
+      description,
+      tracks.length,
+      isCollectionPlaying,
+      handlePlayAll,
+    ],
+  );
+
+  const listEmpty = useMemo(() => {
+    if (loading) {
+      return (
+        <View>
+          {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+            <View key={`skeleton-${i}`} className="mb-1">
+              <SharedCardSkeleton />
+            </View>
+          ))}
+        </View>
+      );
+    }
+    return (
+      <Text className="text-qasid-white/70 text-base">{emptyMessage}</Text>
+    );
+  }, [loading, emptyMessage]);
+
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<CollectionTrack>) => {
+      const trackId = `${trackPrefix}-${item.id}`;
+      const isActive = currentTrack?.id === trackId;
+      return (
+        <TrackCollectionRow
+          trackId={trackId}
+          nasheedId={item.id}
+          title={item.title}
+          artist={item.artist}
+          audioPath={item.audioPath}
+          imageUrl={item.imagePath ? imageUrls.get(item.imagePath) : undefined}
+          isActive={isActive}
+          // Scoped to this row so toggling playback only re-renders the two
+          // rows whose state actually changed, not the whole list.
+          isPlaying={isPlaying && isActive}
+          isFavorite={!!favoriteIds?.has(item.id)}
+          showFavorites={showFavorites}
+          nasheed={item.nasheed}
+          onPlay={onPlay}
+        />
+      );
+    },
+    [
+      trackPrefix,
+      imageUrls,
+      currentTrack?.id,
+      isPlaying,
+      favoriteIds,
+      showFavorites,
+      onPlay,
+    ],
+  );
+
+  if (error) return <ShowError message={error} />;
+
+  return (
+    <SafeAreaView className="flex-1 bg-qasid-black">
+      <PremiumGateModal
+        visible={gateVisible}
+        playsLeft={playsLeft}
+        onClose={() => setGateVisible(false)}
+      />
+      <FlatList
+        ref={listRef}
+        data={loading ? [] : tracks}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingBottom: viewMode === "hidden" ? 32 : 128,
+        }}
+        onScroll={handleScroll}
+        scrollEventThrottle={SCROLL_EVENT_THROTTLE_MS}
+        initialNumToRender={INITIAL_ROWS_TO_RENDER}
+        maxToRenderPerBatch={ROWS_PER_RENDER_BATCH}
+        updateCellsBatchingPeriod={CELL_BATCHING_PERIOD_MS}
+        windowSize={LIST_WINDOW_SIZE}
+        // SharedCard is absolutely-positioned gradients inside an
+        // overflow-hidden container — exactly the shape iOS blanks out.
+        removeClippedSubviews={Platform.OS === "android"}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={GOLD}
+              colors={[GOLD]}
+            />
+          ) : undefined
+        }
+      />
 
       <TouchableOpacity
-        onPress={() => scrollViewRef.current?.scrollTo({ y: 0, animated: true })}
+        onPress={() =>
+          listRef.current?.scrollToOffset({ offset: 0, animated: true })
+        }
         activeOpacity={0.8}
         disabled={!showScrollToTop}
         style={{

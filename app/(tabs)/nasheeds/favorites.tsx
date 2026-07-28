@@ -5,21 +5,12 @@ import {
 } from "../../../components";
 import { Nasheed } from "../../../types/nasheed";
 import { fetchFavorites } from "../../../services/favorites-service";
-import { resolveStorageUrl } from "../../../services/storage";
 import { fetchArtistImagePath } from "../../../services/nasheeds-service";
+import { toNasheedTrackMeta } from "../../../utils/nasheedTrack";
 
-const toCollectionTrack = async (
-  nasheed: Nasheed,
-): Promise<CollectionTrack> => ({
-  id: nasheed.id,
-  title: nasheed.title_en,
-  artist: nasheed.name_en,
-  audioUrl: nasheed.audio_path
-    ? await resolveStorageUrl(nasheed.audio_path)
-    : null,
-  imageUrl: nasheed.image_path
-    ? await resolveStorageUrl(nasheed.image_path)
-    : null,
+// Synchronous: storage paths stay raw so the list paints immediately.
+const toCollectionTrack = (nasheed: Nasheed): CollectionTrack => ({
+  ...toNasheedTrackMeta(nasheed),
   nasheed,
 });
 
@@ -43,16 +34,21 @@ export default function FavoritesScreen() {
     if (!hasLoadedRef.current) setLoading(true);
     try {
       const favorites = await fetchFavorites();
-      const firstArtistId = favorites[0]?.artist_id ?? null;
-      const [normalized, artistImage] = await Promise.all([
-        Promise.all(favorites.map(toCollectionTrack)),
-        firstArtistId ? fetchArtistImagePath(firstArtistId) : Promise.resolve(null),
-      ]);
       if (!isMountedRef.current) return;
-      setTracks(normalized);
+
+      // Phase 1 — paint.
+      setTracks(favorites.map(toCollectionTrack));
       setFavoriteIds(new Set(favorites.map((f) => f.id)));
-      setHeaderImagePath(artistImage ?? undefined);
       setError(null);
+      setLoading(false);
+
+      // Phase 2 — header artwork, which must not gate the list.
+      const firstArtistId = favorites[0]?.artist_id ?? null;
+      const artistImage = firstArtistId
+        ? await fetchArtistImagePath(firstArtistId)
+        : null;
+      if (!isMountedRef.current) return;
+      setHeaderImagePath(artistImage ?? undefined);
     } catch (e) {
       if (isMountedRef.current) {
         console.error("Error loading favorites:", e);

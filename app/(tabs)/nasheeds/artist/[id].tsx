@@ -1,13 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { GOLD } from "../../../../constants/colors";
-import { getApp } from "@react-native-firebase/app";
-import {
-  getStorage,
-  ref,
-  getDownloadURL,
-} from "@react-native-firebase/storage";
 import {
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -54,21 +50,30 @@ import {
   useNasheedLimit,
 } from "../../../../hooks/useNasheedLimit";
 import { useIsPremium } from "../../../../stores/userStore";
+import { resolveStorageUrlPrioritized } from "../../../../services/storage";
+import { useProgressiveStorageUrls } from "../../../../hooks/useProgressiveStorageUrls";
+
+const SCROLL_TO_TOP_THRESHOLD_PX = 400;
+const SCROLL_EVENT_THROTTLE_MS = 32;
 
 interface NasheedItem {
   id: string;
   title: string;
   audioUrl: string | null;
-  imageUrl: string | null;
+  imagePath: string | null;
   raw: Nasheed;
 }
 
+// Neither storage path is resolved here — artists can have many paginated
+// nasheeds, so eagerly resolving every URL per page would be wasteful. Audio
+// resolves lazily on play (see resolveAudioUrl below); artwork resolves
+// progressively after the page has painted.
 const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
   items.map((item) => ({
     id: item.id,
     title: item.title_en,
     audioUrl: item.audio_path ?? null,
-    imageUrl: item.image_path ?? null,
+    imagePath: item.image_path ?? null,
     raw: item,
   }));
 
@@ -163,6 +168,16 @@ export default function ArtistScreen() {
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isMountedRef = useRef(true);
   const pendingPlayIdRef = useRef(0);
+  const showScrollToTopRef = useRef(false);
+
+  // Artwork resolves after the page has painted, never before it.
+  const imagePaths = useMemo(
+    () => nasheeds.map((n) => n.imagePath),
+    [nasheeds],
+  );
+  const imageUrls = useProgressiveStorageUrls(imagePaths);
+  const artworkFor = (item: NasheedItem) =>
+    item.imagePath ? imageUrls.get(item.imagePath) : undefined;
 
   const {
     playTrack,
@@ -176,10 +191,9 @@ export default function ArtistScreen() {
 
   const contentBottomPadding = viewMode === "hidden" ? 32 : 128;
 
-  const resolveAudioUrl = async (audioPath: string): Promise<string> => {
-    if (audioPath.startsWith("http")) return audioPath;
-    return getDownloadURL(ref(getStorage(getApp()), audioPath));
-  };
+  // A play tap must not queue behind background image resolutions.
+  const resolveAudioUrl = (audioPath: string): Promise<string> =>
+    resolveStorageUrlPrioritized(audioPath);
 
   const loadArtist = async () => {
     if (!id) {
@@ -236,13 +250,10 @@ export default function ArtistScreen() {
         20,
         lastCursor,
       );
-      setNasheeds((prev) => {
-        const existingIds = new Set(prev.map((n) => n.id));
-        const fresh = normalizeNasheeds(more).filter(
-          (n) => !existingIds.has(n.id),
-        );
-        return [...prev, ...fresh];
-      });
+      const existingIds = new Set(nasheeds.map((n) => n.id));
+      const normalized = normalizeNasheeds(more);
+      const fresh = normalized.filter((n) => !existingIds.has(n.id));
+      setNasheeds((prev) => [...prev, ...fresh]);
       setLastCursor(nextCursor);
       setHasMore(!!nextCursor);
     } catch (e) {
@@ -293,7 +304,7 @@ export default function ArtistScreen() {
         id: `${artist.id}-${item.id}`,
         title: item.title,
         artist: artist.name_en,
-        artworkUri: item.imageUrl ?? artworkUri,
+        artworkUri: artworkFor(item) ?? artworkUri,
         isNasheed: true,
         uri: { uri: item.audioUrl as string },
       }));
@@ -314,7 +325,7 @@ export default function ArtistScreen() {
       id: trackId,
       title: nasheed.title,
       artist: artist.name_en,
-      artworkUri: nasheed.imageUrl ?? artworkUri,
+      artworkUri: artworkFor(nasheed) ?? artworkUri,
       isNasheed: true,
       uri: { uri: audioUrl },
     });
@@ -325,9 +336,15 @@ export default function ArtistScreen() {
     if (first) await handlePlayNasheed(first);
   };
 
-  const handleScroll = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
-    setShowScrollToTop(offsetY > 400);
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Only setState when the flag actually flips — this fires on every scroll
+    // frame otherwise, re-rendering the whole nasheed list.
+    const next =
+      (event.nativeEvent.contentOffset?.y ?? 0) > SCROLL_TO_TOP_THRESHOLD_PX;
+    if (next !== showScrollToTopRef.current) {
+      showScrollToTopRef.current = next;
+      setShowScrollToTop(next);
+    }
 
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     if (
@@ -376,7 +393,7 @@ export default function ArtistScreen() {
         ref={scrollViewRef}
         contentContainerStyle={{ paddingBottom: contentBottomPadding }}
         onScroll={handleScroll}
-        scrollEventThrottle={16}
+        scrollEventThrottle={SCROLL_EVENT_THROTTLE_MS}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -387,7 +404,7 @@ export default function ArtistScreen() {
         }
       >
         {loading ? (
-          <ReciterHeaderSkeleton circle />
+          <ReciterHeaderSkeleton />
         ) : (
           <View className="px-5 pt-6">
             <View className="flex-row items-center">
@@ -406,7 +423,7 @@ export default function ArtistScreen() {
                       ? { uri: artist.image_path }
                       : PlaceholderAvatar
                   }
-                  className="h-28 w-28 rounded-full border border-qasid-gold/30"
+                  className="h-40 w-40 rounded-xl border border-qasid-gold/20"
                 />
               </View>
               <View className="flex-1">
@@ -459,7 +476,7 @@ export default function ArtistScreen() {
                     isPlaying={isPlaying && isActive}
                     isPaused={isActive}
                     title={nasheed.title}
-                    image={nasheed.imageUrl ?? undefined}
+                    image={artworkFor(nasheed)}
                     subtitle={artist?.name_en ?? ""}
                     track={{
                       id: trackId,

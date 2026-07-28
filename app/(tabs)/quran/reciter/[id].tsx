@@ -7,12 +7,7 @@ import {
   useState,
 } from "react";
 import { GOLD } from "../../../../constants/colors";
-import { getApp } from "@react-native-firebase/app";
-import {
-  getStorage,
-  ref,
-  getDownloadURL,
-} from "@react-native-firebase/storage";
+import { resolveStorageUrlPrioritized } from "../../../../services/storage";
 import {
   Image,
   RefreshControl,
@@ -294,11 +289,9 @@ export default function ReciterDetailsScreen() {
     progressMapRef.current = progressMap;
   }, [progressMap]);
 
-  const resolveAudioUrl = async (audioUrl: string) => {
-    if (audioUrl.startsWith("http")) return audioUrl;
-    const storage = getStorage(getApp());
-    return getDownloadURL(ref(storage, audioUrl));
-  };
+  // A play tap must not queue behind background image resolutions.
+  const resolveAudioUrl = (audioUrl: string): Promise<string> =>
+    resolveStorageUrlPrioritized(audioUrl);
 
   const getDurationMillis = async (
     _audioUrl: string,
@@ -605,15 +598,12 @@ export default function ReciterDetailsScreen() {
       if (!reciter || !surah.audioUrl) return;
 
       let audioUrl = surah.audioUrl;
-      if (!audioUrl.startsWith("http")) {
-        try {
-          const storage = getStorage(getApp());
-          audioUrl = await getDownloadURL(ref(storage, audioUrl));
-        } catch (e) {
-          setError("Unable to load audio URL.");
-          console.error("Failed to resolve audio URL", e);
-          return;
-        }
+      try {
+        audioUrl = await resolveStorageUrlPrioritized(audioUrl);
+      } catch (e) {
+        setError("Unable to load audio URL.");
+        console.error("Failed to resolve audio URL", e);
+        return;
       }
 
       const trackId = `${reciter.id}-${surah.id}`;
@@ -845,7 +835,7 @@ export default function ReciterDetailsScreen() {
                       ? { uri: reciter.image_path }
                       : PlaceholderAvatar
                   }
-                  className="h-24 w-24 rounded-full border border-qasid-gold/30"
+                  className="h-40 w-40 rounded-xl border border-qasid-gold/30"
                 />
               </View>
               <View className="flex-1">

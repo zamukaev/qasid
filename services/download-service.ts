@@ -1,7 +1,6 @@
 import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getApp } from "@react-native-firebase/app";
-import { getStorage, ref, getDownloadURL } from "@react-native-firebase/storage";
+import { resolveStorageUrlStrict } from "./storage";
 
 const DOWNLOADS_KEY = "@qasid-downloads";
 const DOWNLOAD_DIR = FileSystem.documentDirectory + "qasid-downloads/";
@@ -88,8 +87,7 @@ export async function downloadTrack(
     throw new Error("Track has no Firebase Storage path to download");
   }
 
-  const storage = getStorage(getApp());
-  const downloadUrl = await getDownloadURL(ref(storage, storagePath));
+  const downloadUrl = await resolveStorageUrlStrict(storagePath);
 
   const safeId = track.id.replace(/[^a-zA-Z0-9_-]/g, "_");
   const localPath = DOWNLOAD_DIR + safeId + ".mp3";

@@ -35,7 +35,7 @@ export interface Nasheed {
   name_en: string;
   title_en: string;
   audio_path: string;
-  image_path?: string;
+  image_path: string;
   artist_id: string;
   moods?: Mood[];
   favorite_count?: number;

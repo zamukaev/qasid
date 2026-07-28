@@ -14,6 +14,7 @@ import {
   limit,
   startAfter,
   orderBy,
+  documentId,
 } from "@react-native-firebase/firestore";
 import {
   getStorage,
@@ -236,14 +237,54 @@ export async function fetchArtistById(
   return { id: docSnap.id, ...data, image_path: imagePath } as NasheedArtist;
 }
 
+// Firestore caps `in` queries at 30 values.
+const DOCUMENT_ID_IN_CHUNK_SIZE = 30;
+
+export async function fetchNasheedsByIds(
+  ids: string[],
+): Promise<Map<string, Nasheed>> {
+  const result = new Map<string, Nasheed>();
+  if (ids.length === 0) return result;
+
+  const db = getFirestore(getApp());
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += DOCUMENT_ID_IN_CHUNK_SIZE) {
+    chunks.push(ids.slice(i, i + DOCUMENT_ID_IN_CHUNK_SIZE));
+  }
+
+  const snapshots = await Promise.all(
+    chunks.map((chunk) =>
+      getDocs(
+        query(collection(db, "nasheeds"), where(documentId(), "in", chunk)),
+      ),
+    ),
+  );
+
+  for (const snapshot of snapshots) {
+    for (const snap of snapshot.docs) {
+      result.set(snap.id, { id: snap.id, ...snap.data() } as Nasheed);
+    }
+  }
+  return result;
+}
+
+// Artist photos do not change within a session, and the same artist is asked
+// for repeatedly (once per home rail tile, again on the playlist screen).
+const artistImagePathCache = new Map<string, string | null>();
+
 export async function fetchArtistImagePath(
   artistId: string,
 ): Promise<string | null> {
+  const cached = artistImagePathCache.get(artistId);
+  if (cached !== undefined) return cached;
+
   const db = getFirestore(getApp());
   const docSnap = await getDoc(doc(db, "artists", artistId));
-  if (!docSnap.exists()) return null;
-  const data = docSnap.data() as { image_path?: string };
-  return data.image_path ?? null;
+  const imagePath = docSnap.exists()
+    ? ((docSnap.data() as { image_path?: string }).image_path ?? null)
+    : null;
+  artistImagePathCache.set(artistId, imagePath);
+  return imagePath;
 }
 
 export async function trackArtistPlayback({

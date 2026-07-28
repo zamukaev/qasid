@@ -1,45 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  CollectionTrack,
-  TrackCollectionScreen,
-} from "../../../../components";
-import { RecommendedTrack } from "../../../../types/nasheed";
+import { CollectionTrack, TrackCollectionScreen } from "../../../../components";
+import { Mood, RecommendedTrack } from "../../../../types/nasheed";
 import {
   fetchWeeklyMix,
   generateWeeklyMix,
 } from "../../../../services/recommendations-service";
 import { fetchFavoriteIds } from "../../../../services/favorites-service";
-import { resolveStorageUrl } from "../../../../services/storage";
 import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
+import {
+  enrichWithLiveImageAndAudio,
+  toNasheedTrackMeta,
+} from "../../../../utils/nasheedTrack";
 
-const toCollectionTrack = async (
-  track: RecommendedTrack,
-): Promise<CollectionTrack | null> => {
-  try {
-    const [audioUrl, imageUrl] = await Promise.all([
-      track.audio_path ? resolveStorageUrl(track.audio_path) : Promise.resolve(null),
-      track.image_path ? resolveStorageUrl(track.image_path) : Promise.resolve(null),
-    ]);
-    return {
-      id: track.id,
-      title: track.title_en,
-      artist: track.name_en,
-      audioUrl,
-      imageUrl,
-      nasheed: {
-        id: track.id,
-        name_en: track.name_en,
-        title_en: track.title_en,
-        audio_path: track.audio_path,
-        image_path: track.image_path,
-        artist_id: track.artist_id,
-        moods: track.moods as any,
-      },
-    };
-  } catch {
-    return null;
-  }
-};
+// Synchronous: storage paths stay raw so the list paints immediately.
+const toCollectionTrack = (track: RecommendedTrack): CollectionTrack => ({
+  ...toNasheedTrackMeta(track),
+  nasheed: {
+    id: track.id,
+    name_en: track.name_en,
+    title_en: track.title_en,
+    audio_path: track.audio_path,
+    image_path: track.image_path,
+    artist_id: track.artist_id,
+    moods: track.moods as Mood[],
+  },
+});
 
 export default function WeeklyMixScreen() {
   const [tracks, setTracks] = useState<CollectionTrack[]>([]);
@@ -66,18 +51,25 @@ export default function WeeklyMixScreen() {
       if (raw.length === 0) {
         raw = await generateWeeklyMix();
       }
-      const firstArtistId = raw[0]?.artist_id ?? null;
-      const [rawNormalized, favIds, artistImage] = await Promise.all([
-        Promise.all(raw.map(toCollectionTrack)),
-        fetchFavoriteIds(),
-        firstArtistId ? fetchArtistImagePath(firstArtistId) : Promise.resolve(null),
-      ]);
-      const normalized = rawNormalized.filter(Boolean) as CollectionTrack[];
+      const enriched = await enrichWithLiveImageAndAudio(raw);
       if (!isMountedRef.current) return;
-      setTracks(normalized);
+
+      // Phase 1 — paint.
+      setTracks(enriched.map(toCollectionTrack));
+      setError(null);
+      setLoading(false);
+
+      // Phase 2 — extras, none of which gate the list.
+      const firstArtistId = raw[0]?.artist_id ?? null;
+      const [favIds, artistImage] = await Promise.all([
+        fetchFavoriteIds(),
+        firstArtistId
+          ? fetchArtistImagePath(firstArtistId)
+          : Promise.resolve(null),
+      ]);
+      if (!isMountedRef.current) return;
       setFavoriteIds(favIds);
       setHeaderImagePath(artistImage ?? undefined);
-      setError(null);
     } catch (e) {
       if (isMountedRef.current) {
         console.error("Error loading weekly mix:", e);

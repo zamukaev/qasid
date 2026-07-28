@@ -16,6 +16,7 @@ import {
 } from "@react-native-firebase/firestore";
 import { Nasheed } from "../types/nasheed";
 import { fetchArtistImagePath } from "./nasheeds-service";
+import { enrichWithLiveImageAndAudio } from "../utils/nasheedTrack";
 
 const FAVORITES_LIMIT = 200;
 
@@ -110,16 +111,19 @@ export async function fetchFavorites(): Promise<Nasheed[]> {
     limit(FAVORITES_LIMIT),
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      title_en: data.title_en ?? "",
-      name_en: data.name_en ?? "",
-      artist_id: data.artist_id ?? "",
-      audio_path: data.audio_path ?? "",
-      image_path: data.image_path ?? "",
-      moods: data.moods ?? [],
-    } as Nasheed;
-  });
+  const favorites = snapshot.docs.map(
+    (d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title_en: data.title_en ?? "",
+        name_en: data.name_en ?? "",
+        artist_id: data.artist_id ?? "",
+        audio_path: data.audio_path ?? "",
+        image_path: data.image_path ?? "",
+        moods: data.moods ?? [],
+      } as Nasheed;
+    },
+  );
+  return enrichWithLiveImageAndAudio(favorites);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshControl, SafeAreaView, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { GOLD } from "../../../constants/colors";
@@ -108,10 +108,10 @@ export default function Nasheeds() {
     }
   }, []);
 
-  const loadGenerated = useCallback(async () => {
+  const loadGenerated = useCallback(async (force = false) => {
     setIsLoadingGenerated(true);
     try {
-      const data = await fetchGeneratedPlaylists();
+      const data = await fetchGeneratedPlaylists({ force });
       setGenerated(data);
 
       // Trending/Top playlists show their first track's artist photo as the
@@ -199,7 +199,7 @@ export default function Nasheeds() {
         loadNew(),
         loadRecents(),
         loadPlaylists(),
-        loadGenerated(),
+        loadGenerated(true),
         loadForYouCovers(),
       ]);
     } finally {
@@ -214,15 +214,27 @@ export default function Nasheeds() {
     loadForYouCovers,
   ]);
 
-  const trendingItems = generated
-    .filter((p) => p.type === "trending" && p.tracks?.length > 0)
-    .map((p) => toRailItem(p, generatedCovers[p.key]));
-  const topItems = generated
-    .filter((p) => p.type === "top" && p.tracks?.length > 0)
-    .map((p) => toRailItem(p, generatedCovers[p.key]));
-  const moodItems = generated
-    .filter((p) => p.type === "mood" && p.tracks?.length > 0)
-    .map((p) => toRailItem(p));
+  const trendingItems = useMemo(
+    () =>
+      generated
+        .filter((p) => p.type === "trending" && p.tracks?.length > 0)
+        .map((p) => toRailItem(p, generatedCovers[p.key])),
+    [generated, generatedCovers],
+  );
+  const topItems = useMemo(
+    () =>
+      generated
+        .filter((p) => p.type === "top" && p.tracks?.length > 0)
+        .map((p) => toRailItem(p, generatedCovers[p.key])),
+    [generated, generatedCovers],
+  );
+  const moodItems = useMemo(
+    () =>
+      generated
+        .filter((p) => p.type === "mood" && p.tracks?.length > 0)
+        .map((p) => toRailItem(p)),
+    [generated],
+  );
 
   const openGenerated = (id: string) =>
     router.push({

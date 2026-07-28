@@ -22,7 +22,9 @@ export type QasidTrackRowProps = {
   rightAction?: React.ReactNode;
 };
 
-export const SharedCard = ({
+// Memoized: a collection list mounts many of these, each ~8 native views (two
+// gradients plus overlays), so an unguarded re-render of the parent is costly.
+export const SharedCard = React.memo(function SharedCard({
   title,
   subtitle = "",
   duration,
@@ -35,7 +37,7 @@ export const SharedCard = ({
   isPaused,
   className = "",
   rightAction,
-}: QasidTrackRowProps) => {
+}: QasidTrackRowProps) {
   const onPlayPress = (event: any) => {
     event.stopPropagation();
     handlePlayTrack(track);
@@ -107,4 +109,4 @@ export const SharedCard = ({
       </View>
     </Pressable>
   );
-};
+});

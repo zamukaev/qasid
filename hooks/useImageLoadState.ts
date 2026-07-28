@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ImageSourcePropType } from "react-native";
+import { invalidateStorageUrl } from "../services/storage";
 import { useReciterImageSource } from "./useReciterImageSource";
 
 export interface ImageLoadState {
@@ -19,10 +20,23 @@ export const useImageLoadState = (imagePath?: string): ImageLoadState => {
     setHasLoaded(false);
   }, [imagePath]);
 
+  // Stable identities so consumers can memoize the element that renders the
+  // image without it remounting (and flickering) on every parent render.
+  const onLoad = useCallback(() => setHasLoaded(true), []);
+
+  const onError = useCallback(() => {
+    // A cached download URL that no longer loads (object replaced, token
+    // revoked) is dropped so the next resolution goes back to the network.
+    // invalidateStorageUrl is capped at once per path per session, so an
+    // offline burst of errors cannot wipe the cache.
+    invalidateStorageUrl(imagePath);
+    setHasLoaded(true);
+  }, [imagePath]);
+
   return {
     source,
     showSkeleton: isResolving || (isRemote && !hasLoaded),
-    onLoad: () => setHasLoaded(true),
-    onError: () => setHasLoaded(true),
+    onLoad,
+    onError,
   };
 };

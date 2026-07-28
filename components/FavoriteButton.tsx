@@ -11,7 +11,11 @@ type Props = {
   onChange?: (favorited: boolean) => void;
 };
 
-export function FavoriteButton({ nasheed, initialFavorite, onChange }: Props) {
+export const FavoriteButton = React.memo(function FavoriteButton({
+  nasheed,
+  initialFavorite,
+  onChange,
+}: Props) {
   const [favorited, setFavorited] = useState(!!initialFavorite);
   const [busy, setBusy] = useState(false);
 
@@ -48,4 +52,4 @@ export function FavoriteButton({ nasheed, initialFavorite, onChange }: Props) {
       />
     </TouchableOpacity>
   );
-}
+});

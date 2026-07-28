@@ -15,12 +15,10 @@ export default function ReciterHeaderSkeleton({
     <View className="px-5 pt-6">
       <View className="flex-row items-center">
         <Animated.View
-          className={`${circle ? "rounded-full" : "rounded-xl"} mr-4 bg-gray-700/30`}
+          className={`${circle ? "rounded-full" : "rounded-xl"} mr-4 bg-gray-700/30 w-40 h-40`}
           style={[
             pulseStyle,
             {
-              width: 112,
-              height: 112,
               shadowColor: GOLD,
               shadowOffset: { width: 0, height: 0 },
               shadowOpacity: 0.35,
