@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { GOLD } from "../../../constants/colors";
+import { PRIVACY_URL, TERMS_URL } from "../../../constants/legal";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -365,7 +367,7 @@ export default function Premium() {
           </View>
 
           <TouchableOpacity
-            className="mt-2"
+            className="mt-2 mb-6"
             activeOpacity={ctaDisabled ? 1 : 0.8}
             onPress={ctaDisabled ? undefined : handleUpgrade}
             disabled={ctaDisabled}
@@ -391,21 +393,34 @@ export default function Premium() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            className="mt-3"
-            activeOpacity={0.7}
-            onPress={isPurchasing ? undefined : handleRestore}
-            disabled={isPurchasing}
-          >
-            <View className="px-4 py-3 items-center">
-              <Text className="text-white/40 text-sm">Restore Purchases</Text>
-            </View>
-          </TouchableOpacity>
-
           <View className="mb-14">
-            <Text className="text-white/50 text-sm text-center">
-              Cancel anytime. Secure payment. Keep your listening uninterrupted.
+            <Text className="text-white/50 text-sm text-center leading-5">
+              QASID Premium is an auto-renewable subscription. Payment is
+              charged to your Apple Account at confirmation of purchase. It
+              renews automatically unless cancelled at least 24 hours before the
+              end of the current period. Manage or cancel anytime in your Apple
+              Account settings.
             </Text>
+
+            <View className="mt-4 flex-row items-center justify-center">
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => Linking.openURL(TERMS_URL)}
+              >
+                <Text className="text-qasid-gold text-sm underline">
+                  Terms of Use (EULA)
+                </Text>
+              </TouchableOpacity>
+              <Text className="text-white/30 text-sm px-2">·</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => Linking.openURL(PRIVACY_URL)}
+              >
+                <Text className="text-qasid-gold text-sm underline">
+                  Privacy Policy
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Animated.View>
       </ScrollView>

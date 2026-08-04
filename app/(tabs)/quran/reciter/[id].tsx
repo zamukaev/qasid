@@ -91,9 +91,9 @@ const normalizeSurahItems = (
       return {
         id: surah.id,
         surahNumber: surah.surah_number,
-        englishName: surah.transliteration ?? "",
-        arabicName: surah.name_ar ?? "",
-        reciterName: surah.name_en?.trim() || reciterName || "",
+        englishName: surah.transliteration ?? surah.title_en ?? "",
+        arabicName: surah.name_ar ?? surah.arabicName ?? "",
+        reciterName: surah.name_en || reciterName || "",
         audioUrl: surah.audio_path ?? null,
         imageUrl: surah.image_path ?? null,
       };

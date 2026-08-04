@@ -32,8 +32,12 @@ const matchesSurahSearch = (surah: FirebaseSurah, search: string) => {
     return true;
   }
 
-  const englishName = normalizeSearchText((surah as any).englishName ?? (surah as any).title_en ?? "");
-  const arabicName = normalizeSearchText((surah as any).arabicName ?? (surah as any).title_ar ?? "");
+  const englishName = normalizeSearchText(
+    (surah as any).englishName ?? (surah as any).title_en ?? "",
+  );
+  const arabicName = normalizeSearchText(
+    (surah as any).arabicName ?? (surah as any).title_ar ?? "",
+  );
   const surahNumber = String(surah.surah_number ?? "");
   const paddedSurahNumber = surahNumber.padStart(3, "0");
 
@@ -188,8 +192,8 @@ export async function fetchFeaturedSurahs(
         audio_path: data.audio_path,
         surah_number: data.surah_number,
         image_path: imageUrl,
-        englishName: data.englishName,
-        arabicName: data.arabicName,
+        englishName: data.name_en,
+        arabicName: data.name_ar,
         transliteration: data.transliteration,
       };
     }),

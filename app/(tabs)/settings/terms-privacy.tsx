@@ -7,9 +7,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
-
-const TERMS_URL = "https://qasid-sound.com/terms.html";
-const PRIVACY_URL = "https://qasid-sound.com/privacy.html";
+import { PRIVACY_URL, TERMS_URL } from "../../../constants/legal";
 
 export default function TermsPrivacyScreen() {
   return (
