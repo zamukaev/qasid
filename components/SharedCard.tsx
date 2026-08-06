@@ -81,12 +81,12 @@ export const SharedCard = React.memo(function SharedCard({
               {isPaused && (
                 <QasidLiveEqualizer
                   status={isPlaying ? "playing" : "paused"}
-                  className="mr-2"
+                  className="mr-2 shrink-0"
                 />
               )}
               <Text
                 style={{ color: isPaused ? GOLD : "#DCDFE4" }}
-                className="text-[16px] font-semibold text-white/90"
+                className="flex-1 text-[16px] font-semibold text-white/90"
                 numberOfLines={1}
               >
                 {order && !surahNumberBadge ? `${order}. ` : ""}
@@ -104,7 +104,9 @@ export const SharedCard = React.memo(function SharedCard({
             )}
           </View>
 
-          {rightAction != null && <View className="ml-2">{rightAction}</View>}
+          {rightAction != null && (
+            <View className="ml-2 shrink-0">{rightAction}</View>
+          )}
         </View>
       </View>
     </Pressable>

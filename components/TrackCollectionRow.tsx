@@ -16,7 +16,6 @@ interface Props {
   isActive: boolean;
   /** This row is the currently loaded track *and* playback is running. */
   isPlaying: boolean;
-  isFavorite: boolean;
   showFavorites: boolean;
   nasheed: Nasheed;
   onPlay: (nasheedId: string) => void;
@@ -39,7 +38,6 @@ export const TrackCollectionRow = React.memo(function TrackCollectionRow({
   imageUrl,
   isActive,
   isPlaying,
-  isFavorite,
   showFavorites,
   nasheed,
   onPlay,
@@ -56,10 +54,8 @@ export const TrackCollectionRow = React.memo(function TrackCollectionRow({
 
   const rightAction = useMemo(
     () =>
-      showFavorites ? (
-        <FavoriteButton nasheed={nasheed} initialFavorite={isFavorite} />
-      ) : undefined,
-    [showFavorites, nasheed, isFavorite],
+      showFavorites ? <FavoriteButton nasheed={nasheed} /> : undefined,
+    [showFavorites, nasheed],
   );
 
   return (

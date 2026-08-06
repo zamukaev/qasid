@@ -1,41 +1,25 @@
-import React, { useState } from "react";
-import { TouchableOpacity } from "react-native";
+import React from "react";
+import { GestureResponderEvent, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { GOLD } from "../constants/colors";
 import { Nasheed } from "../types/nasheed";
-import { toggleFavorite } from "../services/favorites-service";
+import { useFavoritesStore, useIsFavorite } from "../stores/favoritesStore";
 
 type Props = {
   nasheed: Nasheed;
-  initialFavorite?: boolean;
-  onChange?: (favorited: boolean) => void;
 };
 
 export const FavoriteButton = React.memo(function FavoriteButton({
   nasheed,
-  initialFavorite,
-  onChange,
 }: Props) {
-  const [favorited, setFavorited] = useState(!!initialFavorite);
-  const [busy, setBusy] = useState(false);
+  const favorited = useIsFavorite(nasheed.id);
+  const toggle = useFavoritesStore((s) => s.toggle);
 
-  const handlePress = async (event: any) => {
-    event?.stopPropagation?.();
-    if (busy) return;
-    setBusy(true);
-    // Optimistic toggle, reconciled with the server result.
-    const optimistic = !favorited;
-    setFavorited(optimistic);
-    try {
-      const result = await toggleFavorite(nasheed);
-      setFavorited(result);
-      onChange?.(result);
-    } catch (e) {
-      console.warn("toggleFavorite failed", e);
-      setFavorited(!optimistic);
-    } finally {
-      setBusy(false);
-    }
+  const handlePress = (event: GestureResponderEvent) => {
+    event.stopPropagation();
+    // The store toggles optimistically and ignores taps while its own write
+    // is in flight, so there is no local state to keep here.
+    void toggle(nasheed);
   };
 
   return (

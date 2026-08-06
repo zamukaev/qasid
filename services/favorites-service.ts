@@ -54,16 +54,6 @@ export async function toggleFavorite(nasheed: Nasheed): Promise<boolean> {
   return true;
 }
 
-export async function isFavorite(nasheedId: string): Promise<boolean> {
-  const userId = getAuth().currentUser?.uid;
-  if (!userId) return false;
-  const db = getFirestore(getApp());
-  const snap = await getDoc(
-    doc(db, "user_favorites", userId, "nasheeds", nasheedId),
-  );
-  return snap.exists();
-}
-
 export async function fetchFavoriteIds(): Promise<Set<string>> {
   const userId = getAuth().currentUser?.uid;
   if (!userId) return new Set();

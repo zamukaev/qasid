@@ -7,7 +7,6 @@ import {
   RecommendedTrack,
 } from "../../../../types/nasheed";
 import { fetchGeneratedPlaylistByKey } from "../../../../services/recommendations-service";
-import { fetchFavoriteIds } from "../../../../services/favorites-service";
 import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
 import { toNasheedTrackMeta } from "../../../../utils/nasheedTrack";
 
@@ -31,7 +30,6 @@ export default function GeneratedPlaylistScreen() {
   const [playlist, setPlaylist] = useState<GeneratedPlaylist | null>(null);
   const [coverImagePath, setCoverImagePath] = useState<string | undefined>();
   const [tracks, setTracks] = useState<CollectionTrack[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
@@ -73,12 +71,10 @@ export default function GeneratedPlaylistScreen() {
         // the header cover (moods keep their own image_path, unchanged).
         const artistId =
           data.type !== "mood" ? data.tracks?.[0]?.artist_id : undefined;
-        const [favIds, artistImagePath] = await Promise.all([
-          fetchFavoriteIds(),
-          artistId ? fetchArtistImagePath(artistId) : Promise.resolve(null),
-        ]);
+        const artistImagePath = artistId
+          ? await fetchArtistImagePath(artistId)
+          : null;
         if (!isMountedRef.current) return;
-        setFavoriteIds(favIds);
         if (artistImagePath) setCoverImagePath(artistImagePath);
       } catch (e) {
         if (isMountedRef.current) {
@@ -111,7 +107,6 @@ export default function GeneratedPlaylistScreen() {
       tracks={tracks}
       loading={loading}
       error={error}
-      favoriteIds={favoriteIds}
       onRefresh={handleRefresh}
     />
   );

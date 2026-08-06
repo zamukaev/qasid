@@ -44,7 +44,6 @@ import {
   trackArtistPlayback,
 } from "../../../../services/nasheeds-service";
 import { addRecentArtist } from "../../../../services/recents-service";
-import { fetchFavoriteIds } from "../../../../services/favorites-service";
 import {
   markManualPlay,
   useNasheedLimit,
@@ -154,7 +153,6 @@ export default function ArtistScreen() {
 
   const [artist, setArtist] = useState<NasheedArtist | null>(null);
   const [nasheeds, setNasheeds] = useState<NasheedItem[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastCursor, setLastCursor] = useState<NasheedCursor | undefined>(
@@ -213,9 +211,6 @@ export default function ArtistScreen() {
 
       setArtist(artistData);
       void addRecentArtist(artistData);
-      void fetchFavoriteIds().then((ids) => {
-        if (isMountedRef.current) setFavoriteIds(ids);
-      });
       setNasheeds(normalizeNasheeds(nasheedData));
       setLastCursor(nextCursor);
       setHasMore(!!nextCursor);
@@ -486,10 +481,7 @@ export default function ArtistScreen() {
                     }}
                     rightAction={
                       <View className="flex-row items-center">
-                        <FavoriteButton
-                          nasheed={nasheed.raw}
-                          initialFavorite={favoriteIds.has(nasheed.id)}
-                        />
+                        <FavoriteButton nasheed={nasheed.raw} />
                         {nasheed.audioUrl ? (
                           <DownloadButton
                             track={{

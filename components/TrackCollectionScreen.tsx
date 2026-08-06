@@ -60,7 +60,6 @@ interface Props {
   error?: string | null;
   emptyMessage?: string;
   showFavorites?: boolean;
-  favoriteIds?: Set<string>;
   onRefresh?: () => Promise<void>;
 }
 
@@ -75,7 +74,6 @@ export function TrackCollectionScreen({
   error,
   emptyMessage = "No nasheeds here yet.",
   showFavorites = true,
-  favoriteIds,
   onRefresh,
 }: Props) {
   const isPremium = useIsPremium();
@@ -341,7 +339,6 @@ export function TrackCollectionScreen({
           // Scoped to this row so toggling playback only re-renders the two
           // rows whose state actually changed, not the whole list.
           isPlaying={isPlaying && isActive}
-          isFavorite={!!favoriteIds?.has(item.id)}
           showFavorites={showFavorites}
           nasheed={item.nasheed}
           onPlay={onPlay}
@@ -353,7 +350,6 @@ export function TrackCollectionScreen({
       imageUrls,
       currentTrack?.id,
       isPlaying,
-      favoriteIds,
       showFavorites,
       onPlay,
     ],

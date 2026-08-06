@@ -5,7 +5,6 @@ import {
   fetchWeeklyMix,
   generateWeeklyMix,
 } from "../../../../services/recommendations-service";
-import { fetchFavoriteIds } from "../../../../services/favorites-service";
 import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
 import {
   enrichWithLiveImageAndAudio,
@@ -28,7 +27,6 @@ const toCollectionTrack = (track: RecommendedTrack): CollectionTrack => ({
 
 export default function WeeklyMixScreen() {
   const [tracks, setTracks] = useState<CollectionTrack[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [headerImagePath, setHeaderImagePath] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,14 +59,10 @@ export default function WeeklyMixScreen() {
 
       // Phase 2 — extras, none of which gate the list.
       const firstArtistId = raw[0]?.artist_id ?? null;
-      const [favIds, artistImage] = await Promise.all([
-        fetchFavoriteIds(),
-        firstArtistId
-          ? fetchArtistImagePath(firstArtistId)
-          : Promise.resolve(null),
-      ]);
+      const artistImage = firstArtistId
+        ? await fetchArtistImagePath(firstArtistId)
+        : null;
       if (!isMountedRef.current) return;
-      setFavoriteIds(favIds);
       setHeaderImagePath(artistImage ?? undefined);
     } catch (e) {
       if (isMountedRef.current) {
@@ -97,7 +91,6 @@ export default function WeeklyMixScreen() {
       tracks={tracks}
       loading={loading}
       error={error}
-      favoriteIds={favoriteIds}
       emptyMessage="Listen to a few nasheeds to build your weekly mix."
       onRefresh={load}
     />
