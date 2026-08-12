@@ -41,7 +41,7 @@ const db = admin.firestore();
 // Track data — add audio filename (without path prefix) for each nasheed
 // ---------------------------------------------------------------------------
 
-const ARTIST_ID = "ahmed-bukhatir";
+const ARTIST_ID = "ahmed-abu-ali";
 const NAME_EN = "Ahmed Bukhatir";
 const BASE_PATH = "nasheeds/ahmed_bukhatir";
 const DOC_PREFIX = "ahmed_bukhatir";
@@ -56,14 +56,21 @@ interface NasheedInput {
 }
 
 const tracks: NasheedInput[] = [
-  { title_en: "Ya Adheeman", audio_filename: "ya_adheeman.mp3", moods: ["calm", "focus"] },
-  { title_en: "Al Hejaab", audio_filename: "al_hejaab.mp3", moods: ["focus", "motivational"] },
-  { title_en: "Daar Aa Ghoroor", audio_filename: "daar_aa_ghoroor.mp3", moods: ["focus", "calm"] },
-  { title_en: "Fartaqi", audio_filename: "fartaqi.mp3", moods: ["motivational"] },
-  { title_en: "Fartaqi Ya Eid", audio_filename: "fartaqi_ya_eid.mp3", moods: ["calm", "motivational"] },
-  { title_en: "Ketaab Allah", audio_filename: "ketaab_allah.mp3", moods: ["calm", "focus"] },
-  { title_en: "Taaleb Al Elm", audio_filename: "taaleb_al_elm.mp3", moods: ["motivational", "focus"] },
-  { title_en: "Ya Man Yara", audio_filename: "ya_man_yara.mp3", moods: ["calm", "focus"] },
+  {
+    title_en: "Ya Adheeman",
+    audio_filename: "ya_adheeman.mp3",
+    moods: ["calm", "focus"],
+  },
+  {
+    title_en: "Al Hejaab",
+    audio_filename: "al_hejaab.mp3",
+    moods: ["focus", "motivational"],
+  },
+  {
+    title_en: "Daar Aa Ghoroor",
+    audio_filename: "daar_aa_ghoroor.mp3",
+    moods: ["focus", "calm"],
+  },
 ];
 
 // ---------------------------------------------------------------------------
