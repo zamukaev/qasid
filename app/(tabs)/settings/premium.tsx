@@ -68,6 +68,8 @@ export default function Premium() {
     offerings,
     isPremium,
     isLoading: rcLoading,
+    error: rcError,
+    reload: reloadOfferings,
     purchasePackage,
     restorePurchases,
   } = useRevenueCat();
@@ -140,15 +142,26 @@ export default function Premium() {
     },
     {
       id: "monthly" as PlanId,
-      price: rcLoading ? "—" : (monthlyPkg?.product.priceString ?? "$3.99"),
+      // Never invent a price: showing a placeholder while the store returned
+      // nothing hides the failure behind a plan the user cannot actually buy.
+      price: monthlyPkg?.product.priceString ?? "—",
       ...PLAN_META.monthly,
     },
     {
       id: "yearly" as PlanId,
-      price: rcLoading ? "—" : (yearlyPkg?.product.priceString ?? "$29.99"),
+      price: yearlyPkg?.product.priceString ?? "—",
       ...PLAN_META.yearly,
     },
   ];
+
+  const selectedPkg =
+    selectedPlanId === "monthly"
+      ? monthlyPkg
+      : selectedPlanId === "yearly"
+        ? yearlyPkg
+        : null;
+
+  const offeringsUnavailable = !rcLoading && !monthlyPkg && !yearlyPkg;
 
   const selectedCardScale = pulseAnim.interpolate({
     inputRange: [0, 1],
@@ -156,18 +169,11 @@ export default function Premium() {
   });
 
   const handleUpgrade = async () => {
-    const pkg =
-      selectedPlanId === "monthly"
-        ? monthlyPkg
-        : selectedPlanId === "yearly"
-          ? yearlyPkg
-          : null;
-
-    if (!pkg) return;
+    if (!selectedPkg) return;
 
     setIsPurchasing(true);
     try {
-      await purchasePackage(pkg);
+      await purchasePackage(selectedPkg);
     } catch (error: any) {
       if (
         !error?.userCancelled &&
@@ -200,7 +206,8 @@ export default function Premium() {
 
   const isCurrentPlan = selectedPlanId === currentPlanId;
   const isFree = selectedPlanId === "free";
-  const ctaDisabled = isFree || isCurrentPlan || isPurchasing || rcLoading;
+  const ctaDisabled =
+    isFree || isCurrentPlan || isPurchasing || rcLoading || !selectedPkg;
 
   const ctaLabel = isPurchasing
     ? "Processing..."
@@ -228,6 +235,30 @@ export default function Premium() {
               offline mode, and more.
             </Text>
           </View>
+
+          {offeringsUnavailable ? (
+            <View className="mb-5 rounded-2xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-4">
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="alert-circle" size={18} color="#ef4444" />
+                <Text className="text-white text-sm font-semibold">
+                  Subscriptions unavailable
+                </Text>
+              </View>
+              <Text className="text-white/70 text-sm mt-2 leading-5">
+                {rcError ??
+                  "The App Store returned no subscription options. Please try again later."}
+              </Text>
+              <TouchableOpacity
+                className="mt-3 self-start"
+                activeOpacity={0.7}
+                onPress={reloadOfferings}
+              >
+                <Text className="text-qasid-gold text-sm font-semibold">
+                  Try again
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <View className="mb-5">
             {plans.map((plan) => {
