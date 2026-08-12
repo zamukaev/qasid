@@ -11,12 +11,16 @@ import { SafeAreaView, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSegments } from "expo-router";
 import { useUserStore } from "../stores/userStore";
+import { useFavoritesStore } from "../stores/favoritesStore";
 import * as RevenueCatService from "../services/revenuecat";
+import { fetchPremiumOverrideEmails } from "../services/config-service";
+import { hydrateAndSyncSubscription } from "../services/notifications-service";
 
 import "../global.css";
 
 export default function Welcome() {
-  const { user, isLoading, setUser, setLoading } = useUserStore();
+  const { user, isLoading, setUser, setLoading, setPremiumOverrideEmails } =
+    useUserStore();
 
   const router = useRouter();
   const segments = useSegments();
@@ -31,7 +35,25 @@ export default function Welcome() {
       } catch {
         // RC initialization failure should not block the auth flow
       }
+      try {
+        const emails = await fetchPremiumOverrideEmails();
+        setPremiumOverrideEmails(emails);
+      } catch {
+        // config fetch failure is non-fatal
+      }
+      try {
+        await hydrateAndSyncSubscription();
+      } catch {
+        // notification subscription failure should not block the auth flow
+      }
+      // Prefetched here so the first list a user opens already knows which
+      // nasheeds are favorited; failure is non-fatal and retried by the tab.
+      void useFavoritesStore
+        .getState()
+        .hydrate(true)
+        .catch(() => {});
     } else {
+      useFavoritesStore.getState().clear();
       await RevenueCatService.logout();
     }
   };

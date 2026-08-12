@@ -1,48 +1,66 @@
 import { useEffect, useState } from "react";
 import { ImageSourcePropType } from "react-native";
-import storage from "@react-native-firebase/storage";
 
 import PlaceholderAvatar from "../assets/images/avatar.webp";
+import { peekStorageUrl, resolveStorageUrl } from "../services/storage";
+
+export interface ReciterImageSourceState {
+  source: ImageSourcePropType;
+  isRemote: boolean;
+  isResolving: boolean;
+}
 
 export const useReciterImageSource = (
   imagePath?: string,
-): ImageSourcePropType => {
-  const [imageSource, setImageSource] =
-    useState<ImageSourcePropType>(PlaceholderAvatar);
+): ReciterImageSourceState => {
+  const [state, setState] = useState<ReciterImageSourceState>({
+    source: PlaceholderAvatar,
+    isRemote: false,
+    isResolving: false,
+  });
 
   useEffect(() => {
     let isActive = true;
 
+    if (!imagePath) {
+      setState({ source: PlaceholderAvatar, isRemote: false, isResolving: false });
+      return;
+    }
+
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      setState({ source: { uri: imagePath }, isRemote: true, isResolving: false });
+      return;
+    }
+
+    // Already-resolved paths skip the resolving state entirely, so a revisited
+    // screen renders its artwork on the first frame instead of shimmering.
+    const cached = peekStorageUrl(imagePath);
+    if (cached) {
+      setState({ source: { uri: cached }, isRemote: true, isResolving: false });
+      return;
+    }
+
+    setState({ source: PlaceholderAvatar, isRemote: true, isResolving: true });
+
     const loadImage = async () => {
-      if (!imagePath) {
-        setImageSource(PlaceholderAvatar);
-        return;
-      }
-
-      try {
-        if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-          setImageSource({ uri: imagePath });
-          return;
-        }
-
-        const downloadUrl = await storage().ref(imagePath).getDownloadURL();
-        if (isActive) {
-          setImageSource({ uri: downloadUrl });
-        }
-      } catch {
-        if (isActive) {
-          // Fallback to direct URI in case the path is already resolvable.
-          setImageSource({ uri: imagePath });
-        }
+      // resolveStorageUrl already falls back to the raw path on failure, in
+      // case the path turns out to be directly resolvable.
+      const downloadUrl = await resolveStorageUrl(imagePath);
+      if (isActive) {
+        setState({
+          source: { uri: downloadUrl },
+          isRemote: true,
+          isResolving: false,
+        });
       }
     };
 
-    loadImage();
+    void loadImage();
 
     return () => {
       isActive = false;
     };
   }, [imagePath]);
 
-  return imageSource;
+  return state;
 };

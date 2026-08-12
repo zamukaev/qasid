@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { SafeAreaView, ScrollView } from "react-native";
+import { RefreshControl, SafeAreaView, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 
+import { GOLD } from "../../../constants/colors";
 import { FirebaseReciter } from "../../../types/quran";
 import {
   BrowseAllRecitersPreview,
@@ -33,6 +34,7 @@ export default function Quran() {
   const [isLoadingFeaturedCollections, setIsLoadingFeaturedCollections] =
     useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadFeaturedCollections = useCallback(async () => {
     setIsLoadingFeaturedCollections(true);
@@ -106,6 +108,20 @@ export default function Quran() {
     void loadRecents();
   }, [loadFeaturedCollections, loadMainReciters, loadNewReciters, loadRecents]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadMainReciters(),
+        loadNewReciters(),
+        loadFeaturedCollections(),
+        loadRecents(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadFeaturedCollections, loadMainReciters, loadNewReciters, loadRecents]);
+
   if (errorMessage) {
     return <ShowError message={errorMessage} />;
   }
@@ -115,6 +131,14 @@ export default function Quran() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 44 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        }
       >
         <ContinueListeningBlock />
         <FeaturedList

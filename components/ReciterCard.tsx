@@ -3,7 +3,8 @@ import { GOLD, GOLD_RIPPLE_20 } from "../constants/colors";
 
 import { FirebaseReciter } from "../types/quran";
 import { useRouter } from "expo-router";
-import { useReciterImageSource } from "../hooks/useReciterImageSource";
+import { useImageLoadState } from "../hooks/useImageLoadState";
+import ImageShimmerOverlay from "./ImageShimmerOverlay";
 
 interface ReciterCardProps {
   reciter: FirebaseReciter;
@@ -14,7 +15,9 @@ const getReciterDisplayName = (reciter: FirebaseReciter) =>
 
 export default function ReciterCard({ reciter }: ReciterCardProps) {
   const router = useRouter();
-  const imageSource = useReciterImageSource(reciter.image_path);
+  const { source, showSkeleton, onLoad, onError } = useImageLoadState(
+    reciter.image_path,
+  );
   const displayName = getReciterDisplayName(reciter);
   const handlePress = () => {
     router.push({
@@ -29,19 +32,14 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
       className="flex-row  items-center justify-between rounded-2xl  border border-qasid-gold/25 p-4"
       android_ripple={{ color: GOLD_RIPPLE_20 }}
     >
-      <View className="rounded-full mr-6">
-        {imageSource ? (
-          <Image
-            className="h-16 w-16 rounded-full  border border-qasid-gold/25 "
-            source={imageSource}
-          />
-        ) : (
-          <View className="flex-1 border bg-qasid-gray border-qasid-gold/25 items-center justify-center h-16 w-16 rounded-full">
-            <Text className="text-qasid-gold font-semibold text-3xl">
-              {displayName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
+      <View className="rounded-full overflow-hidden mr-6 h-16 w-16">
+        <Image
+          className="h-16 w-16 rounded-full  border border-qasid-gold/25 "
+          source={source}
+          onLoad={onLoad}
+          onError={onError}
+        />
+        <ImageShimmerOverlay visible={showSkeleton} rounded="full" />
       </View>
       <View className="flex-1">
         <Text className="text-qasid-white font-semibold text-lg">
@@ -75,7 +73,9 @@ interface CompactReciterCardProps extends CompactReciterCardVariantProps {
 
 export function CompactReciterCard({ reciter, circle, large, small }: CompactReciterCardProps) {
   const router = useRouter();
-  const imageSource = useReciterImageSource(reciter.image_path);
+  const { source, showSkeleton, onLoad, onError } = useImageLoadState(
+    reciter.image_path,
+  );
   const displayName = getReciterDisplayName(reciter);
   const { cardWidth, imageSize } = resolveSize(large, small);
 
@@ -104,9 +104,15 @@ export function CompactReciterCard({ reciter, circle, large, small }: CompactRec
         }}
       >
         <Image
-          source={imageSource}
+          source={source}
+          onLoad={onLoad}
+          onError={onError}
           className="w-full h-full"
           resizeMode="cover"
+        />
+        <ImageShimmerOverlay
+          visible={showSkeleton}
+          rounded={circle ? "full" : "xl"}
         />
       </View>
       <Text

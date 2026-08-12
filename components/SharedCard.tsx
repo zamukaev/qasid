@@ -22,7 +22,9 @@ export type QasidTrackRowProps = {
   rightAction?: React.ReactNode;
 };
 
-export const SharedCard = ({
+// Memoized: a collection list mounts many of these, each ~8 native views (two
+// gradients plus overlays), so an unguarded re-render of the parent is costly.
+export const SharedCard = React.memo(function SharedCard({
   title,
   subtitle = "",
   duration,
@@ -35,7 +37,7 @@ export const SharedCard = ({
   isPaused,
   className = "",
   rightAction,
-}: QasidTrackRowProps) => {
+}: QasidTrackRowProps) {
   const onPlayPress = (event: any) => {
     event.stopPropagation();
     handlePlayTrack(track);
@@ -79,12 +81,12 @@ export const SharedCard = ({
               {isPaused && (
                 <QasidLiveEqualizer
                   status={isPlaying ? "playing" : "paused"}
-                  className="mr-2"
+                  className="mr-2 shrink-0"
                 />
               )}
               <Text
                 style={{ color: isPaused ? GOLD : "#DCDFE4" }}
-                className="text-[16px] font-semibold text-white/90"
+                className="flex-1 text-[16px] font-semibold text-white/90"
                 numberOfLines={1}
               >
                 {order && !surahNumberBadge ? `${order}. ` : ""}
@@ -102,9 +104,11 @@ export const SharedCard = ({
             )}
           </View>
 
-          {rightAction != null && <View className="ml-2">{rightAction}</View>}
+          {rightAction != null && (
+            <View className="ml-2 shrink-0">{rightAction}</View>
+          )}
         </View>
       </View>
     </Pressable>
   );
-};
+});

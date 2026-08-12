@@ -39,7 +39,6 @@ export default function SignUp() {
       });
 
       if (!appleAuthResponse.identityToken) {
-        console.log("Apple Sign-In failed – no identity token");
         throw new Error("Apple Sign-In failed – no identity token");
       }
 
@@ -52,7 +51,6 @@ export default function SignUp() {
       const auth = getAuth();
       await signInWithCredential(auth, appleCredential);
     } catch (e: any) {
-      console.log("Apple Sign-In error:", e);
       if (e.code === appleAuth.Error.CANCELED) return;
       const errorMessage = e.code
         ? getFirebaseErrorMessage(e.code)

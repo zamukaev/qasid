@@ -1,13 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { GOLD } from "../../../../constants/colors";
-import { getApp } from "@react-native-firebase/app";
-import {
-  getStorage,
-  ref,
-  getDownloadURL,
-} from "@react-native-firebase/storage";
 import {
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   Text,
@@ -20,12 +17,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Playlist, Nasheed } from "../../../../types/nasheed";
 import PlaceholderAvatar from "../../../../assets/images/avatar.webp";
 import { useAudioPlayer } from "../../../../context/AudioPlayerContext";
-import { useReciterImageSource } from "../../../../hooks/useReciterImageSource";
+import { useImageLoadState } from "../../../../hooks/useImageLoadState";
 import {
   SharedCard,
   SharedCardSkeleton,
   ShowError,
   ReciterHeaderSkeleton,
+  ImageShimmerOverlay,
 } from "../../../../components";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 import {
@@ -41,37 +39,28 @@ import {
   useNasheedLimit,
 } from "../../../../hooks/useNasheedLimit";
 import { useIsPremium } from "../../../../stores/userStore";
+import { toNasheedTrackMeta } from "../../../../utils/nasheedTrack";
+import { useProgressiveStorageUrls } from "../../../../hooks/useProgressiveStorageUrls";
+import { resolveStorageUrlPrioritized } from "../../../../services/storage";
+
+const SCROLL_TO_TOP_THRESHOLD_PX = 400;
+const SCROLL_EVENT_THROTTLE_MS = 32;
 
 interface NasheedItem {
   id: string;
   title: string;
-  audioUrl: string | null;
-  imageUrl: string | null;
+  /** Raw Storage path (or http URL) — resolved on play. */
+  audioPath: string | null;
+  /** Raw Storage path (or http URL) — resolved progressively after paint. */
+  imagePath: string | null;
 }
 
-const resolveStorageUrl = async (path: string): Promise<string> => {
-  if (!path) return "";
-  if (path.startsWith("http")) return path;
-  try {
-    return await getDownloadURL(ref(getStorage(getApp()), path));
-  } catch {
-    return path;
-  }
-};
-
-const normalizeNasheeds = async (items: Nasheed[]): Promise<NasheedItem[]> =>
-  Promise.all(
-    items.map(async (item) => ({
-      id: item.id,
-      title: item.title_en,
-      audioUrl: item.audio_path
-        ? await resolveStorageUrl(item.audio_path)
-        : null,
-      imageUrl: item.image_path
-        ? await resolveStorageUrl(item.image_path)
-        : null,
-    })),
-  );
+// Synchronous: storage paths stay raw so the list paints immediately.
+const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
+  items.map((item) => {
+    const { id, title, audioPath, imagePath } = toNasheedTrackMeta(item);
+    return { id, title, audioPath, imagePath };
+  });
 
 export default function PlaylistScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -86,10 +75,12 @@ export default function PlaylistScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isMountedRef = useRef(true);
   const pendingPlayIdRef = useRef(0);
+  const showScrollToTopRef = useRef(false);
 
   const {
     playTrack,
@@ -102,14 +93,29 @@ export default function PlaylistScreen() {
   } = useAudioPlayer();
 
   const trackPrefix = `playlist-${id}`;
-  const playlistImageSource = useReciterImageSource(playlist?.image_path);
+
+  // Artwork resolves after the list has painted, never before it.
+  const imagePaths = useMemo(
+    () => nasheeds.map((n) => n.imagePath),
+    [nasheeds],
+  );
+  const imageUrls = useProgressiveStorageUrls(imagePaths);
+  const artworkFor = (item: NasheedItem) =>
+    item.imagePath ? imageUrls.get(item.imagePath) : undefined;
+
+  const {
+    source: playlistImageSource,
+    showSkeleton: playlistImageLoading,
+    onLoad: onPlaylistImageLoad,
+    onError: onPlaylistImageError,
+  } = useImageLoadState(playlist?.image_path);
 
   const loadPlaylist = async () => {
     if (!id) {
       setError("Playlist not specified.");
       return;
     }
-    setLoading(true);
+    if (!playlist) setLoading(true);
     try {
       const [playlistData, nasheedData] = await Promise.all([
         fetchPlaylistById(id),
@@ -123,7 +129,7 @@ export default function PlaylistScreen() {
       }
 
       setPlaylist(playlistData);
-      setNasheeds(await normalizeNasheeds(nasheedData));
+      setNasheeds(normalizeNasheeds(nasheedData));
       setError(null);
     } catch (e) {
       if (isMountedRef.current) {
@@ -137,8 +143,17 @@ export default function PlaylistScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadPlaylist();
+    } finally {
+      if (isMountedRef.current) setRefreshing(false);
+    }
+  };
+
   const handlePlayNasheed = async (nasheed: NasheedItem) => {
-    if (!playlist || !nasheed.audioUrl) return;
+    if (!playlist || !nasheed.audioPath) return;
 
     const trackId = `${trackPrefix}-${nasheed.id}`;
 
@@ -152,9 +167,20 @@ export default function PlaylistScreen() {
       return;
     }
 
+    // Jumps the resolution queue so a play tap never waits behind background
+    // artwork resolutions.
     const playId = ++pendingPlayIdRef.current;
+    let audioUrl: string;
+    try {
+      audioUrl = await resolveStorageUrlPrioritized(nasheed.audioPath);
+    } catch {
+      return;
+    }
+    // A newer tap won while we were resolving.
     if (playId !== pendingPlayIdRef.current) return;
 
+    // Only after a successful resolve — otherwise a network blip burns one of
+    // a free user's daily plays.
     if (!isPremium) {
       await increment();
     }
@@ -164,14 +190,16 @@ export default function PlaylistScreen() {
       : PlaceholderAvatar;
 
     const allQueueTracks = nasheeds
-      .filter((item) => !!item.audioUrl)
+      .filter((item) => !!item.audioPath)
       .map((item) => ({
         id: `${trackPrefix}-${item.id}`,
         title: item.title,
         artist: playlist.name_en,
-        artworkUri: item.imageUrl ?? artworkUri,
+        artworkUri: artworkFor(item) ?? artworkUri,
         isNasheed: true,
-        uri: { uri: item.audioUrl as string },
+        // Raw paths are fine: playTrack resolves them lazily, and that path
+        // also honours locally downloaded files.
+        uri: { uri: item.audioPath as string },
       }));
 
     const selectedIndex = allQueueTracks.findIndex((t) => t.id === trackId);
@@ -188,20 +216,25 @@ export default function PlaylistScreen() {
       id: trackId,
       title: nasheed.title,
       artist: playlist.name_en,
-      artworkUri: nasheed.imageUrl ?? artworkUri,
+      artworkUri: artworkFor(nasheed) ?? artworkUri,
       isNasheed: true,
-      uri: { uri: nasheed.audioUrl as string },
+      uri: { uri: audioUrl },
     });
   };
 
   const handlePlayAll = async () => {
-    const first = nasheeds.find((n) => n.audioUrl);
+    const first = nasheeds.find((n) => n.audioPath);
     if (first) await handlePlayNasheed(first);
   };
 
-  const handleScroll = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
-    setShowScrollToTop(offsetY > 400);
+  // Only setState when the flag actually flips — this fires on every scroll
+  // frame otherwise, re-rendering the whole list.
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next =
+      (event.nativeEvent.contentOffset?.y ?? 0) > SCROLL_TO_TOP_THRESHOLD_PX;
+    if (next === showScrollToTopRef.current) return;
+    showScrollToTopRef.current = next;
+    setShowScrollToTop(next);
   };
 
   useLayoutEffect(() => {
@@ -238,7 +271,15 @@ export default function PlaylistScreen() {
           paddingBottom: viewMode === "hidden" ? 32 : 128,
         }}
         onScroll={handleScroll}
-        scrollEventThrottle={16}
+        scrollEventThrottle={SCROLL_EVENT_THROTTLE_MS}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        }
       >
         {loading ? (
           <ReciterHeaderSkeleton />
@@ -246,7 +287,7 @@ export default function PlaylistScreen() {
           <View className="px-5 pt-6">
             <View className="flex-row items-center">
               <View
-                className="mr-4"
+                className="mr-4 overflow-hidden rounded-xl"
                 style={{
                   shadowColor: GOLD,
                   shadowOffset: { width: 0, height: 0 },
@@ -256,7 +297,13 @@ export default function PlaylistScreen() {
               >
                 <Image
                   source={playlistImageSource}
-                  className="h-28 w-28 rounded-xl border border-qasid-gold/30"
+                  onLoad={onPlaylistImageLoad}
+                  onError={onPlaylistImageError}
+                  className="h-40 w-40 rounded-xl border border-qasid-gold/30"
+                />
+                <ImageShimmerOverlay
+                  visible={playlistImageLoading}
+                  rounded="xl"
                 />
               </View>
               <View className="flex-1">
@@ -312,13 +359,13 @@ export default function PlaylistScreen() {
                     isPlaying={isPlaying && isActive}
                     isPaused={isActive}
                     title={nasheed.title}
-                    image={nasheed.imageUrl ?? undefined}
+                    image={artworkFor(nasheed)}
                     subtitle={playlist?.name_en ?? ""}
                     track={{
                       id: trackId,
                       title: nasheed.title,
                       artist: playlist?.name_en,
-                      uri: nasheed.audioUrl,
+                      uri: nasheed.audioPath,
                     }}
                   />
                 );

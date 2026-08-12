@@ -8,6 +8,7 @@ import {
   incrementNasheedCount,
 } from "../../../hooks/useNasheedLimit";
 import { useIsPremium, useUserStore } from "../../../stores/userStore";
+import { useFavoritesStore } from "../../../stores/favoritesStore";
 
 export default function NasheedLayout() {
   const { currentTrack, clearPlayback } = useAudioPlayer();
@@ -15,6 +16,15 @@ export default function NasheedLayout() {
   const isPremium = useIsPremium();
 
   const prevTrackIdRef = useRef<string | null>(null);
+
+  // Safety net for cold starts and deep links that reach this tab without
+  // passing through the auth screen's prefetch. No-ops once hydrated.
+  useEffect(() => {
+    void useFavoritesStore
+      .getState()
+      .hydrate()
+      .catch(() => {});
+  }, []);
 
   // Kept in sync so the AppState callback below reads the live track instead of
   // a stale closure value (the listener is only re-subscribed on plan changes).
@@ -91,6 +101,9 @@ export default function NasheedLayout() {
         }}
       />
       <Stack.Screen name="playlist/[id]" options={{ title: "Playlist" }} />
+      <Stack.Screen name="generated/[key]" options={{ title: "Playlist" }} />
+      <Stack.Screen name="mix/index" options={{ title: "Weekly Mix" }} />
+      <Stack.Screen name="favorites" options={{ title: "Favorites" }} />
     </Stack>
   );
 }

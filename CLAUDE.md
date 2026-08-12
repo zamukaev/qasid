@@ -45,6 +45,7 @@ Auth routing is enforced in two places: `app/index.tsx` listens to `onAuthStateC
 ### Auth Flow
 
 Three-state gate in `app/index.tsx`:
+
 1. No user → welcome screen (sign up / sign in)
 2. User exists but `emailVerified === false` → redirect to `/verify-email`
 3. User exists and verified → redirect to `(tabs)/quran`
@@ -53,10 +54,10 @@ Email verification is required before accessing any tab content. `useAuth()` (`h
 
 ### State Management — Hybrid
 
-| Layer | Tool | What it holds |
-|---|---|---|
-| Global user auth + subscription | **Zustand** (`stores/userStore.ts`) | Firebase user, isAuthenticated, isLoading, currentPlan |
-| Audio playback | **React Context** (`context/AudioPlayerContext.tsx`) | Queue, currentTrack, position, progress map, repeat mode, view mode |
+| Layer                           | Tool                                                 | What it holds                                                       |
+| ------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
+| Global user auth + subscription | **Zustand** (`stores/userStore.ts`)                  | Firebase user, isAuthenticated, isLoading, currentPlan              |
+| Audio playback                  | **React Context** (`context/AudioPlayerContext.tsx`) | Queue, currentTrack, position, progress map, repeat mode, view mode |
 
 ### Premium / Monetization
 
@@ -71,6 +72,7 @@ RevenueCat is initialized on auth state change (`app/index.tsx`) via `RevenueCat
 Audio uses **`react-native-track-player` v4.1.2**, not `expo-audio`. `expo-audio` is still in package.json but only used in the reciter screen to probe track durations.
 
 **How it works:**
+
 - `playTrack(track, queue)` resolves all Firebase Storage URLs in parallel, then calls `TrackPlayer.reset()` + `TrackPlayer.add(allTracks)` + rotates the queue so the tapped track is index 0 — the **full queue is always loaded into RNTP**.
 - `setQueue()` updates `queueRef` synchronously (not via `useEffect`) so `playTrack` reads the latest queue immediately.
 - `PlaybackActiveTrackChanged` event syncs React `currentTrack` state when RNTP auto-advances or a remote skip fires.
@@ -79,6 +81,7 @@ Audio uses **`react-native-track-player` v4.1.2**, not `expo-audio`. `expo-audio
 - `isPlaying` is debounced 150 ms to suppress rapid state oscillations during `reset → add → skip → play`.
 
 **Background playback:**
+
 - `services/PlaybackService.ts` is a HeadlessJS task registered at app launch (`index.js`). It handles remote play/pause/next/prev by calling RNTP methods directly — **no `DeviceEventEmitter`** (doesn't work across HeadlessJS contexts on Android).
 - Android: `HeadlessJsMediaService` is declared in `AndroidManifest.xml`.
 - iOS: `UIBackgroundModes: [audio]` is in `Info.plist`.
@@ -97,6 +100,7 @@ Firebase project ID: `qasid-fd80d`. All Firestore/Storage access uses `@react-na
 - `profile-service.ts` — User profile reads/writes
 
 Search Cloud Functions (with Firestore fallback built in):
+
 - `https://us-central1-qasid-fd80d.cloudfunctions.net/searchReciters`
 - `https://us-central1-qasid-fd80d.cloudfunctions.net/searchSurahs`
 - `https://us-central1-qasid-fd80d.cloudfunctions.net/searchArtists`

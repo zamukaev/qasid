@@ -21,13 +21,11 @@ import TrackPlayer, {
 } from "react-native-track-player";
 import { AppState, AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getApp } from "@react-native-firebase/app";
-import {
-  getStorage,
-  ref,
-  getDownloadURL,
-} from "@react-native-firebase/storage";
 import { getLocalPath } from "../services/download-service";
+import {
+  invalidateStorageUrl,
+  resolveStorageUrlStrict,
+} from "../services/storage";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
@@ -53,13 +51,10 @@ type TrackProgressMap = Record<string, TrackProgressEntry>;
 type AudioPlayerContextValue = {
   currentTrack: Track | null;
   isPlaying: boolean;
-  positionMillis: number;
-  durationMillis: number;
-  listenedMillis: number;
-  didJustFinish: boolean;
   viewMode: PlayerViewMode;
   queue: Track[];
   repeatMode: RepeatMode;
+  embeddedArtwork: string | null;
   playTrack: (track: Track, startPositionMillis?: number) => Promise<void>;
   togglePlayPause: () => Promise<void>;
   pause: () => Promise<void>;
@@ -73,13 +68,39 @@ type AudioPlayerContextValue = {
   progressMap: TrackProgressMap;
   clearProgress: (trackId: string) => Promise<void>;
   clearPlayback: () => Promise<void>;
+  /** Non-reactive read of the latest position/duration — for on-demand checks
+   *  (e.g. "did this track finish?") that shouldn't subscribe to the 4x/s
+   *  progress ticks. Use `useAudioProgress()` instead if you need to render
+   *  a live-updating position/duration (e.g. a progress bar). */
+  getPlaybackSnapshot: () => { positionMillis: number; durationMillis: number };
+};
+
+// High-frequency fields (~4x/s while playing) live in a separate context so
+// that consumers which only need currentTrack/isPlaying/queue/etc. (e.g. a
+// screen rendering a long list) don't re-render on every progress tick.
+// Only mount a `useAudioProgress()` consumer where you actually render a
+// live position/duration (progress bars, sliders).
+type AudioProgressContextValue = {
+  positionMillis: number;
+  durationMillis: number;
+  listenedMillis: number;
+  didJustFinish: boolean;
 };
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | undefined>(
   undefined,
 );
 
+const AudioProgressContext = createContext<
+  AudioProgressContextValue | undefined
+>(undefined);
+
 const PROGRESS_STORAGE_KEY = "@qasid-reciter-progress";
+
+// How many queue entries are resolved and loaded into RNTP before playback
+// starts. Enough to cover an immediate lock-screen skip; the rest is appended
+// in the background. See playTrack.
+const QUEUE_PRIMING_WINDOW = 5;
 
 async function resolveTrackUrl(uri: any, trackId?: string): Promise<string> {
   if (!uri) return uri;
@@ -93,8 +114,7 @@ async function resolveTrackUrl(uri: any, trackId?: string): Promise<string> {
       const local = await getLocalPath(trackId);
       if (local) return local;
     }
-    const storage = getStorage(getApp());
-    return await getDownloadURL(ref(storage, raw));
+    return await resolveStorageUrlStrict(raw);
   }
   return raw;
 }
@@ -131,12 +151,15 @@ export function AudioPlayerProvider({
   const queueRef = useRef<Track[]>([]);
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>("sequential");
   const repeatModeRef = useRef<RepeatMode>("sequential");
+  const [embeddedArtwork, setEmbeddedArtwork] = useState<string | null>(null);
   const [progressMap, setProgressMap] = useState<TrackProgressMap>({});
   const lastPersistRef = useRef(0);
   const listenedMillisRef = useRef(0);
   const lastReportedPositionRef = useRef(0);
   const latestDurationRef = useRef(0);
   const hasFinishedRef = useRef(false);
+  // Aborts a background queue load whose playTrack call has been superseded.
+  const playGenerationRef = useRef(0);
 
   // Tracks foreground/background so we can stop the periodic AsyncStorage
   // writes + high-frequency setState churn while the app is suspended. iOS can
@@ -192,6 +215,18 @@ export function AudioPlayerProvider({
 
   useTrackPlayerEvents([Event.PlaybackError], (event) => {
     console.warn("TrackPlayer playback error", event.code, event.message);
+    // The cached download URL may be the reason — drop it so the next attempt
+    // re-resolves. No-ops for local files and already-http sources.
+    const uri = currentTrackRef.current?.uri;
+    const raw = typeof uri === "object" && uri?.uri !== undefined ? uri.uri : uri;
+    if (typeof raw === "string" && !raw.startsWith("file")) {
+      invalidateStorageUrl(raw);
+    }
+  });
+
+  useTrackPlayerEvents([Event.MetadataCommonReceived], (event) => {
+    const uri = event.metadata?.artworkUri;
+    if (uri) setEmbeddedArtwork(uri);
   });
 
   useTrackPlayerEvents([Event.RemoteDuck], async (event) => {
@@ -416,10 +451,14 @@ export function AudioPlayerProvider({
   }, []);
 
   // ── playTrack ─────────────────────────────────────────────────────────────
-  // Loads the ENTIRE queue into RNTP (resolving all Firebase Storage URLs in
-  // parallel), then skips to the requested track. This ensures that
-  // skipToNext / skipToPrevious in PlaybackService work natively from the
+  // Loads the ENTIRE queue into RNTP, then skips to the requested track, so
+  // that skipToNext / skipToPrevious in PlaybackService work natively from the
   // lock screen and Bluetooth controls.
+  //
+  // Queue entries carry raw Firebase Storage paths, so resolving all of them up
+  // front would mean up to 100 round-trips between the tap and the first note.
+  // Instead the queue is loaded in two phases: enough tracks to start playing
+  // and cover an immediate skip, then the rest appended in the background.
   const playTrack = useCallback(
     async (track: Track, startPositionMillis?: number) => {
       hasFinishedRef.current = false;
@@ -427,47 +466,49 @@ export function AudioPlayerProvider({
       lastReportedPositionRef.current = startPositionMillis ?? 0;
       setListenedMillis(0);
       setDidJustFinish(false);
+      setEmbeddedArtwork(null);
+
+      const generation = ++playGenerationRef.current;
 
       try {
         // Resolve the tapped track URL first (fast path — often already HTTP).
         const url = await resolveTrackUrl(track.uri, track.id);
 
-        // Read the queue that was set synchronously by setQueue.
+        // Read the queue that was set synchronously by setQueue, rotated so the
+        // tapped track sits at index 0. This prevents RNTP from briefly
+        // activating track 0 before skip().
         const currentQueue = queueRef.current;
+        const tappedIndex = currentQueue.findIndex((t) => t.id === track.id);
+        const rotatedQueue =
+          tappedIndex > 0
+            ? [
+                ...currentQueue.slice(tappedIndex),
+                ...currentQueue.slice(0, tappedIndex),
+              ]
+            : currentQueue;
 
-        // Resolve all queue URLs in parallel BEFORE resetting RNTP.
-        // This keeps the previous track playing during URL resolution so there
-        // is no audible gap or spurious "paused" state while fetching Firebase
-        // Storage URLs.
-        let resolvedItems: ReturnType<typeof toRNTPTrack>[] | null = null;
-        if (currentQueue.length > 0) {
-          resolvedItems = await Promise.all(
-            currentQueue.map(async (t) => {
-              const tUrl =
-                t.id === track.id ? url : await resolveTrackUrl(t.uri, t.id);
-              return toRNTPTrack(t, tUrl);
-            }),
-          );
-        }
+        const resolveQueueItem = async (t: Track) => {
+          const tUrl =
+            t.id === track.id ? url : await resolveTrackUrl(t.uri, t.id);
+          return toRNTPTrack(t, tUrl);
+        };
 
-        // Reset RNTP queue only after all URLs are ready — minimises the
-        // window between reset() and play() to just add() + skip().
+        // Phase 1 — resolve only the priming window before touching RNTP, so
+        // the previous track keeps playing throughout and there is no audible
+        // gap or spurious "paused" state.
+        const primed = rotatedQueue.slice(0, QUEUE_PRIMING_WINDOW);
+        const primedItems =
+          primed.length > 0
+            ? await Promise.all(primed.map(resolveQueueItem))
+            : [toRNTPTrack(track, url)];
+
+        // A newer playTrack won while we were resolving.
+        if (generation !== playGenerationRef.current) return;
+
+        // Reset RNTP queue only after the priming URLs are ready — minimises
+        // the window between reset() and play() to just add() + skip().
         await TrackPlayer.reset();
-
-        if (resolvedItems) {
-          // Reorder the queue so the tapped track is at index 0.
-          // This prevents RNTP from briefly activating track 0 before skip().
-          const idx = resolvedItems.findIndex((t) => t.id === track.id);
-          const reorderedItems =
-            idx > 0
-              ? [...resolvedItems.slice(idx), ...resolvedItems.slice(0, idx)]
-              : resolvedItems;
-
-          await TrackPlayer.add(reorderedItems);
-        } else {
-          // No queue — play standalone.
-          await TrackPlayer.add(toRNTPTrack(track, url));
-        }
+        await TrackPlayer.add(primedItems);
 
         if (startPositionMillis && startPositionMillis > 0) {
           await TrackPlayer.seekTo(startPositionMillis / 1000);
@@ -480,6 +521,23 @@ export function AudioPlayerProvider({
         currentTrackRef.current = track;
         setCurrentTrack(track);
         setViewMode((prev) => (prev === "full" ? "full" : "mini"));
+
+        // Phase 2 — append the remainder in the background. next()/prev() read
+        // queueRef rather than the RNTP queue, so JS-side skipping is unaffected
+        // while this drains; only a lock-screen skip past the priming window
+        // inside this brief gap would notice.
+        const remainder = rotatedQueue.slice(QUEUE_PRIMING_WINDOW);
+        if (remainder.length > 0) {
+          void (async () => {
+            try {
+              const rest = await Promise.all(remainder.map(resolveQueueItem));
+              if (generation !== playGenerationRef.current) return;
+              await TrackPlayer.add(rest);
+            } catch (error) {
+              console.warn("Failed to load the rest of the queue", error);
+            }
+          })();
+        }
       } catch (error) {
         console.error("Error playing track:", error);
       }
@@ -645,17 +703,26 @@ export function AudioPlayerProvider({
     setDurationMillis(0);
   }, []);
 
+  // Reads the refs kept up to date every tick (see the progress-sync effect
+  // above) without subscribing to the fast-changing state — safe to call
+  // on-demand (e.g. from a tap handler) without pulling the caller into the
+  // 4x/s progress churn.
+  const getPlaybackSnapshot = useCallback(
+    () => ({
+      positionMillis: lastReportedPositionRef.current,
+      durationMillis: latestDurationRef.current,
+    }),
+    [],
+  );
+
   const value = useMemo<AudioPlayerContextValue>(
     () => ({
       currentTrack,
       isPlaying,
-      positionMillis,
-      durationMillis,
-      listenedMillis,
-      didJustFinish,
       viewMode,
       queue,
       repeatMode,
+      embeddedArtwork,
       playTrack,
       togglePlayPause,
       pause,
@@ -669,17 +736,15 @@ export function AudioPlayerProvider({
       progressMap,
       clearProgress,
       clearPlayback,
+      getPlaybackSnapshot,
     }),
     [
       currentTrack,
       isPlaying,
-      positionMillis,
-      durationMillis,
-      listenedMillis,
-      didJustFinish,
       viewMode,
       queue,
       repeatMode,
+      embeddedArtwork,
       playTrack,
       togglePlayPause,
       pause,
@@ -692,12 +757,20 @@ export function AudioPlayerProvider({
       progressMap,
       clearProgress,
       clearPlayback,
+      getPlaybackSnapshot,
     ],
+  );
+
+  const progressValue = useMemo<AudioProgressContextValue>(
+    () => ({ positionMillis, durationMillis, listenedMillis, didJustFinish }),
+    [positionMillis, durationMillis, listenedMillis, didJustFinish],
   );
 
   return (
     <AudioPlayerContext.Provider value={value}>
-      {children}
+      <AudioProgressContext.Provider value={progressValue}>
+        {children}
+      </AudioProgressContext.Provider>
     </AudioPlayerContext.Provider>
   );
 }
@@ -706,6 +779,17 @@ export function useAudioPlayer() {
   const ctx = useContext(AudioPlayerContext);
   if (!ctx)
     throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
+  return ctx;
+}
+
+/** Live position/duration/listened-time, ticking ~4x/s while playing. Only
+ *  use this in components that render a live progress bar/slider — anything
+ *  else should use `useAudioPlayer().getPlaybackSnapshot()` instead so it
+ *  doesn't re-render on every tick. */
+export function useAudioProgress() {
+  const ctx = useContext(AudioProgressContext);
+  if (!ctx)
+    throw new Error("useAudioProgress must be used within AudioPlayerProvider");
   return ctx;
 }
 

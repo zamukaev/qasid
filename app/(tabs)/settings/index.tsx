@@ -7,6 +7,7 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
+  Switch,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
@@ -14,6 +15,8 @@ import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
 import { useUserStore } from "../../../stores/userStore";
 import TrackPlayer from "react-native-track-player";
+import { useNotificationPrefs } from "../../../services/notifications-service";
+import { GOLD } from "../../../constants/colors";
 
 const PLAN_LABEL: Record<string, { name: string; description: string }> = {
   free: {
@@ -39,6 +42,19 @@ export default function Settings() {
   const router = useRouter();
   const auth = getAuth();
   const appVersion = Constants.expoConfig?.version ?? "unknown";
+  const { subscribed, setSubscribed } = useNotificationPrefs();
+
+  const handleToggleNotifications = async (next: boolean) => {
+    try {
+      await setSubscribed(next);
+    } catch (error) {
+      console.error("Error updating notification preference:", error);
+      Alert.alert(
+        "Something went wrong",
+        "Couldn't update your notification preference. Please try again.",
+      );
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -192,6 +208,36 @@ export default function Settings() {
                 </View>
               </View>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Notifications Section */}
+        <View className="mb-6">
+          <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
+            Notifications
+          </Text>
+
+          <View className="relative overflow-hidden rounded-2xl">
+            <View className="absolute inset-0 bg-qasid-bg-2" />
+            <LinearGradient
+              colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ position: "absolute", inset: 0 }}
+            />
+            <View className="absolute inset-0 rounded-2xl border border-white/10" />
+
+            <View className="px-4 py-4 flex-row items-center justify-between">
+              <Text className="text-white text-base flex-1 mr-3">
+                New reciters & nasheed artists
+              </Text>
+              <Switch
+                value={subscribed}
+                onValueChange={handleToggleNotifications}
+                trackColor={{ false: "rgba(255,255,255,0.15)", true: GOLD }}
+                thumbColor="#ffffff"
+              />
+            </View>
           </View>
         </View>
 

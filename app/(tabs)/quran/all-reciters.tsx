@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { GOLD } from "../../../constants/colors";
-import { Text, View, Pressable, FlatList } from "react-native";
+import { Text, View, Pressable, FlatList, RefreshControl } from "react-native";
 import { FirebaseReciter, ResponseReciters } from "../../../types/quran";
 import { Image } from "react-native";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -15,7 +15,8 @@ import {
   fetchPopularReciters,
   fetchReciters,
 } from "../../../services/quran-service";
-import { useReciterImageSource } from "../../../hooks/useReciterImageSource";
+import { useImageLoadState } from "../../../hooks/useImageLoadState";
+import ImageShimmerOverlay from "../../../components/ImageShimmerOverlay";
 
 interface ReciterGridItemProps {
   reciter: FirebaseReciter;
@@ -23,7 +24,9 @@ interface ReciterGridItemProps {
 }
 
 function ReciterGridItem({ reciter, onPress }: ReciterGridItemProps) {
-  const imageSource = useReciterImageSource(reciter.image_path);
+  const { source, showSkeleton, onLoad, onError } = useImageLoadState(
+    reciter.image_path,
+  );
 
   return (
     <Pressable
@@ -33,20 +36,14 @@ function ReciterGridItem({ reciter, onPress }: ReciterGridItemProps) {
       }}
       onPress={() => onPress(reciter.id)}
     >
-      <View
-        className="rounded-full mb-3"
-        style={{
-          shadowColor: GOLD,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
+      <View className="rounded-xl overflow-hidden mb-3">
         <Image
-          className="h-32 w-32 rounded-full border-2 border-qasid-gold/25"
-          source={imageSource}
+          className="h-32 w-32 rounded-xl border-2 border-qasid-gold/25"
+          source={source}
+          onLoad={onLoad}
+          onError={onError}
         />
+        <ImageShimmerOverlay visible={showSkeleton} rounded="full" />
       </View>
       <Text className="text-qasid-white text-center text-base">
         {reciter.name_en}
@@ -72,6 +69,7 @@ export default function AllReciters() {
   const [hasMore, setHasMore] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const latestSearchRef = useRef("");
@@ -121,7 +119,10 @@ export default function AllReciters() {
         responseReciters = await fetchPopularReciters(POPULAR_PAGE_SIZE);
         responseNextCursor = undefined;
       } else if (isNewMode && !isSearchMode) {
-        const response = await fetchNewReciters(PAGE_SIZE, loadMore ? nextCursor : undefined);
+        const response = await fetchNewReciters(
+          PAGE_SIZE,
+          loadMore ? nextCursor : undefined,
+        );
         responseReciters = response.reciters;
         responseNextCursor = response.nextCursor;
       } else if (isSearchMode) {
@@ -172,6 +173,17 @@ export default function AllReciters() {
           setLoading(false);
         }
       }
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setHasMore(true);
+    setNextCursor(undefined);
+    try {
+      await loadReciters(false, latestSearchRef.current);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -237,6 +249,14 @@ export default function AllReciters() {
           gap: 16,
         }}
         columnWrapperStyle={{ gap: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={GOLD}
+            colors={[GOLD]}
+          />
+        }
         ListFooterComponent={
           loadingMore ? (
             <View className="py-4 items-center">
@@ -251,7 +271,7 @@ export default function AllReciters() {
                     ? "No popular reciters available right now."
                     : isNewMode
                       ? "No new reciters available right now."
-                    : "No reciters available right now."}
+                      : "No reciters available right now."}
               </Text>
             </View>
           ) : null

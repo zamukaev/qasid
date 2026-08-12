@@ -67,7 +67,6 @@ export default function VerifyEmailScreen() {
       const auth = getAuth();
       const currentUser = auth.currentUser;
       if (currentUser) {
-        console.log("[Auth] Resending verification email to:", currentUser);
         await sendEmailVerification(currentUser);
         setCountdown(RESEND_COOLDOWN);
       }
