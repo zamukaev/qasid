@@ -34,6 +34,9 @@ import {
 import { DownloadButton } from "../../../../components/DownloadButton";
 import { FavoriteButton } from "../../../../components/FavoriteButton";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
+// TEMP admin curation hotfix — remove with PlaylistPickerModal.
+import { AdminPlaylistButton } from "../../../../components/AdminPlaylistButton";
+import { PlaylistPickerModal } from "../../../../components/PlaylistPickerModal";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -150,6 +153,8 @@ export default function ArtistScreen() {
   const isPremium = useIsPremium();
   const { canPlay, increment, playsLeft } = useNasheedLimit();
   const [gateVisible, setGateVisible] = useState(false);
+  // TEMP admin curation hotfix — remove with PlaylistPickerModal.
+  const [playlistTarget, setPlaylistTarget] = useState<Nasheed | null>(null);
 
   const [artist, setArtist] = useState<NasheedArtist | null>(null);
   const [nasheeds, setNasheeds] = useState<NasheedItem[]>([]);
@@ -331,6 +336,27 @@ export default function ArtistScreen() {
     if (first) await handlePlayNasheed(first);
   };
 
+  // TEMP admin curation hotfix — remove with PlaylistPickerModal.
+  // `raw` is replaced rather than mutated so the memoized row re-renders and
+  // the plus icon picks up its new filled/outline state.
+  const handlePlaylistChange = (
+    nasheedId: string,
+    playlistId: string | null,
+  ) => {
+    setNasheeds((prev) =>
+      prev.map((n) =>
+        n.id === nasheedId
+          ? { ...n, raw: { ...n.raw, playlist_id: playlistId } }
+          : n,
+      ),
+    );
+    setPlaylistTarget((current) =>
+      current && current.id === nasheedId
+        ? { ...current, playlist_id: playlistId }
+        : current,
+    );
+  };
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     // Only setState when the flag actually flips — this fires on every scroll
     // frame otherwise, re-rendering the whole nasheed list.
@@ -383,6 +409,13 @@ export default function ArtistScreen() {
         visible={gateVisible}
         playsLeft={playsLeft}
         onClose={() => setGateVisible(false)}
+      />
+      {/* TEMP admin curation hotfix — remove with PlaylistPickerModal. */}
+      <PlaylistPickerModal
+        visible={!!playlistTarget}
+        nasheed={playlistTarget}
+        onClose={() => setPlaylistTarget(null)}
+        onPlaylistChange={handlePlaylistChange}
       />
       <ScrollView
         ref={scrollViewRef}
@@ -481,6 +514,11 @@ export default function ArtistScreen() {
                     }}
                     rightAction={
                       <View className="flex-row items-center">
+                        {/* TEMP admin curation hotfix — remove with PlaylistPickerModal. */}
+                        <AdminPlaylistButton
+                          nasheed={nasheed.raw}
+                          onPress={setPlaylistTarget}
+                        />
                         <FavoriteButton nasheed={nasheed.raw} />
                         {nasheed.audioUrl ? (
                           <DownloadButton

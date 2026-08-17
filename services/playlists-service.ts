@@ -8,6 +8,7 @@ import {
   getDoc,
   doc,
   orderBy,
+  updateDoc,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
 import { Nasheed, Playlist } from "../types/nasheed";
@@ -48,4 +49,17 @@ export async function fetchNasheedsForPlaylist(
     (d: FirebaseFirestoreTypes.QueryDocumentSnapshot) =>
       ({ id: d.id, ...d.data() }) as Nasheed,
   );
+}
+
+// TEMP admin curation hotfix — remove with PlaylistPickerModal.
+//
+// Assigns a nasheed to a curated playlist, or clears the assignment with null.
+// Only the admin uid listed in constants/admin.ts may write this — see the
+// `match /nasheeds/{nasheedId}` rule in backend/firestore.rules.
+export async function setNasheedPlaylist(
+  nasheedId: string,
+  playlistId: string | null,
+): Promise<void> {
+  const db = getFirestore(getApp());
+  await updateDoc(doc(db, "nasheeds", nasheedId), { playlist_id: playlistId });
 }

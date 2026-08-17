@@ -38,6 +38,12 @@ export interface Nasheed {
   image_path: string;
   artist_id: string;
   moods?: Mood[];
+  /**
+   * Curated playlist membership: the doc id of a `playlists` entry, or null
+   * when unassigned. A nasheed belongs to at most one curated playlist — see
+   * fetchNasheedsForPlaylist, which queries this field directly.
+   */
+  playlist_id?: string | null;
   favorite_count?: number;
   popularity_score?: number;
 }

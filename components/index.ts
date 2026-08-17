@@ -26,5 +26,8 @@ export { default as BannerSkeleton } from "./BannerSkeleton";
 export { default as MoodChipSkeleton } from "./MoodChipSkeleton";
 export { QasidLiveEqualizer } from "./QasidLiveEqualizer";
 export { FavoriteButton } from "./FavoriteButton";
+// TEMP admin curation hotfix — remove these two with the mood/playlist picker.
+export { AdminPlaylistButton } from "./AdminPlaylistButton";
+export { PlaylistPickerModal } from "./PlaylistPickerModal";
 export { TrackCollectionScreen } from "./TrackCollectionScreen";
 export type { CollectionTrack } from "./TrackCollectionScreen";

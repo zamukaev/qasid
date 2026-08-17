@@ -40,3 +40,5 @@ yarn-error.*
 # seed scripts — service account key must never be committed
 scripts/
 .tmp-scripts/
+# ...but the functions ops runners hold no secrets
+!backend/functions/scripts/

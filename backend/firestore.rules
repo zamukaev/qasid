@@ -56,6 +56,18 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // TEMP admin curation hotfix — remove together with the in-app playlist
+    // picker (components/PlaylistPickerModal.tsx). The uid must stay in sync
+    // with ADMIN_UIDS in constants/admin.ts.
+    match /nasheeds/{nasheedId} {
+      allow update: if request.auth != null &&
+        request.auth.uid == 'UTWOVcxhBVTksYtPXnipiSKHpdk2' &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(['playlist_id']) &&
+        (request.resource.data.playlist_id == null ||
+         request.resource.data.playlist_id is string);
+    }
+
     match /{document=**} {
       allow read: if true;
       allow write: if false;
