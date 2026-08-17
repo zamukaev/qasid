@@ -4,6 +4,5 @@
 // Whatever is listed here must match the `match /nasheeds/{nasheedId}` rule in
 // backend/firestore.rules — the client gate only hides the UI, the rule is what
 // actually enforces it.
-export const ADMIN_UIDS: readonly string[] = [
-  "UTWOVcxhBVTksYtPXnipiSKHpdk2",
-];
+const uid = process.env.EXPO_PUBLIC_ADMIN_UIDS!;
+export const ADMIN_UIDS: readonly string[] = [uid];
