@@ -11,6 +11,7 @@ import {
 } from "@react-native-firebase/auth";
 import { NowPlayingBar, FullScreenPlayer } from "../../components";
 import { useAudioPlayer } from "../../context/AudioPlayerContext";
+import { useReviewPrompt } from "../../hooks/useReviewPrompt";
 
 function AnimatedTabIcon({
   name,
@@ -52,6 +53,9 @@ function AnimatedTabIcon({
 export default function TabsLayout() {
   const router = useRouter();
   const { viewMode } = useAudioPlayer();
+
+  // Mounted once here so both tabs are covered, and only for signed-in users.
+  useReviewPrompt(viewMode);
 
   const handleAuthStateChanged = (user: FirebaseAuthTypes.User | null) => {
     if (!user) {

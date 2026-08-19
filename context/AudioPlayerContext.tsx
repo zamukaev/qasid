@@ -27,6 +27,10 @@ import {
   resolveStorageUrlStrict,
 } from "../services/storage";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import {
+  noteQualifiedListen,
+  QUALIFIED_LISTEN_MS,
+} from "../services/review-service";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
 type RepeatMode = "sequential" | "shuffle" | "repeat-one";
@@ -325,6 +329,16 @@ export function AudioPlayerProvider({
       if (delta > 0) {
         listenedMillisRef.current += Math.min(delta, 2000);
         if (isActive) setListenedMillis(listenedMillisRef.current);
+
+        // Feed the store-review engagement counter. Covers quran and nasheeds,
+        // manual plays and auto-advance alike; noteQualifiedListen dedupes per
+        // track, so calling it on every subsequent tick is a no-op.
+        if (
+          listenedMillisRef.current >= QUALIFIED_LISTEN_MS &&
+          currentTrackRef.current
+        ) {
+          noteQualifiedListen(currentTrackRef.current.id);
+        }
       }
     }
     lastReportedPositionRef.current = posMs;
@@ -793,4 +807,4 @@ export function useAudioProgress() {
   return ctx;
 }
 
-export type { Track };
+export type { Track, PlayerViewMode };

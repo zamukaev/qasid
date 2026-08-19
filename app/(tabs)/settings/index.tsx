@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Alert,
   Switch,
+  Linking,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
@@ -17,6 +18,7 @@ import { useUserStore } from "../../../stores/userStore";
 import TrackPlayer from "react-native-track-player";
 import { useNotificationPrefs } from "../../../services/notifications-service";
 import { GOLD } from "../../../constants/colors";
+import { getStoreReviewUrl } from "../../../services/review-service";
 
 const PLAN_LABEL: Record<string, { name: string; description: string }> = {
   free: {
@@ -84,6 +86,20 @@ export default function Settings() {
     router.push("/(tabs)/settings/terms-privacy");
   };
 
+  // The native review sheet can silently decline to appear (quota exhausted,
+  // no store on device), so keep a manual route to the store page.
+  const storeReviewUrl = getStoreReviewUrl();
+
+  const handleRateApp = () => {
+    if (!storeReviewUrl) return;
+    Linking.openURL(storeReviewUrl).catch(() => {
+      Alert.alert(
+        "Something went wrong",
+        "Couldn't open the store page. Please try again.",
+      );
+    });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-qasid-black ">
       <ScrollView className="flex-1 px-5">
@@ -99,9 +115,18 @@ export default function Settings() {
         <View className="flex-row items-center mb-8">
           {/* Avatar */}
           <View className="w-16 h-16 rounded-full bg-qasid-gold/20 items-center justify-center border-2 border-qasid-gold/30">
-            <Text className="text-qasid-gold text-2xl font-bold">
-              {user?.displayName?.charAt(0)?.toUpperCase() || "U"}
-            </Text>
+            {user?.photoURL ? (
+              <Image
+                source={{ uri: user.photoURL }}
+                className="w-16 h-16 rounded-full"
+              />
+            ) : (
+              <View className="w-16 h-16 rounded-full bg-qasid-gold/20 items-center justify-center border-2 border-qasid-gold/30">
+                <Text className="text-qasid-gold text-2xl font-bold">
+                  {user?.displayName?.charAt(0)?.toUpperCase() || "U"}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* User Info */}
@@ -269,6 +294,31 @@ export default function Settings() {
               </View>
             </View>
           </TouchableOpacity>
+
+          {/* Rate Qasid */}
+          {storeReviewUrl !== null && (
+            <TouchableOpacity
+              onPress={handleRateApp}
+              activeOpacity={0.7}
+              className="mb-3"
+            >
+              <View className="relative overflow-hidden rounded-2xl">
+                <View className="absolute inset-0 bg-qasid-bg-2" />
+                <LinearGradient
+                  colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ position: "absolute", inset: 0 }}
+                />
+                <View className="absolute inset-0 rounded-2xl border border-white/10" />
+
+                <View className="px-4 py-4 flex-row items-center justify-between">
+                  <Text className="text-white text-base">Rate Qasid</Text>
+                  <Text className="text-white/40 text-base">→</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Terms & Privacy */}
           <TouchableOpacity onPress={handleTermsPrivacy} activeOpacity={0.7}>

@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.abusafiia.qasid.dev",
+      "appStoreUrl": "https://apps.apple.com/app/id6769446918?action=write-review",
       "buildNumber": "1",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
@@ -27,6 +28,7 @@
     },
     "android": {
       "versionCode": 1,
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.abusafiia.qasid.dev&showAllReviews=true",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
