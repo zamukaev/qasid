@@ -29,5 +29,6 @@ export { FavoriteButton } from "./FavoriteButton";
 // TEMP admin curation hotfix — remove these two with the mood/playlist picker.
 export { AdminPlaylistButton } from "./AdminPlaylistButton";
 export { PlaylistPickerModal } from "./PlaylistPickerModal";
+export { PromoBanner } from "./PromoBanner";
 export { TrackCollectionScreen } from "./TrackCollectionScreen";
 export type { CollectionTrack } from "./TrackCollectionScreen";

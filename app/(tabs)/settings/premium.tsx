@@ -3,7 +3,7 @@ import { GOLD } from "../../../constants/colors";
 import { PRIVACY_URL, TERMS_URL } from "../../../constants/legal";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +15,14 @@ import {
   View,
 } from "react-native";
 import { PURCHASES_ERROR_CODE } from "react-native-purchases";
+import { PromoBanner } from "../../../components/PromoBanner";
+import { usePromo } from "../../../hooks/usePromo";
 import { useRevenueCat } from "../../../hooks/useRevenueCat";
 import { useUserStore } from "../../../stores/userStore";
+import {
+  formatIntroDuration,
+  summarizeOffering,
+} from "../../../utils/store-offer";
 
 type PlanId = "free" | "monthly" | "yearly";
 
@@ -74,8 +80,14 @@ export default function Premium() {
     restorePurchases,
   } = useRevenueCat();
 
+  const summary = useMemo(() => summarizeOffering(offerings), [offerings]);
+  const { promo, unitLabels } = usePromo({ summary });
+
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId>(currentPlanId);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  // Once the user taps a card, a promo must not move the selection under them.
+  const userPickedPlanRef = useRef(false);
+  const appliedPromoPlanRef = useRef<PlanId | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -116,12 +128,19 @@ export default function Premium() {
     setSelectedPlanId(currentPlanId);
   }, [currentPlanId]);
 
-  const monthlyPkg =
-    offerings?.availablePackages.find((p) => p.identifier === "$rc_monthly") ??
-    null;
-  const yearlyPkg =
-    offerings?.availablePackages.find((p) => p.identifier === "$rc_annual") ??
-    null;
+  // A promo may point at the plan it advertises, but only for a free user who
+  // has not made a choice yet.
+  useEffect(() => {
+    const highlighted = promo?.highlightPlan ?? null;
+    if (!highlighted || appliedPromoPlanRef.current === highlighted) return;
+    appliedPromoPlanRef.current = highlighted;
+    if (currentPlanId === "free" && !userPickedPlanRef.current) {
+      setSelectedPlanId(highlighted);
+    }
+  }, [promo?.highlightPlan, currentPlanId]);
+
+  const monthlyPkg = summary.monthlyPackage;
+  const yearlyPkg = summary.yearlyPackage;
 
   const plans: {
     id: PlanId;
@@ -144,12 +163,12 @@ export default function Premium() {
       id: "monthly" as PlanId,
       // Never invent a price: showing a placeholder while the store returned
       // nothing hides the failure behind a plan the user cannot actually buy.
-      price: monthlyPkg?.product.priceString ?? "—",
+      price: summary.monthlyPriceString ?? "—",
       ...PLAN_META.monthly,
     },
     {
       id: "yearly" as PlanId,
-      price: yearlyPkg?.product.priceString ?? "—",
+      price: summary.yearlyPriceString ?? "—",
       ...PLAN_META.yearly,
     },
   ];
@@ -209,13 +228,34 @@ export default function Premium() {
   const ctaDisabled =
     isFree || isCurrentPlan || isPurchasing || rcLoading || !selectedPkg;
 
+  // Trial / intro copy comes from the store, never from the promo config, so
+  // we can never advertise an offer the user would not actually get.
+  const selectedIntroOffer =
+    selectedPlanId === "yearly"
+      ? summary.yearlyIntroOffer
+      : selectedPlanId === "monthly"
+        ? summary.monthlyIntroOffer
+        : null;
+
+  const selectedPrice =
+    selectedPlanId === "yearly"
+      ? summary.yearlyPriceString
+      : summary.monthlyPriceString;
+
+  const introOfferLine =
+    selectedIntroOffer && selectedPrice
+      ? selectedIntroOffer.kind === "free_trial"
+        ? `${formatIntroDuration(selectedIntroOffer, unitLabels)} free, then ${selectedPrice}.`
+        : `${formatIntroDuration(selectedIntroOffer, unitLabels)} for ${selectedIntroOffer.priceString}, then ${selectedPrice}.`
+      : null;
+
   const ctaLabel = isPurchasing
     ? "Processing..."
     : isCurrentPlan && isPremium
       ? "Active Plan"
       : isFree
         ? "Continue with Free"
-        : "Upgrade to Premium →";
+        : (promo?.ctaLabel ?? "Upgrade to Premium →");
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
@@ -235,6 +275,10 @@ export default function Premium() {
               offline mode, and more.
             </Text>
           </View>
+
+          {promo && promo.showOnPremiumScreen ? (
+            <PromoBanner promo={promo} />
+          ) : null}
 
           {offeringsUnavailable ? (
             <View className="mb-5 rounded-2xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-4">
@@ -270,7 +314,10 @@ export default function Premium() {
                   key={plan.id}
                   className="mb-4"
                   activeOpacity={0.9}
-                  onPress={() => setSelectedPlanId(plan.id)}
+                  onPress={() => {
+                    userPickedPlanRef.current = true;
+                    setSelectedPlanId(plan.id);
+                  }}
                 >
                   <Animated.View
                     className="relative overflow-hidden rounded-2xl"
@@ -315,6 +362,23 @@ export default function Premium() {
                               <View className="rounded-full border border-qasid-gold/40 bg-qasid-gold/15 px-2.5 py-1">
                                 <Text className="text-qasid-gold text-[11px] font-semibold">
                                   Recommended
+                                </Text>
+                              </View>
+                            ) : null}
+                            {plan.id === "yearly" &&
+                            summary.savingsPercent !== null ? (
+                              <View className="rounded-full border border-[#22c55e]/40 bg-[#22c55e]/15 px-2.5 py-1">
+                                <Text className="text-[#22c55e] text-[11px] font-semibold">
+                                  Save {summary.savingsPercent}%
+                                </Text>
+                              </View>
+                            ) : null}
+                            {promo &&
+                            promo.highlightPlan === plan.id &&
+                            promo.discountPercent !== null ? (
+                              <View className="rounded-full border border-qasid-gold/40 bg-qasid-gold/15 px-2.5 py-1">
+                                <Text className="text-qasid-gold text-[11px] font-semibold">
+                                  -{promo.discountPercent}%
                                 </Text>
                               </View>
                             ) : null}
@@ -424,6 +488,12 @@ export default function Premium() {
             </View>
           </TouchableOpacity>
 
+          {introOfferLine ? (
+            <Text className="text-qasid-gold text-sm text-center -mt-3 mb-6">
+              {introOfferLine}
+            </Text>
+          ) : null}
+
           <View className="mb-14">
             <Text className="text-white/50 text-sm text-center leading-5">
               QASID Premium is an auto-renewable subscription. Payment is
@@ -431,6 +501,9 @@ export default function Premium() {
               renews automatically unless cancelled at least 24 hours before the
               end of the current period. Manage or cancel anytime in your Apple
               Account settings.
+              {selectedIntroOffer?.kind === "free_trial"
+                ? " A free trial automatically converts to a paid subscription unless cancelled at least 24 hours before it ends."
+                : ""}
             </Text>
 
             <View className="mt-4 flex-row items-center justify-center">

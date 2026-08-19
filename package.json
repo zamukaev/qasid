@@ -16,6 +16,8 @@
     "audit:playlists": "ts-node --project scripts/tsconfig.json scripts/audit-playlist-paths.ts",
     "audit:reciters": "ts-node --project scripts/tsconfig.json scripts/audit-phantom-reciters.ts",
     "verify:storage": "ts-node --project scripts/tsconfig.json scripts/verify-storage-paths.ts",
+    "check:promo": "ts-node --project scripts/tsconfig.json scripts/check-promo-config.ts",
+    "promo:set": "ts-node --project scripts/tsconfig.json scripts/set-paywall-config.ts",
     "version": "node scripts/bump-version.js && git add app.json",
     "postversion": "git push && git push --tags"
   },

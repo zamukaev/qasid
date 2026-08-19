@@ -65,7 +65,11 @@ RevenueCat (`react-native-purchases`) manages subscriptions. The entitlement ID 
 
 RevenueCat is initialized on auth state change (`app/index.tsx`) via `RevenueCatService.initialize(uid)`. Use `useRevenueCat()` hook for UI-level purchase and restore flows; use `services/revenuecat.ts` functions for lower-level access.
 
-**Free-tier nasheed limit:** Free users can play 5 nasheeds per day. This is tracked by `hooks/useNasheedLimit.ts`, which uses module-level singleton state (not React state) so all instances and the layout guard share one counter. Key pattern: before calling `playTrack()` for a manual tap, call `markManualPlay()` so the layout's `useEffect` watcher skips double-counting auto-advances. The layout (`app/(tabs)/nasheeds/_layout.tsx`) detects track changes that are auto-advances and calls `incrementNasheedCount()` for those.
+**Free-tier nasheed limit:** Free users can play 5 nasheeds per day (default; overridable remotely via `freeDailyLimit`, see below). This is tracked by `hooks/useNasheedLimit.ts`, which uses module-level singleton state (not React state) so all instances and the layout guard share one counter. Key pattern: before calling `playTrack()` for a manual tap, call `markManualPlay()` so the layout's `useEffect` watcher skips double-counting auto-advances. The layout (`app/(tabs)/nasheeds/_layout.tsx`) detects track changes that are auto-advances and calls `incrementNasheedCount()` for those.
+
+**Remote paywall promos:** Promotions ("first month free", "-30%", Ramadan banners with countdown) are authored in Firestore `config/paywall` — no code change, no release. `services/paywall-config-service.ts` reads the doc, `utils/paywall-config.ts` normalizes it (never throws; malformed → shipped defaults), `stores/paywallStore.ts` caches it in AsyncStorage and hydrates on login (`app/index.tsx`), `hooks/usePromo.ts` resolves the active promo and its `{placeholders}`, `components/PromoBanner.tsx` renders it in `PremiumGateModal` and the premium screen.
+
+**Rule:** trial/intro copy comes only from the store (`utils/store-offer.ts` reads `product.defaultOption.freePhase/introPhase` on Android, `product.introPrice` on iOS). Any promo line with an unresolvable placeholder is dropped rather than rendered incomplete, so copy can never promise an offer App Store Connect / Play Console does not have. Field reference and recipes: `docs/paywall-config.md`. Publish with `npm run promo:set -- <file.json>`; logic checks: `npm run check:promo`.
 
 ### Audio Architecture (critical — read before touching)
 

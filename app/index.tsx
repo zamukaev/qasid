@@ -14,6 +14,7 @@ import { useUserStore } from "../stores/userStore";
 import { useFavoritesStore } from "../stores/favoritesStore";
 import * as RevenueCatService from "../services/revenuecat";
 import { fetchPremiumOverrideEmails } from "../services/config-service";
+import { usePaywallStore } from "../stores/paywallStore";
 import { hydrateAndSyncSubscription } from "../services/notifications-service";
 
 import "../global.css";
@@ -40,6 +41,11 @@ export default function Welcome() {
         setPremiumOverrideEmails(emails);
       } catch {
         // config fetch failure is non-fatal
+      }
+      try {
+        await usePaywallStore.getState().hydrate();
+      } catch {
+        // paywall config fetch failure is non-fatal — defaults apply
       }
       try {
         await hydrateAndSyncSubscription();
