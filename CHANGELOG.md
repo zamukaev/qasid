@@ -49,6 +49,8 @@ Work in progress on branch `releas/1-1-0`.
 - **"Share usage data" toggle** in a new Privacy section in Settings. Opt-out by
   default, persisted in AsyncStorage and hydrated in `app/_layout.tsx` before
   any screen can log an event.
+- **Repeat mode survives an app restart.** Sequential, shuffle and repeat-one
+  are persisted to AsyncStorage and restored once the player is up.
 
 ### Changed
 

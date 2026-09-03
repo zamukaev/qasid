@@ -33,7 +33,15 @@ import {
 } from "../services/review-service";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
-type RepeatMode = "sequential" | "shuffle" | "repeat-one";
+
+// Listed at runtime as well as in the type so the persisted value can be
+// validated on read — a stale or corrupted entry must never become a mode.
+const REPEAT_MODES = ["sequential", "shuffle", "repeat-one"] as const;
+type RepeatMode = (typeof REPEAT_MODES)[number];
+
+function isRepeatMode(value: unknown): value is RepeatMode {
+  return REPEAT_MODES.includes(value as RepeatMode);
+}
 
 type Track = {
   id: string;
@@ -100,6 +108,7 @@ const AudioProgressContext = createContext<
 >(undefined);
 
 const PROGRESS_STORAGE_KEY = "@qasid-reciter-progress";
+const REPEAT_MODE_STORAGE_KEY = "@qasid-repeat-mode";
 
 // How many queue entries are resolved and loaded into RNTP before playback
 // starts. Enough to cover an immediate lock-screen skip; the rest is appended
@@ -301,6 +310,21 @@ export function AudioPlayerProvider({
       } catch (e) {
         console.error("TrackPlayer updateOptions failed", e);
       }
+
+      // Restore the persisted repeat mode only once the player is up: the
+      // effect that mirrors repeatMode onto RNTP swallows its errors, so
+      // hydrating earlier could leave the native repeat mode unset until the
+      // user toggled it by hand.
+      //
+      // The ref is set alongside the state because next / prev / the
+      // queue-ended handler read repeatModeRef only — state alone would show
+      // the right icon while auto-advance still behaved as "sequential".
+      try {
+        const stored = await AsyncStorage.getItem(REPEAT_MODE_STORAGE_KEY);
+        if (!mounted || !isRepeatMode(stored)) return;
+        repeatModeRef.current = stored;
+        setRepeatModeState(stored);
+      } catch {}
     })();
     return () => {
       mounted = false;
@@ -450,9 +474,13 @@ export function AudioPlayerProvider({
   }, []);
 
   // ── setRepeatMode ────────────────────────────────────────────────────────
+  // Persisted here rather than in an effect on [repeatMode]: such an effect
+  // fires on the first render and would write the "sequential" default over the
+  // stored value before the hydration read in the setup effect resolves.
   const setRepeatMode = useCallback((mode: RepeatMode) => {
     repeatModeRef.current = mode;
     setRepeatModeState(mode);
+    AsyncStorage.setItem(REPEAT_MODE_STORAGE_KEY, mode).catch(() => {});
   }, []);
 
   // ── Core playback helpers ─────────────────────────────────────────────────
