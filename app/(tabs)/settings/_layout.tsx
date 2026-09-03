@@ -1,6 +1,5 @@
 import { Stack } from "expo-router";
 import { GOLD } from "../../../constants/colors";
-import { title } from "process";
 
 export default function SettingsLayout() {
   return (

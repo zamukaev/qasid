@@ -470,7 +470,7 @@ export default function ArtistScreen() {
             <View className="mt-6">
               <PlayButton
                 handlePlayAll={handlePlayAll}
-                label="Play"
+                label="Play All"
                 kind={PlayButtonVariant.PRIMARY}
                 isPlaying={isArtistPlaying}
               />

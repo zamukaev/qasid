@@ -139,12 +139,12 @@ export default function ProfileSettings() {
   const handleDeleteAccount = () => {
     if (isEmailProvider) {
       Alert.alert(
-        "Account löschen",
-        "Bitte gib dein Passwort ein, um den Account zu löschen. Diese Aktion kann nicht rückgängig gemacht werden.",
+        "Delete Account",
+        "Deleting your account is permanent and cannot be undone.",
         [
-          { text: "Abbrechen", style: "cancel" },
+          { text: "Cancel", style: "cancel" },
           {
-            text: "Löschen",
+            text: "Delete",
             style: "destructive",
             onPress: () => confirmDeleteWithPassword(),
           },
@@ -152,12 +152,12 @@ export default function ProfileSettings() {
       );
     } else {
       Alert.alert(
-        "Account löschen",
-        "Diese Aktion kann nicht rückgängig gemacht werden. Dein Account wird dauerhaft gelöscht.",
+        "Delete Account",
+        "This cannot be undone. Your account will be permanently deleted.",
         [
-          { text: "Abbrechen", style: "cancel" },
+          { text: "Cancel", style: "cancel" },
           {
-            text: "Löschen",
+            text: "Delete",
             style: "destructive",
             onPress: () => performDelete(),
           },
@@ -167,15 +167,16 @@ export default function ProfileSettings() {
   };
 
   const confirmDeleteWithPassword = () => {
-    // For email users we need a password — use a second Alert prompt (iOS supports input in Alert)
-    // On Android we fall back to asking them to log out and back in
+    // Re-authentication is required before deletion, and we have no password
+    // prompt here on either platform, so we route the user through a sign-out /
+    // sign-in cycle instead.
     Alert.alert(
-      "Passwort bestätigen",
-      "Bitte melde dich zuerst ab und wieder an, dann versuche den Account erneut zu löschen. Wenn du auf iOS bist, wird das Passwortfeld angezeigt.",
+      "Confirm Deletion",
+      "For security, please sign out and sign in again, then try deleting your account.",
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: "Cancel", style: "cancel" },
         {
-          text: "Trotzdem löschen",
+          text: "Delete Anyway",
           style: "destructive",
           onPress: () => performDelete(),
         },
@@ -191,7 +192,7 @@ export default function ProfileSettings() {
     } catch (err: any) {
       if (err.code === "auth/requires-recent-login") {
         showToast(
-          "Bitte melde dich ab und wieder an, bevor du den Account löschst."
+          "Please sign out and sign in again before deleting your account."
         );
       } else {
         showToast(getFirebaseErrorMessage(err.code ?? ""));
@@ -205,7 +206,7 @@ export default function ProfileSettings() {
         {/* Profile Picture */}
         <View className="mb-6 mt-4">
           <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-4">
-            Profilbild
+            Profile Picture
           </Text>
 
           <View className="items-center">
@@ -239,7 +240,7 @@ export default function ProfileSettings() {
                 <View className="absolute inset-0 bg-qasid-gold/10" />
                 <View className="absolute inset-0 rounded-2xl border border-qasid-gold/30" />
                 <Text className="text-qasid-gold font-semibold text-sm">
-                  Bild ändern
+                  Change Photo
                 </Text>
               </View>
             </TouchableOpacity>
@@ -259,7 +260,7 @@ export default function ProfileSettings() {
               className="px-4 py-4 text-white text-base"
               value={name}
               onChangeText={setName}
-              placeholder="Dein Name"
+              placeholder="Your name"
               placeholderTextColor="rgba(255,255,255,0.3)"
               autoCapitalize="words"
             />
@@ -279,7 +280,7 @@ export default function ProfileSettings() {
                   <ActivityIndicator size="small" color={GOLD} />
                 ) : (
                   <Text className="text-qasid-gold text-base font-semibold">
-                    Speichern
+                    Save
                   </Text>
                 )}
               </View>
@@ -291,7 +292,7 @@ export default function ProfileSettings() {
         {isEmailProvider && (
           <View className="mb-6">
             <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
-              Passwort ändern
+              Change Password
             </Text>
 
             <View className="relative overflow-hidden rounded-2xl mb-3">
@@ -301,7 +302,7 @@ export default function ProfileSettings() {
                 className="px-4 py-4 text-white text-base"
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
-                placeholder="Aktuelles Passwort"
+                placeholder="Current password"
                 placeholderTextColor="rgba(255,255,255,0.3)"
                 secureTextEntry
               />
@@ -314,7 +315,7 @@ export default function ProfileSettings() {
                 className="px-4 py-4 text-white text-base"
                 value={newPassword}
                 onChangeText={setNewPassword}
-                placeholder="Neues Passwort"
+                placeholder="New password"
                 placeholderTextColor="rgba(255,255,255,0.3)"
                 secureTextEntry
               />
@@ -327,7 +328,7 @@ export default function ProfileSettings() {
                 className="px-4 py-4 text-white text-base"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder="Neues Passwort bestätigen"
+                placeholder="Confirm new password"
                 placeholderTextColor="rgba(255,255,255,0.3)"
                 secureTextEntry
               />
@@ -347,7 +348,7 @@ export default function ProfileSettings() {
                     <ActivityIndicator size="small" color={GOLD} />
                   ) : (
                     <Text className="text-qasid-gold text-base font-semibold">
-                      Passwort ändern
+                      Change Password
                     </Text>
                   )}
                 </View>
@@ -359,7 +360,7 @@ export default function ProfileSettings() {
         {/* Delete Account */}
         <View className="mb-24">
           <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
-            Gefahrenzone
+            Danger Zone
           </Text>
 
           <TouchableOpacity onPress={handleDeleteAccount} activeOpacity={0.8}>
@@ -368,7 +369,7 @@ export default function ProfileSettings() {
               <View className="absolute inset-0 rounded-2xl border border-red-500/30" />
               <View className="px-4 py-4 items-center">
                 <Text className="text-red-500 text-base font-semibold">
-                  Account löschen
+                  Delete Account
                 </Text>
               </View>
             </View>
