@@ -23,8 +23,8 @@ import {
 import { fetchRecentArtists } from "../../../services/recents-service";
 import { fetchPlaylists } from "../../../services/playlists-service";
 import {
+  ensureWeeklyMix,
   fetchGeneratedPlaylists,
-  fetchWeeklyMix,
 } from "../../../services/recommendations-service";
 import { fetchFavoriteCovers } from "../../../services/favorites-service";
 
@@ -44,7 +44,7 @@ const toRailItem = (p: GeneratedPlaylist, coverOverride?: string): Playlist =>
 
 export default function Nasheeds() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [popularArtists, setPopularArtists] = useState<NasheedArtist[]>([]);
   const [newArtists, setNewArtists] = useState<NasheedArtist[]>([]);
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
@@ -139,29 +139,43 @@ export default function Nasheeds() {
   }, []);
 
   // Cover art for the "For You" tiles. Best-effort: a gradient fallback is used
-  // when either source is empty, so failures here are non-fatal. The weekly mix
-  // is read from cache only (no generation) to keep the home load light.
-  const loadForYouCovers = useCallback(async () => {
-    setIsLoadingForYou(true);
-    try {
-      const [mix, favs] = await Promise.all([
-        fetchWeeklyMix(),
-        fetchFavoriteCovers(),
-      ]);
-      const firstArtistId = mix?.tracks?.[0]?.artist_id ?? null;
-      const mixArtistImage = firstArtistId
-        ? await fetchArtistImagePath(firstArtistId)
-        : null;
-      setMixCovers(mixArtistImage ? [mixArtistImage] : []);
-      setFavCovers(favs.cover ? [favs.cover] : []);
-      setHasWeeklyMix((mix?.tracks?.length ?? 0) > 0);
-      setHasFavorites(favs.hasFavorites);
-    } catch (error) {
-      console.error("Error loading For You covers:", error);
-    } finally {
-      setIsLoadingForYou(false);
-    }
-  }, []);
+  // when either source is empty, so failures here are non-fatal. `ensureWeeklyMix`
+  // creates the mix on first visit and refreshes it once a week — nothing else in
+  // the app ever generates one, so without this the tile could never appear.
+  const loadForYouCovers = useCallback(
+    async (force?: boolean) => {
+      // Firebase restores the session asynchronously; running before that reads
+      // a null uid and would silently leave the rail empty until a manual pull.
+      if (authLoading) return;
+      if (!user?.uid) {
+        setHasWeeklyMix(false);
+        setHasFavorites(false);
+        setIsLoadingForYou(false);
+        return;
+      }
+
+      setIsLoadingForYou(true);
+      try {
+        const [mix, favs] = await Promise.all([
+          ensureWeeklyMix({ force }),
+          fetchFavoriteCovers(),
+        ]);
+        const firstArtistId = mix?.tracks?.[0]?.artist_id ?? null;
+        const mixArtistImage = firstArtistId
+          ? await fetchArtistImagePath(firstArtistId)
+          : null;
+        setMixCovers(mixArtistImage ? [mixArtistImage] : []);
+        setFavCovers(favs.cover ? [favs.cover] : []);
+        setHasWeeklyMix((mix?.tracks?.length ?? 0) > 0);
+        setHasFavorites(favs.hasFavorites);
+      } catch (error) {
+        console.error("Error loading For You covers:", error);
+      } finally {
+        setIsLoadingForYou(false);
+      }
+    },
+    [authLoading, user?.uid],
+  );
 
   const loadRecents = useCallback(async () => {
     setIsLoadingRecents(true);
@@ -181,15 +195,13 @@ export default function Nasheeds() {
     void loadRecents();
     void loadPlaylists();
     void loadGenerated();
+  }, [loadMain, loadNew, loadRecents, loadPlaylists, loadGenerated]);
+
+  // Own effect: this is the only loader whose identity changes (it depends on
+  // the restored session), and the rails above must not refetch when it does.
+  useEffect(() => {
     void loadForYouCovers();
-  }, [
-    loadMain,
-    loadNew,
-    loadRecents,
-    loadPlaylists,
-    loadGenerated,
-    loadForYouCovers,
-  ]);
+  }, [loadForYouCovers]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -200,7 +212,7 @@ export default function Nasheeds() {
         loadRecents(),
         loadPlaylists(),
         loadGenerated(true),
-        loadForYouCovers(),
+        loadForYouCovers(true),
       ]);
     } finally {
       setRefreshing(false);

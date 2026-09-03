@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CollectionTrack, TrackCollectionScreen } from "../../../../components";
 import { Mood, RecommendedTrack } from "../../../../types/nasheed";
-import {
-  fetchWeeklyMix,
-  generateWeeklyMix,
-} from "../../../../services/recommendations-service";
+import { ensureWeeklyMix } from "../../../../services/recommendations-service";
 import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
 import {
   enrichWithLiveImageAndAudio,
@@ -43,12 +40,10 @@ export default function WeeklyMixScreen() {
   const load = useCallback(async () => {
     if (!hasLoadedRef.current) setLoading(true);
     try {
-      // Prefer the cached mix; generate a fresh one if none exists yet.
-      const cached = await fetchWeeklyMix();
-      let raw: RecommendedTrack[] = cached?.tracks ?? [];
-      if (raw.length === 0) {
-        raw = await generateWeeklyMix();
-      }
+      // Shared with the home rail: serves the stored mix, generating or
+      // refreshing it when it is missing or a week old.
+      const mix = await ensureWeeklyMix();
+      const raw: RecommendedTrack[] = mix?.tracks ?? [];
       const enriched = await enrichWithLiveImageAndAudio(raw);
       if (!isMountedRef.current) return;
 

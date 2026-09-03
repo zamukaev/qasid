@@ -79,6 +79,8 @@ export interface WeeklyMix {
   tracks: RecommendedTrack[];
   track_count: number;
   seed?: { top_artist_ids: string[]; top_moods: string[] };
+  /** Epoch ms. null while the server timestamp is still unresolved. */
+  generated_at: number | null;
 }
 
 export interface NasheedCursor {

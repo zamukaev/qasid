@@ -10,11 +10,16 @@ import {
   where,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   GeneratedPlaylist,
   RecommendedTrack,
   WeeklyMix,
 } from "../types/nasheed";
+import {
+  WEEKLY_MIX_RETRY_MIN_MS,
+  isWeeklyMixStale,
+} from "../utils/weekly-mix";
 
 const FIREBASE_PROJECT_ID = "qasid-fd80d";
 const GENERATE_WEEKLY_MIX_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunctions.net/generateWeeklyMix`;
@@ -52,7 +57,88 @@ export async function fetchWeeklyMix(): Promise<WeeklyMix | null> {
     tracks: Array.isArray(mix.tracks) ? mix.tracks : [],
     track_count: mix.track_count ?? 0,
     seed: mix.seed,
+    generated_at: mix.generatedAt?.toMillis?.() ?? null,
   };
+}
+
+// One shared entry point for "give me the caller's mix, creating it if needed".
+// Without this the mix was a chicken-and-egg deadlock: the home rail only showed
+// once the Firestore doc existed, and the only writer was the generate endpoint,
+// reachable only through that rail.
+
+const LAST_ATTEMPT_KEY = "@qasid-weekly-mix-attempt";
+
+// A single doc-shaped entry rather than a key per uid: only the signed-in user's
+// attempt matters, and switching accounts should not inherit the old throttle.
+const readLastAttempt = async (uid: string): Promise<number> => {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_ATTEMPT_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as { uid?: string; at?: number };
+    return parsed.uid === uid ? (parsed.at ?? 0) : 0;
+  } catch {
+    // An unreadable throttle just means we allow the attempt.
+    return 0;
+  }
+};
+
+const writeLastAttempt = async (uid: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(
+      LAST_ATTEMPT_KEY,
+      JSON.stringify({ uid, at: Date.now() }),
+    );
+  } catch {
+    // A throttle we cannot persist is not worth failing the mix over.
+  }
+};
+
+let inFlightMix: Promise<WeeklyMix | null> | null = null;
+
+const resolveWeeklyMix = async (
+  options?: FetchOptions,
+): Promise<WeeklyMix | null> => {
+  const uid = getAuth().currentUser?.uid;
+  if (!uid) return null;
+
+  const cached = await fetchWeeklyMix();
+  const needsRefresh =
+    !cached ||
+    cached.tracks.length === 0 ||
+    isWeeklyMixStale(cached.generated_at, Date.now());
+  if (!needsRefresh && !options?.force) return cached;
+
+  // The throttle applies to forced refreshes too, so repeated pull-to-refresh
+  // cannot hammer the endpoint; the mix is weekly, not on-demand.
+  const lastAttempt = await readLastAttempt(uid);
+  if (Date.now() - lastAttempt < WEEKLY_MIX_RETRY_MIN_MS) return cached;
+
+  await writeLastAttempt(uid);
+  try {
+    const tracks = await generateWeeklyMix();
+    // The endpoint returns the tracks it just persisted, so no second read.
+    // generated_at is the client clock; Firestore holds the authoritative one.
+    return { tracks, track_count: tracks.length, generated_at: Date.now() };
+  } catch {
+    // Non-fatal by design: callers prefer a stale mix over an error state.
+    return cached;
+  }
+};
+
+export async function ensureWeeklyMix(
+  options?: FetchOptions,
+): Promise<WeeklyMix | null> {
+  // Mount and pull-to-refresh can overlap; one generation is enough.
+  if (inFlightMix && !options?.force) return inFlightMix;
+
+  const run = resolveWeeklyMix(options);
+  inFlightMix = run;
+  try {
+    return await run;
+  } finally {
+    // Only the owner clears it; a forced call may have replaced it meanwhile.
+    if (inFlightMix === run) inFlightMix = null;
+  }
 }
 
 // The backend regenerates these once every 24 h, so a short in-memory TTL costs
