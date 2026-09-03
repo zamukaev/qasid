@@ -57,9 +57,9 @@ interface ArtistInput {
 
 const artists: ArtistInput[] = [
   {
-    id: "khalid_al_haqqan",
-    name_en: "Khalid al-Haqqan",
-    name_ar: "خالد الحقان",
+    id: "musab_al_adani",
+    name_en: "Musab Al Adani",
+    name_ar: "",
     language: "ar",
   },
 ];
