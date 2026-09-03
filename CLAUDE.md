@@ -18,10 +18,13 @@ npx expo run:android
 
 # Seed Firestore data (requires scripts/serviceAccountKey.json)
 npm run seed:artists
-npm run seed:nasheeds-abu-ali
+npm run seed:nasheeds
 
-# Bump version (updates app.json, commits, tags, and pushes)
-npm run version
+# Bump version. npm writes the new version to package.json, the `version`
+# script syncs it into app.json (plus ios.buildNumber and an incremented
+# android.versionCode), npm commits and tags it, and `postversion` pushes the
+# commit and the tag. Needs a clean working tree.
+npm version minor   # or: npm version patch
 ```
 
 There are no test or lint scripts configured.
