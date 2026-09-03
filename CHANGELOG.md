@@ -35,6 +35,20 @@ Work in progress on branch `releas/1-1-0`.
   Firestore rules and a `run-daily-recommendations` script.
 - **Google/Apple profile photo** is now shown in Settings instead of the initial
   letter avatar when the account has one.
+- **Firebase Analytics for the playback funnel.** `services/analytics.ts`
+  mirrors the `started` / `qualified` / `completed` playback events that already
+  land in the `reciter_plays` / `artist_plays` collections into GA4 as
+  `quran_playback` and `nasheed_playback`, and sets the user id plus a
+  `subscription_plan` user property. Firestore stays the source of truth for
+  recommendations and trending; Analytics only adds the funnel view. Every call
+  swallows its own errors and is fired before the Firestore write, so the funnel
+  survives a skipped or failing write and analytics can never delay playback.
+  Installed without ad-identifier support
+  (`$RNFirebaseAnalyticsWithoutAdIdSupport` in `ios/Podfile`), so the app
+  collects no IDFA and needs no ATT prompt.
+- **"Share usage data" toggle** in a new Privacy section in Settings. Opt-out by
+  default, persisted in AsyncStorage and hydrated in `app/_layout.tsx` before
+  any screen can log an event.
 
 ### Changed
 
@@ -44,12 +58,33 @@ Work in progress on branch `releas/1-1-0`.
   per-screen fetching and drifting UI state.
 - Nasheed seed scripts (`seed-nasheed-artists`, `seed-nasheeds-abu-ali`)
   updated for the current schema.
+- Settings and profile screens are fully in English — the delete-account,
+  change-password and profile-picture flows still had German copy from an early
+  draft.
+- `seed-nasheed-artists` now seeds Musab Al Adani instead of Khalid al-Haqqan.
+- Artist screen's play button reads "Play All" instead of "Play".
 
 ### Fixed
 
 - **Premium paywall no longer renders empty and silent** when RevenueCat
   offerings fail to load. The failure is surfaced with an explanatory message
   and a retry instead of an inert screen.
+- **The "Made for You" Weekly Mix tile never appeared for anyone.**
+  `user_recommendations/{uid}.weekly_mix` was written only by the on-demand
+  `generateWeeklyMix` endpoint, which was called only from the mix screen —
+  a screen reachable only through the tile that required the document to
+  already exist. `dailyRecommendationJob` writes `generated_playlists` and
+  never touches `user_recommendations`, so the mix could never bootstrap
+  itself. New `ensureWeeklyMix()` in `services/recommendations-service.ts`
+  reads the mix, treats it as stale after 7 days, and generates one when
+  needed — guarded by a 6 h retry throttle and in-flight de-duplication, and
+  never throwing, since a stale mix beats an error state.
+- **Weekly Mix and favorites rails stayed empty until a manual pull-to-refresh**
+  on a cold start. The home screen loaded them before Firebase had restored the
+  session, so the queries ran with a null uid; they now wait for auth to settle.
+- `FirebaseSurah.transliteration` is optional, matching the documents that
+  genuinely lack it, and a stray `import { title } from "process"` is gone from
+  the settings layout.
 
 ---
 
