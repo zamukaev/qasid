@@ -16,6 +16,7 @@ import * as RevenueCatService from "../services/revenuecat";
 import { fetchPremiumOverrideEmails } from "../services/config-service";
 import { usePaywallStore } from "../stores/paywallStore";
 import { hydrateAndSyncSubscription } from "../services/notifications-service";
+import { setAnalyticsPlan, setAnalyticsUser } from "../services/analytics";
 
 import "../global.css";
 
@@ -30,6 +31,7 @@ export default function Welcome() {
     firebaseUser: FirebaseAuthTypes.User | null,
   ) => {
     setUser(firebaseUser);
+    void setAnalyticsUser(firebaseUser?.uid ?? null);
     if (firebaseUser) {
       try {
         await RevenueCatService.initialize(firebaseUser.uid);
@@ -70,12 +72,23 @@ export default function Welcome() {
     return subscribe;
   }, []);
 
+  // RevenueCat resolves the entitlement asynchronously, so the plan is mirrored
+  // to Analytics whenever it changes rather than once at sign-in.
+  useEffect(() => {
+    void setAnalyticsPlan(useUserStore.getState().currentPlan);
+    return useUserStore.subscribe((state, previous) => {
+      if (state.currentPlan !== previous.currentPlan) {
+        void setAnalyticsPlan(state.currentPlan);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (isLoading) return;
 
     const inTabs = segments[0] === "(tabs)";
     const inVerifyEmail =
-      segments[0] === "(auth)" && segments[1] === "verify-email";
+      segments[0] === "(auth)" && segments.at(1) === "verify-email";
 
     if (!user) {
       if (inTabs || inVerifyEmail) router.replace("/");

@@ -19,6 +19,7 @@ import TrackPlayer from "react-native-track-player";
 import { useNotificationPrefs } from "../../../services/notifications-service";
 import { GOLD } from "../../../constants/colors";
 import { getStoreReviewUrl } from "../../../services/review-service";
+import { useAnalyticsPrefs } from "../../../services/analytics";
 
 const PLAN_LABEL: Record<string, { name: string; description: string }> = {
   free: {
@@ -45,6 +46,7 @@ export default function Settings() {
   const auth = getAuth();
   const appVersion = Constants.expoConfig?.version ?? "unknown";
   const { subscribed, setSubscribed } = useNotificationPrefs();
+  const { analyticsEnabled, setAnalyticsEnabled } = useAnalyticsPrefs();
 
   const handleToggleNotifications = async (next: boolean) => {
     try {
@@ -54,6 +56,18 @@ export default function Settings() {
       Alert.alert(
         "Something went wrong",
         "Couldn't update your notification preference. Please try again.",
+      );
+    }
+  };
+
+  const handleToggleAnalytics = async (next: boolean) => {
+    try {
+      await setAnalyticsEnabled(next);
+    } catch (error) {
+      console.error("Error updating analytics preference:", error);
+      Alert.alert(
+        "Something went wrong",
+        "Couldn't update your privacy preference. Please try again.",
       );
     }
   };
@@ -259,6 +273,40 @@ export default function Settings() {
               <Switch
                 value={subscribed}
                 onValueChange={handleToggleNotifications}
+                trackColor={{ false: "rgba(255,255,255,0.15)", true: GOLD }}
+                thumbColor="#ffffff"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Privacy Section */}
+        <View className="mb-6">
+          <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
+            Privacy
+          </Text>
+
+          <View className="relative overflow-hidden rounded-2xl">
+            <View className="absolute inset-0 bg-qasid-bg-2" />
+            <LinearGradient
+              colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ position: "absolute", inset: 0 }}
+            />
+            <View className="absolute inset-0 rounded-2xl border border-white/10" />
+
+            <View className="px-4 py-4 flex-row items-center justify-between">
+              <View className="flex-1 mr-3">
+                <Text className="text-white text-base">Share usage data</Text>
+                <Text className="text-white/40 text-xs mt-1">
+                  Helps us see which recitations are listened to. Never shared
+                  with advertisers.
+                </Text>
+              </View>
+              <Switch
+                value={analyticsEnabled}
+                onValueChange={handleToggleAnalytics}
                 trackColor={{ false: "rgba(255,255,255,0.15)", true: GOLD }}
                 thumbColor="#ffffff"
               />

@@ -1,5 +1,6 @@
 import { getApp } from "@react-native-firebase/app";
 import { getAuth } from "@react-native-firebase/auth";
+import { logQuranPlayback } from "./analytics";
 import {
   getFirestore,
   collection,
@@ -341,6 +342,10 @@ export async function trackReciterPlayback({
   eventType: ReciterPlaybackEventType;
   playedSeconds: number;
 }) {
+  // Logged before the auth check so the funnel is captured even when the
+  // Firestore write below is skipped or fails.
+  void logQuranPlayback({ reciterId, surahId, eventType, playedSeconds });
+
   const db = getFirestore(getApp());
   const userId = getAuth().currentUser?.uid;
 

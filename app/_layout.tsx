@@ -16,6 +16,7 @@ import { getApp } from "@react-native-firebase/app";
 import { getMessaging, onMessage } from "@react-native-firebase/messaging";
 import { hydrateStorageUrlCache } from "../services/storage";
 import { initReviewTracking } from "../services/review-service";
+import { hydrateAnalyticsConsent } from "../services/analytics";
 
 import "../global.css";
 
@@ -45,6 +46,8 @@ export default function RootLayout() {
     // Device-scoped, so it runs before auth: records first launch and this
     // session's day for the store-review eligibility check.
     void initReviewTracking();
+    // Restores the analytics opt-out before any screen can log an event.
+    void hydrateAnalyticsConsent();
   }, []);
 
   useEffect(() => {
