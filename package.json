@@ -19,7 +19,7 @@
     "verify:reciter-audio": "ts-node --project scripts/tsconfig.json scripts/verify-reciter-audio.ts",
     "check:promo": "ts-node --project scripts/tsconfig.json scripts/check-promo-config.ts",
     "promo:set": "ts-node --project scripts/tsconfig.json scripts/set-paywall-config.ts",
-    "version": "node scripts/bump-version.js && git add app.json",
+    "version": "node scripts/bump-version.js && git add app.json ios/QASID/Info.plist ios/QASID.xcodeproj/project.pbxproj android/app/build.gradle",
     "postversion": "git push && git push --tags"
   },
   "dependencies": {
