@@ -51,6 +51,13 @@ Work in progress on branch `releas/1-1-0`.
   any screen can log an event.
 - **Repeat mode survives an app restart.** Sequential, shuffle and repeat-one
   are persisted to AsyncStorage and restored once the player is up.
+- **In-app alerts for events that used to pass silently.** A push notification
+  arriving while the app is in the foreground is shown as an info banner
+  instead of being swallowed by the OS, and a track whose audio cannot be
+  loaded raises an error banner instead of leaving the tap looking ignored
+  (`PlaybackErrorAlert` in `app/_layout.tsx`).
+- **`npm run verify:reciter-audio`** audits reciter surah documents against
+  Firebase Storage and reports the paths that no longer resolve.
 
 ### Changed
 
@@ -63,11 +70,29 @@ Work in progress on branch `releas/1-1-0`.
 - Settings and profile screens are fully in English — the delete-account,
   change-password and profile-picture flows still had German copy from an early
   draft.
-- `seed-nasheed-artists` now seeds Musab Al Adani instead of Khalid al-Haqqan.
+- `seed-nasheed-artists` seeds Abu Abdul Malik; Musab Al Adani and Khalid
+  al-Haqqan are already live.
 - Artist screen's play button reads "Play All" instead of "Play".
 
 ### Fixed
 
+- **Artist search ran on the Firestore fallback the whole time.** The client
+  called the `searchArtists` endpoint, but the Cloud Function behind that URL
+  was never written — the URL answered 404 and every query silently fell
+  through to the client-side path. The function now exists and is deployed,
+  mirroring `searchReciters`: cursor pagination over `name_en` plus document
+  id, with `is_active` filtered in code so no composite index is needed.
+- **One missing audio file no longer takes down the tracks around it.** A
+  Storage path that fails to resolve — a deleted object, or a surah seeded
+  ahead of its upload — used to reject the whole resolve batch in `playTrack`.
+  Unresolvable tracks are now dropped from the queue and remembered for the
+  session, so the queue rebuild and next/previous step over them. A tap on a
+  broken track leaves current playback untouched and reports the failure
+  instead; an explicit tap retries it, so a transient failure does not exile a
+  track for the rest of the session.
+- **The spam folder hint on the verify email screen** was buried at the end of
+  a low-contrast paragraph, where users who never received the mail did not
+  find it. It is now a callout with an alert icon above the action buttons.
 - **Premium paywall no longer renders empty and silent** when RevenueCat
   offerings fail to load. The failure is surfaced with an explanatory message
   and a retry instead of an inert screen.
