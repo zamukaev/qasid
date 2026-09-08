@@ -10,9 +10,7 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ---
 
-## [1.1.0] — Unreleased
-
-Work in progress on branch `releas/1-1-0`.
+## [1.1.0] — 2026-09-08
 
 ### Added
 
