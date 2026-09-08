@@ -20,6 +20,10 @@ module.exports = {
   ignorePatterns: [
     "/lib/**/*", // Ignore built files.
     "/generated/**/*", // Ignore generated files.
+    // Plain-CommonJS maintenance scripts, deliberately outside tsconfig's
+    // "src" include — the type-aware parser cannot lint them, which broke the
+    // predeploy lint step and with it `firebase deploy`.
+    "/scripts/**/*",
   ],
   plugins: [
     "@typescript-eslint",

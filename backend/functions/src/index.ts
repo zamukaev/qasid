@@ -6,6 +6,7 @@ setGlobalOptions({maxInstances: 10});
 // Search HTTP endpoints
 export {searchReciters} from "./search/reciters";
 export {searchSurahs} from "./search/surahs";
+export {searchArtists} from "./search/artists";
 
 // Playback aggregation triggers
 export {onArtistPlaybackCreated} from "./playback/artist";
