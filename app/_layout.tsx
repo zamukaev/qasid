@@ -1,6 +1,9 @@
 import { Stack } from "expo-router";
 import { GOLD } from "../constants/colors";
-import { AudioPlayerProvider } from "../context/AudioPlayerContext";
+import {
+  AudioPlayerProvider,
+  useAudioPlayer,
+} from "../context/AudioPlayerContext";
 import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { ErrorAlert } from "../components";
 import {
@@ -27,6 +30,20 @@ configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
 });
+
+/** Surfaces a failed play tap. Reads the audio context, so it has to be
+ *  rendered below AudioPlayerProvider rather than beside it. */
+function PlaybackErrorAlert() {
+  const { playbackError, clearPlaybackError } = useAudioPlayer();
+  return (
+    <ErrorAlert
+      visible={playbackError !== null}
+      message={playbackError ?? ""}
+      type="error"
+      onClose={clearPlaybackError}
+    />
+  );
+}
 
 export default function RootLayout() {
   // RevenueCat aborts the app (fatalError in checkForSimulatedStoreAPIKeyInRelease)
@@ -61,7 +78,7 @@ export default function RootLayout() {
   }, []);
 
   const [foregroundMessage, setForegroundMessage] = useState<string | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -94,6 +111,7 @@ export default function RootLayout() {
           type="info"
           onClose={() => setForegroundMessage(null)}
         />
+        <PlaybackErrorAlert />
       </AudioPlayerProvider>
     </AppErrorBoundary>
   );

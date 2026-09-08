@@ -80,6 +80,10 @@ type AudioPlayerContextValue = {
   progressMap: TrackProgressMap;
   clearProgress: (trackId: string) => Promise<void>;
   clearPlayback: () => Promise<void>;
+  /** Set when a tapped track's audio could not be resolved, so the UI can tell
+   *  the user instead of leaving the tap looking ignored. */
+  playbackError: string | null;
+  clearPlaybackError: () => void;
   /** Non-reactive read of the latest position/duration — for on-demand checks
    *  (e.g. "did this track finish?") that shouldn't subscribe to the 4x/s
    *  progress ticks. Use `useAudioProgress()` instead if you need to render
@@ -148,6 +152,8 @@ function toRNTPTrack(track: Track, resolvedUrl: string) {
   };
 }
 
+type RNTPTrack = ReturnType<typeof toRNTPTrack>;
+
 export function AudioPlayerProvider({
   children,
 }: {
@@ -173,6 +179,11 @@ export function AudioPlayerProvider({
   const hasFinishedRef = useRef(false);
   // Aborts a background queue load whose playTrack call has been superseded.
   const playGenerationRef = useRef(0);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  // Tracks whose Storage path demonstrably does not resolve (deleted object,
+  // a surah seeded ahead of its upload). Remembered for the session so the
+  // queue rebuild and next/prev skip them instead of failing on them again.
+  const unavailableIdsRef = useRef<Set<string>>(new Set());
 
   // Tracks foreground/background so we can stop the periodic AsyncStorage
   // writes + high-frequency setState churn while the app is suspended. iOS can
@@ -231,7 +242,8 @@ export function AudioPlayerProvider({
     // The cached download URL may be the reason — drop it so the next attempt
     // re-resolves. No-ops for local files and already-http sources.
     const uri = currentTrackRef.current?.uri;
-    const raw = typeof uri === "object" && uri?.uri !== undefined ? uri.uri : uri;
+    const raw =
+      typeof uri === "object" && uri?.uri !== undefined ? uri.uri : uri;
     if (typeof raw === "string" && !raw.startsWith("file")) {
       invalidateStorageUrl(raw);
     }
@@ -492,6 +504,25 @@ export function AudioPlayerProvider({
     await TrackPlayer.play();
   }, []);
 
+  const clearPlaybackError = useCallback(() => setPlaybackError(null), []);
+
+  const markUnavailable = useCallback((trackId: string, error: unknown) => {
+    unavailableIdsRef.current.add(trackId);
+    console.warn(`Track ${trackId} could not be resolved`, error);
+  }, []);
+
+  // Walks the queue from `fromIndex` in `step` direction and returns the first
+  // track whose audio has not already failed to resolve.
+  const findPlayable = useCallback(
+    (tracks: Track[], fromIndex: number, step: number): Track | null => {
+      for (let i = fromIndex; i >= 0 && i < tracks.length; i += step) {
+        if (!unavailableIdsRef.current.has(tracks[i].id)) return tracks[i];
+      }
+      return null;
+    },
+    [],
+  );
+
   // ── playTrack ─────────────────────────────────────────────────────────────
   // Loads the ENTIRE queue into RNTP, then skips to the requested track, so
   // that skipToNext / skipToPrevious in PlaybackService work natively from the
@@ -512,10 +543,22 @@ export function AudioPlayerProvider({
 
       const generation = ++playGenerationRef.current;
 
+      // The tapped track is the one thing that is not optional: if its URL does
+      // not resolve there is nothing to play, so bail out before reset() and
+      // leave whatever is currently playing untouched.
+      let url: string;
       try {
-        // Resolve the tapped track URL first (fast path — often already HTTP).
-        const url = await resolveTrackUrl(track.uri, track.id);
+        url = await resolveTrackUrl(track.uri, track.id);
+        // An explicit tap re-tries a track that failed earlier, so a transient
+        // failure does not exile it for the rest of the session.
+        unavailableIdsRef.current.delete(track.id);
+      } catch (error) {
+        markUnavailable(track.id, error);
+        setPlaybackError("This track is unavailable right now.");
+        return;
+      }
 
+      try {
         // Read the queue that was set synchronously by setQueue, rotated so the
         // tapped track sits at index 0. This prevents RNTP from briefly
         // activating track 0 before skip().
@@ -529,20 +572,39 @@ export function AudioPlayerProvider({
               ]
             : currentQueue;
 
-        const resolveQueueItem = async (t: Track) => {
-          const tUrl =
-            t.id === track.id ? url : await resolveTrackUrl(t.uri, t.id);
-          return toRNTPTrack(t, tUrl);
+        // A neighbour that fails to resolve is dropped from the queue rather
+        // than rejecting the whole batch — one object missing from Storage used
+        // to take playback down for every track around it.
+        const resolveQueueItem = async (
+          t: Track,
+        ): Promise<RNTPTrack | null> => {
+          if (t.id !== track.id && unavailableIdsRef.current.has(t.id)) {
+            return null;
+          }
+          try {
+            const tUrl =
+              t.id === track.id ? url : await resolveTrackUrl(t.uri, t.id);
+            return toRNTPTrack(t, tUrl);
+          } catch (error) {
+            markUnavailable(t.id, error);
+            return null;
+          }
         };
 
         // Phase 1 — resolve only the priming window before touching RNTP, so
         // the previous track keeps playing throughout and there is no audible
         // gap or spurious "paused" state.
         const primed = rotatedQueue.slice(0, QUEUE_PRIMING_WINDOW);
+        const resolved = (
+          await Promise.all(primed.map(resolveQueueItem))
+        ).filter((item): item is RNTPTrack => item !== null);
+
+        // The tapped track resolved above, so it is missing here only when it
+        // was not part of the queue at all — then it leads on its own.
         const primedItems =
-          primed.length > 0
-            ? await Promise.all(primed.map(resolveQueueItem))
-            : [toRNTPTrack(track, url)];
+          resolved[0]?.id === track.id
+            ? resolved
+            : [toRNTPTrack(track, url), ...resolved];
 
         // A newer playTrack won while we were resolving.
         if (generation !== playGenerationRef.current) return;
@@ -572,9 +634,11 @@ export function AudioPlayerProvider({
         if (remainder.length > 0) {
           void (async () => {
             try {
-              const rest = await Promise.all(remainder.map(resolveQueueItem));
+              const rest = (
+                await Promise.all(remainder.map(resolveQueueItem))
+              ).filter((item): item is RNTPTrack => item !== null);
               if (generation !== playGenerationRef.current) return;
-              await TrackPlayer.add(rest);
+              if (rest.length > 0) await TrackPlayer.add(rest);
             } catch (error) {
               console.warn("Failed to load the rest of the queue", error);
             }
@@ -584,7 +648,7 @@ export function AudioPlayerProvider({
         console.error("Error playing track:", error);
       }
     },
-    [],
+    [markUnavailable],
   );
 
   // ── PlaybackActiveTrackChanged ────────────────────────────────────────────
@@ -654,7 +718,9 @@ export function AudioPlayerProvider({
     hasFinishedRef.current = false;
 
     if (repeatModeRef.current === "shuffle") {
-      const available = currentQueue.filter((t) => t.id !== track.id);
+      const available = currentQueue.filter(
+        (t) => t.id !== track.id && !unavailableIdsRef.current.has(t.id),
+      );
       if (available.length > 0) {
         await playTrack(
           available[Math.floor(Math.random() * available.length)],
@@ -664,10 +730,10 @@ export function AudioPlayerProvider({
     }
 
     const idx = currentQueue.findIndex((t) => t.id === track.id);
-    if (idx !== -1 && idx + 1 < currentQueue.length) {
-      await playTrack(currentQueue[idx + 1]);
-    }
-  }, [playTrack]);
+    if (idx === -1) return;
+    const target = findPlayable(currentQueue, idx + 1, 1);
+    if (target) await playTrack(target);
+  }, [playTrack, findPlayable]);
 
   const prev = useCallback(async () => {
     const track = currentTrackRef.current;
@@ -676,7 +742,9 @@ export function AudioPlayerProvider({
     hasFinishedRef.current = false;
 
     if (repeatModeRef.current === "shuffle") {
-      const available = currentQueue.filter((t) => t.id !== track.id);
+      const available = currentQueue.filter(
+        (t) => t.id !== track.id && !unavailableIdsRef.current.has(t.id),
+      );
       if (available.length > 0) {
         await playTrack(
           available[Math.floor(Math.random() * available.length)],
@@ -686,10 +754,10 @@ export function AudioPlayerProvider({
     }
 
     const idx = currentQueue.findIndex((t) => t.id === track.id);
-    if (idx > 0) {
-      await playTrack(currentQueue[idx - 1]);
-    }
-  }, [playTrack]);
+    if (idx === -1) return;
+    const target = findPlayable(currentQueue, idx - 1, -1);
+    if (target) await playTrack(target);
+  }, [playTrack, findPlayable]);
 
   // ── Toggle play/pause ─────────────────────────────────────────────────────
   const togglePlayPause = useCallback(async () => {
@@ -779,6 +847,8 @@ export function AudioPlayerProvider({
       clearProgress,
       clearPlayback,
       getPlaybackSnapshot,
+      playbackError,
+      clearPlaybackError,
     }),
     [
       currentTrack,
@@ -800,6 +870,8 @@ export function AudioPlayerProvider({
       clearProgress,
       clearPlayback,
       getPlaybackSnapshot,
+      playbackError,
+      clearPlaybackError,
     ],
   );
 
