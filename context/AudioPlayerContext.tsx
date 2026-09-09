@@ -154,6 +154,43 @@ function toRNTPTrack(track: Track, resolvedUrl: string) {
 
 type RNTPTrack = ReturnType<typeof toRNTPTrack>;
 
+/** Fisher-Yates on a copy — the source order has to survive shuffling, since
+ *  switching back to sequential is restored from it. */
+function shuffled(tracks: readonly Track[]): Track[] {
+  const result = [...tracks];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
+ * Puts `leadId` at the head and shuffles the rest. The head matters: the queue
+ * is reordered around the track that is already playing, which stays untouched
+ * so the audio never stops.
+ */
+function shuffledLeadingWith(
+  tracks: readonly Track[],
+  leadId: string | undefined,
+): Track[] {
+  const lead = tracks.find((t) => t.id === leadId);
+  if (!lead) return shuffled(tracks);
+  return [lead, ...shuffled(tracks.filter((t) => t.id !== lead.id))];
+}
+
+/** Rotates `tracks` so `leadId` leads, the same rotation playTrack applies when
+ *  it loads a queue — used to restore sequential order from the current track
+ *  rather than from the top of the list. */
+function rotatedTo(
+  tracks: readonly Track[],
+  leadId: string | undefined,
+): Track[] {
+  const index = tracks.findIndex((t) => t.id === leadId);
+  if (index <= 0) return [...tracks];
+  return [...tracks.slice(index), ...tracks.slice(0, index)];
+}
+
 export function AudioPlayerProvider({
   children,
 }: {
@@ -167,7 +204,15 @@ export function AudioPlayerProvider({
   const [didJustFinish, setDidJustFinish] = useState(false);
   const [viewMode, setViewMode] = useState<PlayerViewMode>("hidden");
   const [queue, setQueueState] = useState<Track[]>([]);
+  // The PLAYBACK order: shuffled while shuffle is on, and always a mirror of
+  // the order loaded into RNTP.
   const queueRef = useRef<Track[]>([]);
+  // The order the screen handed over. Shuffling is not reversible, so restoring
+  // sequential order has to read from here.
+  const sourceQueueRef = useRef<Track[]>([]);
+  // playTrack's phase 2, so a reorder can wait for the queue to finish loading
+  // instead of racing the remainder being appended in the old order.
+  const queueDrainRef = useRef<Promise<void> | null>(null);
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>("sequential");
   const repeatModeRef = useRef<RepeatMode>("sequential");
   const [embeddedArtwork, setEmbeddedArtwork] = useState<string | null>(null);
@@ -436,7 +481,8 @@ export function AudioPlayerProvider({
             await TrackPlayer.setRepeatMode(RNTPRepeatMode.Track);
             break;
           case "shuffle":
-            // Use Queue loop; queue is in shuffled order when mode is set.
+            // The queue itself is shuffled (see setRepeatMode), so looping it
+            // is what keeps playback going in shuffled order.
             await TrackPlayer.setRepeatMode(RNTPRepeatMode.Queue);
             break;
           case "sequential":
@@ -481,19 +527,94 @@ export function AudioPlayerProvider({
   // Updates ref synchronously so that playTrack (called right after setQueue
   // without await) can read the latest queue immediately.
   const setQueue = useCallback((tracks: Track[]) => {
-    queueRef.current = tracks;
-    setQueueState(tracks);
+    sourceQueueRef.current = tracks;
+    // A queue handed over while shuffle is already on must arrive shuffled —
+    // otherwise the first queue of a session would play in order.
+    const ordered =
+      repeatModeRef.current === "shuffle"
+        ? shuffledLeadingWith(tracks, currentTrackRef.current?.id)
+        : tracks;
+    queueRef.current = ordered;
+    setQueueState(ordered);
+  }, []);
+
+  // ── Reordering the live queue ────────────────────────────────────────────
+  // Rewrites the RNTP queue to `ordered` without touching the track that is
+  // playing: it stays at index 0 while everything else is removed and re-added
+  // behind it, so the audio never stops. Already-resolved RNTP entries are
+  // reused, so no Storage URL is resolved a second time.
+  const applyPlaybackOrder = useCallback(async (ordered: Track[]) => {
+    if (ordered.length === 0) return;
+    queueRef.current = ordered;
+    setQueueState(ordered);
+
+    try {
+      // Reordering mid-load would race playTrack's background remainder, which
+      // appends in the order that was current when it started.
+      await queueDrainRef.current;
+    } catch {}
+
+    try {
+      const nativeQueue = await TrackPlayer.getQueue();
+      const activeIndex = await TrackPlayer.getActiveTrackIndex();
+      if (nativeQueue.length === 0 || activeIndex == null) return;
+
+      const activeId = String(nativeQueue[activeIndex]?.id ?? "");
+      const byId = new Map(
+        nativeQueue.map((item) => [String(item.id), item] as const),
+      );
+
+      const rest = ordered
+        .filter((t) => t.id !== activeId)
+        .map((t) => byId.get(t.id))
+        .filter((item): item is (typeof nativeQueue)[number] => item != null);
+
+      const removable = nativeQueue
+        .map((_, index) => index)
+        .filter((index) => index !== activeIndex);
+
+      if (removable.length > 0) await TrackPlayer.remove(removable);
+      if (rest.length > 0) await TrackPlayer.add(rest);
+    } catch (error) {
+      console.warn("Failed to reorder the playback queue", error);
+    }
   }, []);
 
   // ── setRepeatMode ────────────────────────────────────────────────────────
   // Persisted here rather than in an effect on [repeatMode]: such an effect
   // fires on the first render and would write the "sequential" default over the
   // stored value before the hydration read in the setup effect resolves.
-  const setRepeatMode = useCallback((mode: RepeatMode) => {
-    repeatModeRef.current = mode;
-    setRepeatModeState(mode);
-    AsyncStorage.setItem(REPEAT_MODE_STORAGE_KEY, mode).catch(() => {});
-  }, []);
+  const setRepeatMode = useCallback(
+    (mode: RepeatMode) => {
+      const previous = repeatModeRef.current;
+      repeatModeRef.current = mode;
+      setRepeatModeState(mode);
+      AsyncStorage.setItem(REPEAT_MODE_STORAGE_KEY, mode).catch(() => {});
+
+      if (mode === previous) return;
+
+      // Shuffle has to reach the NATIVE queue, not just next()/prev(): CarPlay,
+      // the lock screen, Bluetooth controls and RNTP's own end-of-track advance
+      // all walk that queue and never call into React. Reordering it here is
+      // what makes those paths shuffle too — without it, only the in-app
+      // buttons shuffled and everything else played straight through.
+      if (mode === "shuffle") {
+        void applyPlaybackOrder(
+          shuffledLeadingWith(
+            sourceQueueRef.current,
+            currentTrackRef.current?.id,
+          ),
+        );
+      } else if (previous === "shuffle") {
+        // Back to the order the screen gave us, continuing from the track that
+        // is playing rather than jumping back to the top of the list.
+        void applyPlaybackOrder(
+          rotatedTo(sourceQueueRef.current, currentTrackRef.current?.id),
+        );
+      }
+    },
+    [applyPlaybackOrder],
+  );
 
   // ── Core playback helpers ─────────────────────────────────────────────────
   const pause = useCallback(async () => {
@@ -632,7 +753,9 @@ export function AudioPlayerProvider({
         // inside this brief gap would notice.
         const remainder = rotatedQueue.slice(QUEUE_PRIMING_WINDOW);
         if (remainder.length > 0) {
-          void (async () => {
+          // Published on the ref so a queue reorder can await it — shuffling
+          // half a queue would leave the remainder appended in the old order.
+          queueDrainRef.current = (async () => {
             try {
               const rest = (
                 await Promise.all(remainder.map(resolveQueueItem))
@@ -643,6 +766,8 @@ export function AudioPlayerProvider({
               console.warn("Failed to load the rest of the queue", error);
             }
           })();
+        } else {
+          queueDrainRef.current = null;
         }
       } catch (error) {
         console.error("Error playing track:", error);
@@ -709,30 +834,28 @@ export function AudioPlayerProvider({
   });
 
   // ── Next / Prev ───────────────────────────────────────────────────────────
-  // Always use playTrack to re-rotate the queue correctly.
-  // Remote controls in PlaybackService use RNTP's rotated queue directly.
+  // Both walk queueRef, which holds the playback order — already shuffled when
+  // shuffle is on. Remote controls (CarPlay, lock screen, Bluetooth) walk the
+  // native RNTP queue, which carries that same order, so an in-app skip and a
+  // steering-wheel skip land on the same track. Picking a random track here
+  // instead would only shuffle the in-app buttons.
   const next = useCallback(async () => {
     const track = currentTrackRef.current;
     const currentQueue = queueRef.current;
     if (!track || currentQueue.length === 0) return;
     hasFinishedRef.current = false;
 
-    if (repeatModeRef.current === "shuffle") {
-      const available = currentQueue.filter(
-        (t) => t.id !== track.id && !unavailableIdsRef.current.has(t.id),
-      );
-      if (available.length > 0) {
-        await playTrack(
-          available[Math.floor(Math.random() * available.length)],
-        );
-      }
-      return;
-    }
-
     const idx = currentQueue.findIndex((t) => t.id === track.id);
     if (idx === -1) return;
-    const target = findPlayable(currentQueue, idx + 1, 1);
-    if (target) await playTrack(target);
+    // Shuffle runs on RepeatMode.Queue, so the native queue never ends — it
+    // wraps. The button has to wrap too, or it dead-ends on the last track
+    // while the same queue keeps rolling on the lock screen.
+    const target =
+      findPlayable(currentQueue, idx + 1, 1) ??
+      (repeatModeRef.current === "shuffle"
+        ? findPlayable(currentQueue, 0, 1)
+        : null);
+    if (target && target.id !== track.id) await playTrack(target);
   }, [playTrack, findPlayable]);
 
   const prev = useCallback(async () => {
@@ -740,18 +863,6 @@ export function AudioPlayerProvider({
     const currentQueue = queueRef.current;
     if (!track || currentQueue.length === 0) return;
     hasFinishedRef.current = false;
-
-    if (repeatModeRef.current === "shuffle") {
-      const available = currentQueue.filter(
-        (t) => t.id !== track.id && !unavailableIdsRef.current.has(t.id),
-      );
-      if (available.length > 0) {
-        await playTrack(
-          available[Math.floor(Math.random() * available.length)],
-        );
-      }
-      return;
-    }
 
     const idx = currentQueue.findIndex((t) => t.id === track.id);
     if (idx === -1) return;
@@ -806,6 +917,8 @@ export function AudioPlayerProvider({
     await TrackPlayer.reset();
     currentTrackRef.current = null;
     queueRef.current = [];
+    sourceQueueRef.current = [];
+    queueDrainRef.current = null;
     setCurrentTrack(null);
     setQueueState([]);
     setViewMode("hidden");

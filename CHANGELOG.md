@@ -74,6 +74,14 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ### Fixed
 
+- **Shuffle only shuffled the in-app buttons.** The mode was applied in React's
+  `next()`/`prev()` but never to the queue that is loaded into the native
+  player, so CarPlay, the lock screen, Bluetooth controls and the player's own
+  end-of-track advance all kept walking the list in order. Switching shuffle on
+  now reorders the queue itself — the playing track stays where it is and the
+  rest is rebuilt behind it, so the audio never stops — and switching back
+  restores the original order continuing from the track you are on. Sequential,
+  shuffle and repeat-one now behave identically wherever they are triggered.
 - **Artist search ran on the Firestore fallback the whole time.** The client
   called the `searchArtists` endpoint, but the Cloud Function behind that URL
   was never written — the URL answered 404 and every query silently fell
