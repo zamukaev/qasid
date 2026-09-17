@@ -1,0 +1,19 @@
+{
+  "freeDailyLimit": 5,
+  "promos": [
+    {
+      "id": "first-month-free",
+      "enabled": true,
+      "emoji": "✨",
+      "badge": "Limited offer",
+      "title": "Your first month is on us",
+      "subtitle": "{trial} free, then {price}. Cancel anytime.",
+      "highlightPlan": "monthly",
+      "ctaLabel": "Start free →",
+      "showOnGate": true,
+      "showOnPremiumScreen": true,
+      "gateTitle": "Daily limit reached",
+      "gateBody": "Free listeners get {limit} nasheeds a day. Premium is unlimited."
+    }
+  ]
+}

@@ -37,8 +37,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# seed scripts — service account key must never be committed
-scripts/
+# Firebase Admin key for the ops scripts — never commit this one file
+scripts/serviceAccountKey.json
 .tmp-scripts/
-# ...but the functions ops runners hold no secrets
-!backend/functions/scripts/
