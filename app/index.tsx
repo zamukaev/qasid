@@ -1,87 +1,20 @@
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Link } from "expo-router";
-import {
-  getAuth,
-  FirebaseAuthTypes,
-  onAuthStateChanged,
-} from "@react-native-firebase/auth";
 import { useEffect } from "react";
 import { SafeAreaView, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSegments } from "expo-router";
 import { useUserStore } from "../stores/userStore";
-import { useFavoritesStore } from "../stores/favoritesStore";
-import * as RevenueCatService from "../services/revenuecat";
-import { fetchPremiumOverrideEmails } from "../services/config-service";
-import { usePaywallStore } from "../stores/paywallStore";
-import { hydrateAndSyncSubscription } from "../services/notifications-service";
-import { setAnalyticsPlan, setAnalyticsUser } from "../services/analytics";
+import { takePendingShare } from "../utils/pendingShare";
 
 import "../global.css";
 
 export default function Welcome() {
-  const { user, isLoading, setUser, setLoading, setPremiumOverrideEmails } =
-    useUserStore();
+  const { user, isLoading } = useUserStore();
 
   const router = useRouter();
   const segments = useSegments();
-
-  const handleAuthStateChanged = async (
-    firebaseUser: FirebaseAuthTypes.User | null,
-  ) => {
-    setUser(firebaseUser);
-    void setAnalyticsUser(firebaseUser?.uid ?? null);
-    if (firebaseUser) {
-      try {
-        await RevenueCatService.initialize(firebaseUser.uid);
-      } catch {
-        // RC initialization failure should not block the auth flow
-      }
-      try {
-        const emails = await fetchPremiumOverrideEmails();
-        setPremiumOverrideEmails(emails);
-      } catch {
-        // config fetch failure is non-fatal
-      }
-      try {
-        await usePaywallStore.getState().hydrate();
-      } catch {
-        // paywall config fetch failure is non-fatal — defaults apply
-      }
-      try {
-        await hydrateAndSyncSubscription();
-      } catch {
-        // notification subscription failure should not block the auth flow
-      }
-      // Prefetched here so the first list a user opens already knows which
-      // nasheeds are favorited; failure is non-fatal and retried by the tab.
-      void useFavoritesStore
-        .getState()
-        .hydrate(true)
-        .catch(() => {});
-    } else {
-      useFavoritesStore.getState().clear();
-      await RevenueCatService.logout();
-    }
-  };
-
-  useEffect(() => {
-    setLoading(true);
-    const subscribe = onAuthStateChanged(getAuth(), handleAuthStateChanged);
-    return subscribe;
-  }, []);
-
-  // RevenueCat resolves the entitlement asynchronously, so the plan is mirrored
-  // to Analytics whenever it changes rather than once at sign-in.
-  useEffect(() => {
-    void setAnalyticsPlan(useUserStore.getState().currentPlan);
-    return useUserStore.subscribe((state, previous) => {
-      if (state.currentPlan !== previous.currentPlan) {
-        void setAnalyticsPlan(state.currentPlan);
-      }
-    });
-  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -89,6 +22,9 @@ export default function Welcome() {
     const inTabs = segments[0] === "(tabs)";
     const inVerifyEmail =
       segments[0] === "(auth)" && segments.at(1) === "verify-email";
+    // The share landing route resolves the link itself and replaces itself
+    // with the destination, so this gate must not redirect out from under it.
+    const inShareTarget = segments[0] === "t";
 
     if (!user) {
       if (inTabs || inVerifyEmail) router.replace("/");
@@ -97,6 +33,16 @@ export default function Welcome() {
 
     if (!user.emailVerified) {
       if (!inVerifyEmail) router.replace("/verify-email");
+      return;
+    }
+
+    if (inShareTarget) return;
+
+    // A link that arrived while signed out was stashed rather than followed;
+    // now that the user is through, send them where they were headed.
+    const pendingShare = takePendingShare();
+    if (pendingShare) {
+      router.replace(pendingShare);
       return;
     }
 

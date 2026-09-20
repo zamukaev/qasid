@@ -142,6 +142,7 @@ export default function Quran() {
       >
         <ContinueListeningBlock />
         <FeaturedList
+          large
           featuredItems={featuredCollections}
           isLoading={isLoadingFeaturedCollections}
           title="Featured Collections"

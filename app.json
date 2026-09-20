@@ -27,7 +27,10 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "deploymentTarget": "16.0",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:qasid-sound.com"
+      ]
     },
     "android": {
       "versionCode": 2,
@@ -38,7 +41,24 @@
       },
       "package": "com.abusafiia.qasid.dev",
       "googleServicesFile": "./google-services.json",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "qasid-sound.com",
+              "pathPrefix": "/t"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "plugins": [
       "expo-router",

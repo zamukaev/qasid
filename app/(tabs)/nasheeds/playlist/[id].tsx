@@ -24,6 +24,7 @@ import {
   ShowError,
   ReciterHeaderSkeleton,
   ImageShimmerOverlay,
+  TrackActionsButton,
 } from "../../../../components";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 import {
@@ -53,13 +54,15 @@ interface NasheedItem {
   audioPath: string | null;
   /** Raw Storage path (or http URL) — resolved progressively after paint. */
   imagePath: string | null;
+  /** The source doc, which the row's actions menu needs (favorites, artist). */
+  raw: Nasheed;
 }
 
 // Synchronous: storage paths stay raw so the list paints immediately.
 const normalizeNasheeds = (items: Nasheed[]): NasheedItem[] =>
   items.map((item) => {
     const { id, title, audioPath, imagePath } = toNasheedTrackMeta(item);
-    return { id, title, audioPath, imagePath };
+    return { id, title, audioPath, imagePath, raw: item };
   });
 
 export default function PlaylistScreen() {
@@ -367,6 +370,26 @@ export default function PlaylistScreen() {
                       artist: playlist?.name_en,
                       uri: nasheed.audioPath,
                     }}
+                    rightAction={
+                      <TrackActionsButton
+                        title={nasheed.title}
+                        subtitle={playlist?.name_en}
+                        image={artworkFor(nasheed)}
+                        nasheed={nasheed.raw}
+                        track={
+                          nasheed.audioPath
+                            ? {
+                                id: trackId,
+                                title: nasheed.title,
+                                artist: playlist?.name_en,
+                                isNasheed: true,
+                                uri: nasheed.audioPath,
+                              }
+                            : undefined
+                        }
+                        showGoToArtist
+                      />
+                    }
                   />
                 );
               })}

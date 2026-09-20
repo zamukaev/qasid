@@ -1,4 +1,4 @@
-// TEMP admin curation hotfix — remove with AdminPlaylistButton.
+// TEMP admin curation hotfix — remove with the admin row in TrackActionsSheet.
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,

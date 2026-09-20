@@ -1,70 +1,62 @@
 import React from "react";
-import { Text, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 
 import { FeaturedItem } from "../types/featured";
-import FeaturedCard from "./FeaturedCard";
-import FeaturedCardSkeleton from "./FeaturedCardSkeleton";
-import HomeSectionShell from "./HomeSectionShell";
+import { CardVariantProps } from "./CompactRailCard";
+import FeaturedCard, { FeaturedCardSkeleton } from "./FeaturedCard";
+import HorizontalRailSection from "./HorizontalRailSection";
 
-interface FeaturedListProps {
+interface FeaturedListProps extends CardVariantProps {
   featuredItems: FeaturedItem[];
   isLoading?: boolean;
   title?: string;
-  className?: string;
+  onPressSeeAll?: () => void;
 }
 
 function FeaturedList({
   featuredItems,
-  isLoading,
+  isLoading = false,
   title = "Featured",
-  className = "",
+  onPressSeeAll,
+  circle,
+  large,
+  small,
 }: FeaturedListProps) {
   const router = useRouter();
 
   return (
-    <HomeSectionShell title={title} className={className}>
-      <Text className="mb-5 -mt-1 text-white/45 text-sm">
-        Curated recitations and collections
-      </Text>
-
-      <FlatList
-        data={isLoading ? Array(5).fill(null) : featuredItems}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="-mx-4"
-        contentContainerStyle={{
-          paddingLeft: 16,
-          paddingRight: 0,
-        }}
-        keyExtractor={(item, index) =>
-          item ? item.id.toString() : `featured-skeleton-${index}`
-        }
-        renderItem={({ item }) =>
-          isLoading ? (
-            <FeaturedCardSkeleton className="mr-5" />
-          ) : (
-            <FeaturedCard
-              title={item.title_en}
-              subtitle={item.title_ar}
-              imageUrl={item.image_path}
-              playing={false}
-              className="mr-5"
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/quran/reciter/[id]",
-                  params: {
-                    id: item.id.toString(),
-                    content_type: item.content_type,
-                    target: item.target,
-                  },
-                })
-              }
-            />
-          )
-        }
-      />
-    </HomeSectionShell>
+    <HorizontalRailSection
+      title={title}
+      description="Curated recitations and collections"
+      items={featuredItems}
+      isLoading={isLoading}
+      onPressSeeAll={onPressSeeAll}
+      skeletonCount={5}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={(item) => (
+        <FeaturedCard
+          title={item.title_en}
+          subtitle={item.title_ar}
+          imageUrl={item.image_path}
+          circle={circle}
+          large={large}
+          small={small}
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/quran/reciter/[id]",
+              params: {
+                id: item.id.toString(),
+                content_type: item.content_type,
+                target: item.target,
+              },
+            })
+          }
+        />
+      )}
+      renderSkeleton={(_) => (
+        <FeaturedCardSkeleton circle={circle} large={large} small={small} />
+      )}
+    />
   );
 }
 

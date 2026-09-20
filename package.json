@@ -19,6 +19,13 @@
     "verify:reciter-audio": "ts-node --project scripts/tsconfig.json scripts/verify-reciter-audio.ts",
     "check:promo": "ts-node --project scripts/tsconfig.json scripts/check-promo-config.ts",
     "promo:set": "ts-node --project scripts/tsconfig.json scripts/set-paywall-config.ts",
+    "build:ios": "eas build --platform ios --profile production",
+    "build:android": "eas build --platform android --profile production",
+    "build:all": "eas build --platform all --profile production",
+    "build:preview": "eas build --platform all --profile preview",
+    "build:list": "eas build:list --limit 10",
+    "submit:ios": "eas submit --platform ios --profile production --latest",
+    "submit:android": "eas submit --platform android --profile production --latest",
     "version": "node scripts/bump-version.js && git add app.json ios/QASID/Info.plist ios/QASID.xcodeproj/project.pbxproj android/app/build.gradle",
     "postversion": "git push && git push --tags"
   },

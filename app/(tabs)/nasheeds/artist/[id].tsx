@@ -31,11 +31,9 @@ import {
   ShowError,
   ReciterHeaderSkeleton,
 } from "../../../../components";
-import { DownloadButton } from "../../../../components/DownloadButton";
-import { FavoriteButton } from "../../../../components/FavoriteButton";
+import { TrackActionsButton } from "../../../../components/TrackActionsButton";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 // TEMP admin curation hotfix — remove with PlaylistPickerModal.
-import { AdminPlaylistButton } from "../../../../components/AdminPlaylistButton";
 import { PlaylistPickerModal } from "../../../../components/PlaylistPickerModal";
 import {
   PlayButton,
@@ -513,25 +511,27 @@ export default function ArtistScreen() {
                       uri: nasheed.audioUrl,
                     }}
                     rightAction={
-                      <View className="flex-row items-center">
-                        {/* TEMP admin curation hotfix — remove with PlaylistPickerModal. */}
-                        <AdminPlaylistButton
-                          nasheed={nasheed.raw}
-                          onPress={setPlaylistTarget}
-                        />
-                        <FavoriteButton nasheed={nasheed.raw} />
-                        {nasheed.audioUrl ? (
-                          <DownloadButton
-                            track={{
-                              id: trackId,
-                              title: nasheed.title,
-                              artist: artist?.name_en,
-                              isNasheed: true,
-                              uri: nasheed.audioUrl,
-                            }}
-                          />
-                        ) : null}
-                      </View>
+                      <TrackActionsButton
+                        title={nasheed.title}
+                        subtitle={artist?.name_en}
+                        image={artworkFor(nasheed)}
+                        nasheed={nasheed.raw}
+                        track={
+                          nasheed.audioUrl
+                            ? {
+                                id: trackId,
+                                title: nasheed.title,
+                                artist: artist?.name_en,
+                                isNasheed: true,
+                                uri: nasheed.audioUrl,
+                              }
+                            : undefined
+                        }
+                        // Already on this artist's screen.
+                        showGoToArtist={false}
+                        // TEMP admin curation hotfix — remove with PlaylistPickerModal.
+                        onAddToPlaylist={setPlaylistTarget}
+                      />
                     }
                   />
                 );

@@ -5,8 +5,9 @@ export { default as ReciterCard } from "./ReciterCard";
 export { CompactReciterCard } from "./ReciterCard";
 export { default as CompactReciterCardSkeleton } from "./CompactReciterCardSkeleton";
 export { default as ReciterGridCardSkeleton } from "./ReciterGridCardSkeleton";
-export { default as FeaturedCardSkeleton } from "./FeaturedCardSkeleton";
-export { default as FeaturedCard } from "./FeaturedCard";
+export { default as FeaturedCard, FeaturedCardSkeleton } from "./FeaturedCard";
+export { CompactRailCard, CompactRailCardSkeleton } from "./CompactRailCard";
+export type { CardVariantProps, CardSize, CardSizeTable } from "./CompactRailCard";
 export { default as ShowError } from "./ShowError";
 export { default as Search } from "./Search";
 export { default as FeaturedList } from "./FeaturedList";
@@ -25,9 +26,10 @@ export { default as ReciterHeaderSkeleton } from "./ReciterHeaderSkeleton";
 export { default as BannerSkeleton } from "./BannerSkeleton";
 export { default as MoodChipSkeleton } from "./MoodChipSkeleton";
 export { QasidLiveEqualizer } from "./QasidLiveEqualizer";
-export { FavoriteButton } from "./FavoriteButton";
-// TEMP admin curation hotfix — remove these two with the mood/playlist picker.
-export { AdminPlaylistButton } from "./AdminPlaylistButton";
+export { TrackActionsButton } from "./TrackActionsButton";
+export { TrackActionsSheet } from "./TrackActionsSheet";
+export type { TrackActionsSheetProps } from "./TrackActionsSheet";
+// TEMP admin curation hotfix — remove with the mood/playlist picker.
 export { PlaylistPickerModal } from "./PlaylistPickerModal";
 export { PromoBanner } from "./PromoBanner";
 export { TrackCollectionScreen } from "./TrackCollectionScreen";

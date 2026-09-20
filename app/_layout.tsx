@@ -20,6 +20,7 @@ import { getMessaging, onMessage } from "@react-native-firebase/messaging";
 import { hydrateStorageUrlCache } from "../services/storage";
 import { initReviewTracking } from "../services/review-service";
 import { hydrateAnalyticsConsent } from "../services/analytics";
+import { useAuthBootstrap } from "../hooks/useAuthBootstrap";
 
 import "../global.css";
 
@@ -46,6 +47,10 @@ function PlaybackErrorAlert() {
 }
 
 export default function RootLayout() {
+  // Here rather than in a screen: a cold start into a deep link mounts no
+  // screen that would otherwise subscribe, and the target route waits on auth.
+  useAuthBootstrap();
+
   // RevenueCat aborts the app (fatalError in checkForSimulatedStoreAPIKeyInRelease)
   // if a Test/Simulated-Store key (test_…) is used in a Release build. Select the
   // key by build type so release/TestFlight ALWAYS uses the production appl_ key
@@ -104,6 +109,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="t/index" options={{ headerShown: false }} />
         </Stack>
         <ErrorAlert
           visible={foregroundMessage !== null}

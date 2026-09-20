@@ -1,9 +1,10 @@
 import React, { ReactNode } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import HomeSectionShell from "./HomeSectionShell";
 
 interface HorizontalRailSectionProps<T> {
   title: string;
+  description?: string;
   items: T[];
   isLoading?: boolean;
   onPressSeeAll?: () => void;
@@ -15,6 +16,7 @@ interface HorizontalRailSectionProps<T> {
 
 function HorizontalRailSection<T>({
   title,
+  description,
   items,
   isLoading = false,
   onPressSeeAll,
@@ -27,6 +29,9 @@ function HorizontalRailSection<T>({
 
   return (
     <HomeSectionShell title={title} onPressSeeAll={onPressSeeAll}>
+      {!!description && (
+        <Text className="mb-5 -mt-1 text-white/45 text-sm">{description}</Text>
+      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

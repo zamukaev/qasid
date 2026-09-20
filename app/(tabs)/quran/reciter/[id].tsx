@@ -44,7 +44,8 @@ import {
   SharedCardSkeleton,
   ReciterHeaderSkeleton,
 } from "../../../../components";
-import { DownloadButton } from "../../../../components/DownloadButton";
+import { TrackActionsButton } from "../../../../components/TrackActionsButton";
+import { buildSurahShareUrl } from "../../../../constants/links";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -179,6 +180,12 @@ type SurahListRowProps = {
   isActive: boolean;
   isPlayingRow: boolean;
   durationLabel?: string;
+  /**
+   * Absent on a collection screen: its surahs come from several reciters, so
+   * there is no `reciters/{id}/surahs` path for the link to resolve against.
+   * Share then falls back to the plain store link.
+   */
+  shareUrl?: string;
   onPlay: (surah: SurahListItem) => void;
 };
 
@@ -197,6 +204,7 @@ const SurahListRow = memo(function SurahListRow({
   isActive,
   isPlayingRow,
   durationLabel,
+  shareUrl,
   onPlay,
 }: SurahListRowProps) {
   return (
@@ -224,7 +232,13 @@ const SurahListRow = memo(function SurahListRow({
       }}
       rightAction={
         surah.audioUrl ? (
-          <DownloadButton
+          // No `nasheed`: favorites are nasheed-scoped, so a surah's sheet
+          // carries the download row alone.
+          <TrackActionsButton
+            title={surah.englishName}
+            subtitle={surah.reciterName ?? surah.arabicName}
+            image={surah.imageUrl ?? undefined}
+            shareUrl={shareUrl}
             track={{
               id: trackKey,
               surahNumber: surah.surahNumber,
@@ -246,6 +260,16 @@ export default function ReciterDetailsScreen() {
     target?: string;
   }>();
   const navigation = useNavigation();
+
+  // The reciter whose `surahs` subcollection these rows actually come from —
+  // what a share link has to carry. A collection mixes reciters and has no
+  // such path, so its rows share the store link instead.
+  const shareReciterId =
+    content_type === "collection"
+      ? undefined
+      : content_type === "reciter"
+        ? target
+        : id;
 
   const [reciter, setReciter] = useState<FirebaseReciter | null>(null);
   const [loading, setLoading] = useState(false);
@@ -919,6 +943,11 @@ export default function ReciterDetailsScreen() {
                     isActive={isActive}
                     isPlayingRow={isPlaying && isActive}
                     durationLabel={durationLabel}
+                    shareUrl={
+                      shareReciterId
+                        ? buildSurahShareUrl(shareReciterId, surah.surahNumber)
+                        : undefined
+                    }
                     onPlay={handlePlaySurah}
                   />
                 );
