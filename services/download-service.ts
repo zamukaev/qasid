@@ -17,6 +17,18 @@ export type DownloadRecord = {
 
 type DownloadMap = Record<string, DownloadRecord>;
 
+// Every mutation reads the whole map and writes it back, so two of them in
+// flight at once lose each other's entry. Downloading a collection runs several
+// transfers in parallel, so they queue up here instead.
+let writeChain: Promise<unknown> = Promise.resolve();
+
+function serialize<T>(mutate: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(mutate, mutate);
+  // A rejected mutation must not break the chain for the ones behind it.
+  writeChain = run.catch(() => {});
+  return run;
+}
+
 async function ensureDir(): Promise<void> {
   const info = await FileSystem.getInfoAsync(DOWNLOAD_DIR);
   if (!info.exists) {
@@ -41,20 +53,36 @@ export async function getDownloads(): Promise<DownloadMap> {
 }
 
 export async function saveDownload(record: DownloadRecord): Promise<void> {
-  const map = await getDownloads();
-  map[record.trackId] = record;
-  await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(map));
+  await serialize(async () => {
+    const map = await getDownloads();
+    map[record.trackId] = record;
+    await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(map));
+  });
 }
 
 export async function deleteDownload(trackId: string): Promise<void> {
+  await serialize(async () => {
+    const map = await getDownloads();
+    const record = map[trackId];
+    if (!record) return;
+    try {
+      await FileSystem.deleteAsync(record.localPath, { idempotent: true });
+    } catch {}
+    delete map[trackId];
+    await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(map));
+  });
+}
+
+/**
+ * Which of these tracks are recorded as downloaded. Only reads the map — unlike
+ * `getLocalPath` it does not stat every file, which for a reciter would be 114
+ * filesystem round-trips just to render one icon.
+ */
+export async function getDownloadedIds(
+  trackIds: readonly string[],
+): Promise<Set<string>> {
   const map = await getDownloads();
-  const record = map[trackId];
-  if (!record) return;
-  try {
-    await FileSystem.deleteAsync(record.localPath, { idempotent: true });
-  } catch {}
-  delete map[trackId];
-  await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(map));
+  return new Set(trackIds.filter((id) => map[id] != null));
 }
 
 export async function getLocalPath(trackId: string): Promise<string | null> {
@@ -63,8 +91,13 @@ export async function getLocalPath(trackId: string): Promise<string | null> {
   if (!record) return null;
   const info = await FileSystem.getInfoAsync(record.localPath);
   if (!info.exists) {
-    delete map[trackId];
-    await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(map));
+    // Re-read inside the chain: `map` was fetched before the await above and
+    // another mutation may have landed in the meantime.
+    await serialize(async () => {
+      const latest = await getDownloads();
+      delete latest[trackId];
+      await AsyncStorage.setItem(DOWNLOADS_KEY, JSON.stringify(latest));
+    });
     return null;
   }
   return record.localPath;

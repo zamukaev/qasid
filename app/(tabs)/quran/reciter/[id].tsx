@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -45,6 +46,8 @@ import {
   ReciterHeaderSkeleton,
 } from "../../../../components";
 import { TrackActionsButton } from "../../../../components/TrackActionsButton";
+import { PlaybackModeButton } from "../../../../components/PlaybackModeButton";
+import { CollectionDownloadButton } from "../../../../components/CollectionDownloadButton";
 import { buildSurahShareUrl } from "../../../../constants/links";
 import {
   PlayButton,
@@ -57,6 +60,7 @@ import {
   trackReciterPlayback,
 } from "../../../../services/quran-service";
 import { addRecentReciter } from "../../../../services/recents-service";
+import { pickRandom } from "../../../../utils/random";
 
 interface SurahListItem {
   id: string;
@@ -725,6 +729,34 @@ export default function ReciterDetailsScreen() {
     await handlePlaySurah(first);
   }, [filteredSurahItems, reciter, handlePlaySurah]);
 
+  // Goes through handlePlaySurah like a row tap does, so URL resolution, the
+  // saved position and the playback analytics all still apply.
+  const handlePlayShuffled = useCallback(async () => {
+    if (!reciter) return;
+    const surah = pickRandom(
+      filteredSurahItems.filter((item) => item.audioUrl),
+    );
+    if (!surah) return;
+    await handlePlaySurah(surah);
+  }, [filteredSurahItems, reciter, handlePlaySurah]);
+
+  // Raw storage paths and the same ids handlePlaySurah builds — downloadTrack
+  // needs the path, and playback looks the file up by that id.
+  const downloadTracks = useMemo(
+    () =>
+      !reciter
+        ? []
+        : filteredSurahItems
+            .filter((item) => item.audioUrl)
+            .map((item) => ({
+              id: `${reciter?.id}-${item.id}`,
+              title: item.englishName,
+              artist: item.reciterName ?? reciter?.name_en,
+              uri: item.audioUrl,
+            })),
+    [filteredSurahItems, reciter],
+  );
+
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
     setShowScrollToTop(offsetY > 600);
@@ -890,9 +922,24 @@ export default function ReciterDetailsScreen() {
               </View>
             </View>
 
-            <View className="mt-6">
+            <View className="mt-6 mb-4 flex-row items-center gap-3">
+              <PlaybackModeButton
+                subtitle={reciter?.name_en}
+                // Paused still counts as loaded: switching mode then must not
+                // restart it.
+                isCollectionActive={
+                  !!currentTrack?.id.startsWith(`${reciter?.id}-`)
+                }
+                onPlayInOrder={() => void handlePlayAll()}
+                onPlayShuffled={() => void handlePlayShuffled()}
+              />
+              <CollectionDownloadButton
+                tracks={downloadTracks}
+                itemNoun="surahs"
+                subtitle={reciter?.name_en}
+              />
               <PlayButton
-                clasName="mb-4 mb-4"
+                clasName="flex-1 ml-10"
                 handlePlayAll={handlePlayAll}
                 label="Play all"
                 kind={PlayButtonVariant.PRIMARY}

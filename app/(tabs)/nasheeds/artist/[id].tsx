@@ -32,6 +32,8 @@ import {
   ReciterHeaderSkeleton,
 } from "../../../../components";
 import { TrackActionsButton } from "../../../../components/TrackActionsButton";
+import { PlaybackModeButton } from "../../../../components/PlaybackModeButton";
+import { CollectionDownloadButton } from "../../../../components/CollectionDownloadButton";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
 // TEMP admin curation hotfix — remove with PlaylistPickerModal.
 import { PlaylistPickerModal } from "../../../../components/PlaylistPickerModal";
@@ -45,6 +47,7 @@ import {
   trackArtistPlayback,
 } from "../../../../services/nasheeds-service";
 import { addRecentArtist } from "../../../../services/recents-service";
+import { pickRandom } from "../../../../utils/random";
 import {
   markManualPlay,
   useNasheedLimit,
@@ -334,6 +337,31 @@ export default function ArtistScreen() {
     if (first) await handlePlayNasheed(first);
   };
 
+  // Goes through handlePlayNasheed like a row tap does, so the free-tier gate,
+  // the queue build and the play counter all still apply.
+  const handlePlayShuffled = async () => {
+    const track = pickRandom(nasheeds.filter((n) => n.audioUrl));
+    if (track) await handlePlayNasheed(track);
+  };
+
+  // Raw storage paths and the same ids handlePlayNasheed builds — downloadTrack
+  // needs the path, and playback looks the file up by that id.
+  const downloadTracks = useMemo(
+    () =>
+      !artist
+        ? []
+        : nasheeds
+            .filter((n) => n.audioUrl)
+            .map((n) => ({
+              id: `${artist?.id}-${n.id}`,
+              title: n.title,
+              artist: artist?.name_en,
+              isNasheed: true,
+              uri: n.audioUrl,
+            })),
+    [nasheeds, artist],
+  );
+
   // TEMP admin curation hotfix — remove with PlaylistPickerModal.
   // `raw` is replaced rather than mutated so the memoized row re-renders and
   // the plus icon picks up its new filled/outline state.
@@ -395,6 +423,8 @@ export default function ArtistScreen() {
 
   const isArtistPlaying =
     isPlaying && !!currentTrack?.id.startsWith(`${artist?.id}-`);
+  // Paused still counts as loaded: switching mode then must not restart it.
+  const isArtistActive = !!currentTrack?.id.startsWith(`${artist?.id}-`);
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
@@ -465,8 +495,20 @@ export default function ArtistScreen() {
                 </Text>
               </View>
             )}
-            <View className="mt-6">
+            <View className="mt-6 flex-row items-center gap-3">
+              <PlaybackModeButton
+                subtitle={artist?.name_en}
+                isCollectionActive={isArtistActive}
+                onPlayInOrder={() => void handlePlayAll()}
+                onPlayShuffled={() => void handlePlayShuffled()}
+              />
+              <CollectionDownloadButton
+                tracks={downloadTracks}
+                itemNoun="nasheeds"
+                subtitle={artist?.name_en}
+              />
               <PlayButton
+                clasName="flex-1 ml-10"
                 handlePlayAll={handlePlayAll}
                 label="Play All"
                 kind={PlayButtonVariant.PRIMARY}

@@ -2,9 +2,13 @@ import React, { useCallback, useState } from "react";
 import { GestureResponderEvent, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { PremiumRequiredSheet } from "./PremiumRequiredSheet";
 import { TrackActionsSheet, TrackActionsSheetProps } from "./TrackActionsSheet";
 
-type Props = Omit<TrackActionsSheetProps, "visible" | "onClose">;
+type Props = Omit<
+  TrackActionsSheetProps,
+  "visible" | "onClose" | "onRequirePremium"
+>;
 
 const INACTIVE_ICON = "rgba(255,255,255,0.35)";
 
@@ -19,6 +23,9 @@ export const TrackActionsButton = React.memo(function TrackActionsButton(
   props: Props,
 ) {
   const [open, setOpen] = useState(false);
+  // Raised by the actions sheet's download row for a free user. It only opens
+  // once that sheet is gone: iOS drops a modal presented mid-dismissal.
+  const [premiumOpen, setPremiumOpen] = useState(false);
 
   const handlePress = useCallback((event: GestureResponderEvent) => {
     // The surrounding SharedCard pressable starts playback otherwise.
@@ -27,6 +34,8 @@ export const TrackActionsButton = React.memo(function TrackActionsButton(
   }, []);
 
   const handleClose = useCallback(() => setOpen(false), []);
+  const handleRequirePremium = useCallback(() => setPremiumOpen(true), []);
+  const handlePremiumClose = useCallback(() => setPremiumOpen(false), []);
 
   return (
     <>
@@ -39,7 +48,22 @@ export const TrackActionsButton = React.memo(function TrackActionsButton(
         <Ionicons name="ellipsis-horizontal" size={22} color={INACTIVE_ICON} />
       </TouchableOpacity>
 
-      {open && <TrackActionsSheet visible onClose={handleClose} {...props} />}
+      {open && (
+        <TrackActionsSheet
+          visible
+          onClose={handleClose}
+          onRequirePremium={handleRequirePremium}
+          {...props}
+        />
+      )}
+
+      {premiumOpen && (
+        <PremiumRequiredSheet
+          visible
+          onClose={handlePremiumClose}
+          subtitle={props.title}
+        />
+      )}
     </>
   );
 });

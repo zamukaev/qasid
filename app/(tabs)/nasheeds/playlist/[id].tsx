@@ -27,6 +27,8 @@ import {
   TrackActionsButton,
 } from "../../../../components";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
+import { PlaybackModeButton } from "../../../../components/PlaybackModeButton";
+import { CollectionDownloadButton } from "../../../../components/CollectionDownloadButton";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -41,6 +43,7 @@ import {
 } from "../../../../hooks/useNasheedLimit";
 import { useIsPremium } from "../../../../stores/userStore";
 import { toNasheedTrackMeta } from "../../../../utils/nasheedTrack";
+import { pickRandom } from "../../../../utils/random";
 import { useProgressiveStorageUrls } from "../../../../hooks/useProgressiveStorageUrls";
 import { resolveStorageUrlPrioritized } from "../../../../services/storage";
 
@@ -230,6 +233,31 @@ export default function PlaylistScreen() {
     if (first) await handlePlayNasheed(first);
   };
 
+  // Goes through handlePlayNasheed like a row tap does, so the free-tier gate,
+  // the queue build and the play counter all still apply.
+  const handlePlayShuffled = async () => {
+    const track = pickRandom(nasheeds.filter((n) => n.audioPath));
+    if (track) await handlePlayNasheed(track);
+  };
+
+  // Raw storage paths and the same ids handlePlayNasheed builds — downloadTrack
+  // needs the path, and playback looks the file up by that id.
+  const downloadTracks = useMemo(
+    () =>
+      !playlist
+        ? []
+        : nasheeds
+            .filter((n) => n.audioPath)
+            .map((n) => ({
+              id: `${trackPrefix}-${n.id}`,
+              title: n.title,
+              artist: playlist?.name_en,
+              isNasheed: true,
+              uri: n.audioPath,
+            })),
+    [nasheeds, trackPrefix, playlist],
+  );
+
   // Only setState when the flag actually flips — this fires on every scroll
   // frame otherwise, re-rendering the whole list.
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -260,6 +288,8 @@ export default function PlaylistScreen() {
 
   const isPlaylistPlaying =
     isPlaying && !!currentTrack?.id.startsWith(trackPrefix);
+  // Paused still counts as loaded: switching mode then must not restart it.
+  const isPlaylistActive = !!currentTrack?.id.startsWith(trackPrefix);
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
@@ -325,10 +355,22 @@ export default function PlaylistScreen() {
                 </Text>
               </View>
             )}
-            <View className="mt-6">
+            <View className="mt-6 flex-row items-center gap-3">
+              <PlaybackModeButton
+                subtitle={playlist?.name_en}
+                isCollectionActive={isPlaylistActive}
+                onPlayInOrder={() => void handlePlayAll()}
+                onPlayShuffled={() => void handlePlayShuffled()}
+              />
+              <CollectionDownloadButton
+                tracks={downloadTracks}
+                itemNoun="nasheeds"
+                subtitle={playlist?.name_en}
+              />
               <PlayButton
+                clasName="flex-1  ml-10"
                 handlePlayAll={handlePlayAll}
-                label="Play"
+                label="Play All"
                 kind={PlayButtonVariant.PRIMARY}
                 isPlaying={isPlaylistPlaying}
               />

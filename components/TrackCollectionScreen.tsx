@@ -27,10 +27,13 @@ import ShowError from "./ShowError";
 import ReciterHeaderSkeleton from "./ReciterHeaderSkeleton";
 import ImageShimmerOverlay from "./ImageShimmerOverlay";
 import { PremiumGateModal } from "./PremiumGateModal";
+import { CollectionDownloadButton } from "./CollectionDownloadButton";
+import { PlaybackModeButton } from "./PlaybackModeButton";
 import { PlayButton, PlayButtonVariant } from "./PlayButton";
 import { TrackCollectionRow } from "./TrackCollectionRow";
 import { markManualPlay, useNasheedLimit } from "../hooks/useNasheedLimit";
 import { useIsPremium } from "../stores/userStore";
+import { pickRandom } from "../utils/random";
 
 export interface CollectionTrack extends NasheedTrackMeta {
   nasheed: Nasheed;
@@ -203,6 +206,25 @@ export function TrackCollectionScreen({
     if (first) void handlePlayRef.current(first);
   }, []);
 
+  const handlePlayShuffled = useCallback(() => {
+    const track = pickRandom(playableTracksRef.current);
+    if (track) void handlePlayRef.current(track);
+  }, []);
+
+  // Raw storage paths and the same ids the queue build uses — downloadTrack
+  // needs the path, and playback looks the file up by that id.
+  const downloadTracks = useMemo(
+    () =>
+      playableTracks.map((item) => ({
+        id: `${trackPrefix}-${item.id}`,
+        title: item.title,
+        artist: item.artist,
+        isNasheed: true,
+        uri: item.audioPath,
+      })),
+    [playableTracks, trackPrefix],
+  );
+
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const next =
@@ -226,6 +248,8 @@ export function TrackCollectionScreen({
 
   const isCollectionPlaying =
     isPlaying && !!currentTrack?.id.startsWith(trackPrefix);
+  // Paused still counts as loaded: switching mode then must not restart it.
+  const isCollectionActive = !!currentTrack?.id.startsWith(trackPrefix);
 
   // A memoized element, not an inline component: an inline component's identity
   // changes every render and would remount the header image on every state
@@ -274,10 +298,22 @@ export function TrackCollectionScreen({
                 </Text>
               </View>
             )}
-            <View className="mt-6">
+            <View className="mt-6 flex-row items-center gap-3">
+              <PlaybackModeButton
+                subtitle={title}
+                isCollectionActive={isCollectionActive}
+                onPlayInOrder={handlePlayAll}
+                onPlayShuffled={handlePlayShuffled}
+              />
+              <CollectionDownloadButton
+                tracks={downloadTracks}
+                itemNoun="nasheeds"
+                subtitle={title}
+              />
               <PlayButton
+                clasName="flex-1 ml-10"
                 handlePlayAll={handlePlayAll}
-                label="Play"
+                label="Play All"
                 kind={PlayButtonVariant.PRIMARY}
                 isPlaying={isCollectionPlaying}
               />
@@ -303,7 +339,10 @@ export function TrackCollectionScreen({
       description,
       tracks.length,
       isCollectionPlaying,
+      isCollectionActive,
       handlePlayAll,
+      handlePlayShuffled,
+      downloadTracks,
     ],
   );
 
@@ -346,14 +385,7 @@ export function TrackCollectionScreen({
         />
       );
     },
-    [
-      trackPrefix,
-      imageUrls,
-      currentTrack?.id,
-      isPlaying,
-      showActions,
-      onPlay,
-    ],
+    [trackPrefix, imageUrls, currentTrack?.id, isPlaying, showActions, onPlay],
   );
 
   if (error) return <ShowError message={error} />;

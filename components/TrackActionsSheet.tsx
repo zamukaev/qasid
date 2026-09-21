@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import {
   Alert,
   Animated,
-  Easing,
   Image,
   Modal,
-  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -21,26 +19,13 @@ import { GOLD } from "../constants/colors";
 import { buildNasheedShareUrl } from "../constants/links";
 import { Track } from "../context/AudioPlayerContext";
 import { Nasheed } from "../types/nasheed";
+import { useBottomSheet } from "../hooks/useBottomSheet";
 import { useDownload } from "../hooks/useDownload";
 // TEMP admin curation hotfix — remove with PlaylistPickerModal.
 import { useIsAdmin } from "../hooks/useIsAdmin";
 import { useFavoritesStore, useIsFavorite } from "../stores/favoritesStore";
 import { shareTrack } from "../services/share-service";
 
-const OPEN_DURATION_MS = 220;
-const CLOSE_DURATION_MS = 180;
-// Drag far enough (or fast enough) and the release closes instead of springing back.
-const DISMISS_TRAVEL_RATIO = 0.25;
-const DISMISS_VELOCITY = 0.6;
-// A drag only starts once the finger has clearly committed to a vertical swipe.
-const DRAG_ACTIVATION_PX = 6;
-// Tall enough to cover the sheet before it is measured, so the first frame of the
-// open animation starts off-screen rather than flashing the panel in place.
-const INITIAL_PANEL_HEIGHT = 600;
-const DIM_OPACITY = 0.7;
-// iOS silently drops an Alert or a second Modal presented while this one is
-// still being dismissed, so a follow-up action waits out the unmount commit.
-const MODAL_HANDOFF_MS = 120;
 const INACTIVE_ICON = "rgba(255,255,255,0.35)";
 
 type SheetAction = {
@@ -75,6 +60,11 @@ export type TrackActionsSheetProps = {
   showGoToArtist?: boolean;
   /** Admin curation, supplied only by screens that own a PlaylistPickerModal. */
   onAddToPlaylist?: (nasheed: Nasheed) => void;
+  /**
+   * Raised instead of downloading when the user is not premium. The parent owns
+   * the upgrade sheet, because this one is gone by the time it opens.
+   */
+  onRequirePremium?: () => void;
 };
 
 export function TrackActionsSheet({
@@ -88,6 +78,7 @@ export function TrackActionsSheet({
   shareUrl,
   showGoToArtist = false,
   onAddToPlaylist,
+  onRequirePremium,
 }: TrackActionsSheetProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -102,90 +93,17 @@ export function TrackActionsSheet({
     () => track ?? { id: "__none__", title, uri: null },
     [track, title],
   );
-  const { status, progress, download, remove } = useDownload(downloadTarget);
+  const { status, progress, download, remove, isPremium, planResolved } =
+    useDownload(downloadTarget);
 
-  /** Action to run once the sheet is fully gone — see MODAL_HANDOFF_MS. */
-  const pendingActionRef = useRef<(() => void) | null>(null);
-  const translateY = useRef(new Animated.Value(INITIAL_PANEL_HEIGHT)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const panelHeightRef = useRef(INITIAL_PANEL_HEIGHT);
-
-  const animateClose = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: panelHeightRef.current,
-        duration: CLOSE_DURATION_MS,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: CLOSE_DURATION_MS,
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (!finished) return;
-      onClose();
-      const pending = pendingActionRef.current;
-      pendingActionRef.current = null;
-      if (pending) setTimeout(pending, MODAL_HANDOFF_MS);
-    });
-  }, [translateY, backdropOpacity, onClose]);
-
-  const closeThen = useCallback(
-    (action: () => void) => {
-      pendingActionRef.current = action;
-      animateClose();
-    },
-    [animateClose],
-  );
-
-  useEffect(() => {
-    if (!visible) return;
-    translateY.setValue(panelHeightRef.current);
-    backdropOpacity.setValue(0);
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: OPEN_DURATION_MS,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: DIM_OPACITY,
-        duration: OPEN_DURATION_MS,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [visible, translateY, backdropOpacity]);
-
-  // Core RN rather than react-native-gesture-handler: no GestureHandlerRootView
-  // is mounted in this app, so its gestures would silently never fire.
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_evt, gesture) =>
-          gesture.dy > DRAG_ACTIVATION_PX &&
-          Math.abs(gesture.dy) > Math.abs(gesture.dx),
-        onPanResponderMove: (_evt, gesture) => {
-          translateY.setValue(Math.max(0, gesture.dy));
-        },
-        onPanResponderRelease: (_evt, gesture) => {
-          const past =
-            gesture.dy > panelHeightRef.current * DISMISS_TRAVEL_RATIO;
-          if (past || gesture.vy > DISMISS_VELOCITY) {
-            animateClose();
-            return;
-          }
-          Animated.spring(translateY, {
-            toValue: 0,
-            bounciness: 0,
-            useNativeDriver: true,
-          }).start();
-        },
-      }),
-    [translateY, animateClose],
-  );
+  const {
+    translateY,
+    backdropOpacity,
+    panHandlers,
+    onPanelLayout,
+    animateClose,
+    closeThen,
+  } = useBottomSheet({ visible, onClose });
 
   const handleShare = useCallback(() => {
     const url = shareUrl ?? (nasheed ? buildNasheedShareUrl(nasheed.id) : null);
@@ -206,6 +124,17 @@ export function TrackActionsSheet({
   // closing would hide the progress the row is showing. The label walks
   // Download → Downloading n% → Remove download in place instead.
   const handleDownload = useCallback(() => {
+    // Wait for RevenueCat rather than guessing — a tap right after a cold start
+    // would otherwise show a paying user the paywall.
+    if (!planResolved) return;
+
+    if (!isPremium) {
+      // Hands off to the parent's PremiumRequiredSheet, so a free user gets the
+      // app's own panel here too instead of a system alert.
+      if (onRequirePremium) closeThen(onRequirePremium);
+      return;
+    }
+
     if (status === "downloaded") {
       Alert.alert(
         "Remove Download",
@@ -220,7 +149,15 @@ export function TrackActionsSheet({
     // Not awaited: the progress and the non-premium alert both live in the
     // hook, and the row must stay responsive during the transfer.
     if (status === "idle") void download();
-  }, [status, remove, download]);
+  }, [
+    planResolved,
+    isPremium,
+    onRequirePremium,
+    closeThen,
+    status,
+    remove,
+    download,
+  ]);
 
   const handleGoToArtist = useCallback(() => {
     const artistId = nasheed?.artist_id;
@@ -339,15 +276,13 @@ export function TrackActionsSheet({
 
         <Animated.View
           style={{ transform: [{ translateY }] }}
-          onLayout={(e) => {
-            panelHeightRef.current = e.nativeEvent.layout.height;
-          }}
+          onLayout={onPanelLayout}
         >
           <View className="relative overflow-hidden rounded-t-3xl">
             <View className="absolute inset-0 bg-qasid-bg-2" />
             <View className="absolute inset-0 rounded-t-3xl border-t border-x border-qasid-gold/30" />
 
-            <View {...panResponder.panHandlers}>
+            <View {...panHandlers}>
               <View className="pt-3 pb-2 items-center">
                 <View className="h-1 w-10 rounded-full bg-white/25" />
               </View>

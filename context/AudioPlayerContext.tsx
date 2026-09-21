@@ -43,6 +43,16 @@ function isRepeatMode(value: unknown): value is RepeatMode {
   return REPEAT_MODES.includes(value as RepeatMode);
 }
 
+type SetRepeatModeOptions = {
+  /**
+   * Whether the live queue is reordered to match the new mode. Pass `false`
+   * when the caller is about to hand over a different queue anyway: that
+   * reorder would only rewrite the RNTP queue `playTrack` is about to reset,
+   * racing the append it runs in the background.
+   */
+  reorder?: boolean;
+};
+
 type Track = {
   id: string;
   title: string;
@@ -74,7 +84,7 @@ type AudioPlayerContextValue = {
   seekTo: (millis: number) => Promise<void>;
   setViewMode: (mode: PlayerViewMode) => void;
   setQueue: (tracks: Track[]) => void;
-  setRepeatMode: (mode: RepeatMode) => void;
+  setRepeatMode: (mode: RepeatMode, options?: SetRepeatModeOptions) => void;
   next: () => Promise<void>;
   prev: () => Promise<void>;
   progressMap: TrackProgressMap;
@@ -585,13 +595,13 @@ export function AudioPlayerProvider({
   // fires on the first render and would write the "sequential" default over the
   // stored value before the hydration read in the setup effect resolves.
   const setRepeatMode = useCallback(
-    (mode: RepeatMode) => {
+    (mode: RepeatMode, options?: SetRepeatModeOptions) => {
       const previous = repeatModeRef.current;
       repeatModeRef.current = mode;
       setRepeatModeState(mode);
       AsyncStorage.setItem(REPEAT_MODE_STORAGE_KEY, mode).catch(() => {});
 
-      if (mode === previous) return;
+      if (mode === previous || options?.reorder === false) return;
 
       // Shuffle has to reach the NATIVE queue, not just next()/prev(): CarPlay,
       // the lock screen, Bluetooth controls and RNTP's own end-of-track advance
@@ -1020,4 +1030,4 @@ export function useAudioProgress() {
   return ctx;
 }
 
-export type { Track, PlayerViewMode };
+export type { Track, PlayerViewMode, RepeatMode };
