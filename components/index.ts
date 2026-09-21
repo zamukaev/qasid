@@ -32,5 +32,6 @@ export type { TrackActionsSheetProps } from "./TrackActionsSheet";
 // TEMP admin curation hotfix — remove with the mood/playlist picker.
 export { PlaylistPickerModal } from "./PlaylistPickerModal";
 export { PromoBanner } from "./PromoBanner";
+export { PromoHomeBanner } from "./PromoHomeBanner";
 export { TrackCollectionScreen } from "./TrackCollectionScreen";
 export type { CollectionTrack } from "./TrackCollectionScreen";

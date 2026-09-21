@@ -4,7 +4,7 @@
     {
       "id": "free-trial",
       "enabled": true,
-      "endsAt": "2026-10-22T23:59:59Z",
+      "endsAt": "2026-10-05T23:59:59Z",
       "icon": "gift",
       "badge": "Limited offer",
       "title": "{trial} free",

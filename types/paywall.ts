@@ -3,6 +3,24 @@ import type { PurchasesPackage } from "react-native-purchases";
 /** Plans a promo can point at. Mirrors the buyable plans on the premium screen. */
 export type PromoPlanId = "monthly" | "yearly";
 
+/**
+ * Ionicons glyphs a promo may use. Curated on purpose: remote copy must not be
+ * able to name an icon the app does not ship, and every entry here is a real
+ * `Ionicons` key so no cast is needed at the render site.
+ */
+export type PromoIconName =
+  | "gift"
+  | "sparkles"
+  | "star"
+  | "flash"
+  | "moon"
+  | "heart"
+  | "pricetag"
+  | "time"
+  | "trophy"
+  | "musical-notes"
+  | "lock-open";
+
 /** Words used to render durations ("7 days", "1 month") — overridable per language. */
 export interface UnitLabels {
   day: string;
@@ -26,6 +44,8 @@ export interface PromoConfig {
   startsAt: number | null;
   endsAt: number | null;
   emoji: string | null;
+  /** Preferred over `emoji` when both are set. */
+  icon: PromoIconName | null;
   badge: string | null;
   title: string;
   subtitle: string | null;
@@ -36,6 +56,8 @@ export interface PromoConfig {
   showCountdown: boolean;
   showOnGate: boolean;
   showOnPremiumScreen: boolean;
+  /** Home-screen banner on the Quran and Nasheeds tabs. */
+  showOnHome: boolean;
   gateTitle: string | null;
   gateBody: string | null;
 }

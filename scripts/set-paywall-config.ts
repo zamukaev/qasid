@@ -59,9 +59,17 @@ for (const promo of config.promos) {
     promo.startsAt === null ? "always" : new Date(promo.startsAt).toISOString(),
     promo.endsAt === null ? "no end" : new Date(promo.endsAt).toISOString(),
   ].join(" → ");
+  const places = [
+    promo.showOnHome ? "home" : null,
+    promo.showOnGate ? "gate" : null,
+    promo.showOnPremiumScreen ? "premium" : null,
+  ]
+    .filter((place): place is string => place !== null)
+    .join(", ");
   console.log(
     `  - ${promo.id}: "${promo.title}" [${promo.enabled ? "enabled" : "disabled"}] ${window}`,
   );
+  console.log(`    shown on: ${places === "" ? "nowhere" : places}`);
 }
 
 const activeNow = resolveActivePromo(config, Date.now());

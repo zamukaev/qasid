@@ -23,10 +23,19 @@ export function PromoBanner({ promo, compact = false }: Props) {
 
       <View className={compact ? "px-4 py-3" : "px-4 py-4"}>
         <View className="flex-row items-start">
+          {/* An authored emoji wins; otherwise the curated icon, if any. */}
           {promo.emoji ? (
             <Text className={compact ? "text-xl mr-3" : "text-2xl mr-3"}>
               {promo.emoji}
             </Text>
+          ) : promo.icon ? (
+            <View className="mr-3">
+              <Ionicons
+                name={promo.icon}
+                size={compact ? 20 : 24}
+                color={GOLD}
+              />
+            </View>
           ) : null}
 
           <View className="flex-1">

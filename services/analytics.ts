@@ -25,6 +25,7 @@ export type PlaybackEventType = "started" | "qualified" | "completed";
 
 const QURAN_PLAYBACK_EVENT = "quran_playback";
 const NASHEED_PLAYBACK_EVENT = "nasheed_playback";
+const PROMO_BANNER_EVENT = "promo_banner";
 const PLAN_USER_PROPERTY = "subscription_plan";
 const STORAGE_KEY = "@qasid-analytics-consent";
 
@@ -108,6 +109,23 @@ export function logNasheedPlayback({
     nasheed_id: nasheedId,
     event_type: eventType,
     played_seconds: playedSeconds,
+  });
+}
+
+/** What a user did with a promotion banner. */
+export type PromoBannerAction = "view" | "tap" | "dismiss";
+
+/**
+ * Funnel for remotely configured promotions: how often a banner was seen,
+ * tapped through to the premium screen, or closed.
+ */
+export function logPromoBanner(
+  action: PromoBannerAction,
+  promoId: string,
+): Promise<void> {
+  return logSafely(PROMO_BANNER_EVENT, {
+    action,
+    promo_id: promoId,
   });
 }
 

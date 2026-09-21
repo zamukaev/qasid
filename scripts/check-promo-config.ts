@@ -90,6 +90,44 @@ check(
   null,
 );
 
+console.log("icons");
+check(
+  "a curated icon is kept",
+  normalizePaywallConfig({ promos: [{ title: "t", icon: "gift" }] }).promos[0]
+    .icon,
+  "gift",
+);
+check(
+  "an unknown icon degrades to none",
+  normalizePaywallConfig({ promos: [{ title: "t", icon: "rocket-ship" }] })
+    .promos[0].icon,
+  null,
+);
+check(
+  "no icon authored",
+  normalizePaywallConfig({ promos: [{ title: "t" }] }).promos[0].icon,
+  null,
+);
+
+console.log("placement flags");
+check(
+  "showOnHome defaults to on",
+  normalizePaywallConfig({ promos: [{ title: "t" }] }).promos[0].showOnHome,
+  true,
+);
+check(
+  "showOnHome can be switched off",
+  normalizePaywallConfig({ promos: [{ title: "t", showOnHome: false }] })
+    .promos[0].showOnHome,
+  false,
+);
+check(
+  "a non-boolean showOnHome falls back to the default",
+  normalizePaywallConfig({ promos: [{ title: "t", showOnHome: "yes" }] })
+    .promos[0].showOnHome,
+  true,
+);
+
 console.log("time window");
 check("active promo wins", resolveActivePromo(config, NOW)?.id, "ramadan");
 check(
@@ -139,6 +177,20 @@ check(
   null,
 );
 check("plain text passes through", renderPromoText("Ramadan Special", vars), "Ramadan Special");
+
+// The recommended recipe puts nothing but {trial} in the title, so the trial
+// length always mirrors App Store Connect / Play Console. That only stays safe
+// as long as a missing trial takes the whole promo down with it.
+check(
+  "a store-driven title renders the real trial length",
+  renderPromoText("{trial} free", { ...vars, trial: "3 months" }),
+  "3 months free",
+);
+check(
+  "a store-driven title disappears without a trial",
+  renderPromoText("{trial} free", { ...vars, trial: null }),
+  null,
+);
 
 console.log("countdown");
 check("days and hours", formatTimeRemaining(50 * HOUR), "2d 2h");

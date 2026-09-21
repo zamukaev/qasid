@@ -3,6 +3,7 @@ import { usePaywallStore } from "../stores/paywallStore";
 import {
   IntroOffer,
   OfferingSummary,
+  PromoIconName,
   PromoPlanId,
   UnitLabels,
 } from "../types/paywall";
@@ -19,6 +20,7 @@ import { useOfferingsSummary } from "./useOfferingsSummary";
 export interface ResolvedPromo {
   id: string;
   emoji: string | null;
+  icon: PromoIconName | null;
   badge: string | null;
   title: string;
   subtitle: string | null;
@@ -30,6 +32,7 @@ export interface ResolvedPromo {
   gateBody: string | null;
   showOnGate: boolean;
   showOnPremiumScreen: boolean;
+  showOnHome: boolean;
   /** Countdown text, present only while `showCountdown` is on and time is left. */
   countdown: string | null;
 }
@@ -155,6 +158,7 @@ export function usePromo(options: UsePromoOptions = {}): UsePromoResult {
     return {
       id: activePromo.id,
       emoji: activePromo.emoji,
+      icon: activePromo.icon,
       badge: renderPromoText(activePromo.badge, vars),
       title,
       subtitle: renderPromoText(activePromo.subtitle, vars),
@@ -166,6 +170,7 @@ export function usePromo(options: UsePromoOptions = {}): UsePromoResult {
       gateBody: renderPromoText(activePromo.gateBody, vars),
       showOnGate: activePromo.showOnGate,
       showOnPremiumScreen: activePromo.showOnPremiumScreen,
+      showOnHome: activePromo.showOnHome,
       countdown: activePromo.showCountdown ? endsIn : null,
     };
   }, [activePromo, config, now, playsLeft, summary]);

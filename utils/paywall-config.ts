@@ -1,6 +1,7 @@
 import type {
   PaywallConfig,
   PromoConfig,
+  PromoIconName,
   PromoPlanId,
   UnitLabels,
 } from "../types/paywall";
@@ -31,6 +32,20 @@ export const DEFAULT_PAYWALL_CONFIG: PaywallConfig = {
 };
 
 const PLAN_IDS: readonly PromoPlanId[] = ["monthly", "yearly"];
+
+const ICON_NAMES: readonly PromoIconName[] = [
+  "gift",
+  "sparkles",
+  "star",
+  "flash",
+  "moon",
+  "heart",
+  "pricetag",
+  "time",
+  "trophy",
+  "musical-notes",
+  "lock-open",
+];
 const MAX_DISCOUNT_PERCENT = 100;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -89,6 +104,12 @@ function asPlanId(value: unknown): PromoPlanId | null {
   return PLAN_IDS.find((plan) => plan === text) ?? null;
 }
 
+/** Unknown icon names degrade to null, never to a broken glyph. */
+function asIconName(value: unknown): PromoIconName | null {
+  const text = asText(value);
+  return ICON_NAMES.find((icon) => icon === text) ?? null;
+}
+
 function normalizePromo(value: unknown, index: number): PromoConfig | null {
   const raw = asRecord(value);
   if (!raw) return null;
@@ -104,6 +125,7 @@ function normalizePromo(value: unknown, index: number): PromoConfig | null {
     startsAt: asEpochMillis(raw.startsAt),
     endsAt: asEpochMillis(raw.endsAt),
     emoji: asText(raw.emoji),
+    icon: asIconName(raw.icon),
     badge: asText(raw.badge),
     title,
     subtitle: asText(raw.subtitle),
@@ -113,6 +135,7 @@ function normalizePromo(value: unknown, index: number): PromoConfig | null {
     showCountdown: asBoolean(raw.showCountdown, false),
     showOnGate: asBoolean(raw.showOnGate, true),
     showOnPremiumScreen: asBoolean(raw.showOnPremiumScreen, true),
+    showOnHome: asBoolean(raw.showOnHome, true),
     gateTitle: asText(raw.gateTitle),
     gateBody: asText(raw.gateBody),
   };

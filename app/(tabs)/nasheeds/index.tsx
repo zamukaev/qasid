@@ -7,6 +7,7 @@ import {
   ArtistRailSection,
   BrowseAllArtistsPreview,
   ContinueListeningBlock,
+  PromoHomeBanner,
 } from "../../../components";
 import { useAuth } from "../../../hooks/useAuth";
 import {
@@ -287,6 +288,7 @@ export default function Nasheeds() {
           />
         }
       >
+        <PromoHomeBanner />
         <ContinueListeningBlock variant="nasheeds" />
 
         {(isLoadingForYou || forYouItems.length > 0) && (
