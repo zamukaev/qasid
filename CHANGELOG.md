@@ -10,7 +10,7 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ---
 
-## [Unreleased]
+## [1.1.0] — unreleased
 
 ### Added
 
@@ -51,21 +51,6 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   Firestore and validate the promo logic offline, both using the exact rules the
   app applies at runtime. The publish summary now also prints where each promo
   will be shown.
-
-### Changed
-
-- **The premium prompt for downloads is a sheet, not an `Alert`.** Its parent
-  owns it, because iOS silently drops a modal presented while another one is
-  still being dismissed.
-- Sheet open/close animation and drag-to-dismiss moved out of
-  `TrackActionsSheet` into `hooks/useBottomSheet.ts`, shared by all three
-  sheets.
-
----
-
-## [1.1.0] — 2026-09-08
-
-### Added
 
 - **In-app store review prompt.** New `services/review-service.ts` and
   `hooks/useReviewPrompt.ts` request the native review sheet only from engaged
@@ -111,6 +96,13 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   Firebase Storage and reports the paths that no longer resolve.
 
 ### Changed
+
+- **The premium prompt for downloads is a sheet, not an `Alert`.** Its parent
+  owns it, because iOS silently drops a modal presented while another one is
+  still being dismissed.
+- Sheet open/close animation and drag-to-dismiss moved out of
+  `TrackActionsSheet` into `hooks/useBottomSheet.ts`, shared by all three
+  sheets.
 
 - **Favorites state centralized in a Zustand store** (`stores/favoritesStore.ts`).
   Favorite toggles are now optimistic and instantly consistent across the artist
