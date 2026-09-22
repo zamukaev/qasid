@@ -10,6 +10,59 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Promotions reach the home screens.** An active promotion from
+  `config/paywall` now also appears as a hero banner at the top of the Quran and
+  Nasheeds tabs, not just in the premium gate modal and on the premium screen —
+  an offer used to reach nobody who had not already hit the daily nasheed limit
+  or gone looking for it in Settings. Free users only, hidden until RevenueCat
+  has confirmed the plan so a paying user never sees an upgrade pitch flash by,
+  and closing it hides that campaign for good while the next one is still shown.
+  Two new config fields: `showOnHome` (default on) decides whether a promo runs
+  there, and `icon` picks one of a curated set of Ionicons glyphs instead of an
+  emoji, whose look depends on the OS version. Views, taps and dismissals land
+  in Analytics as `promo_banner`. Field reference: `docs/paywall-config.md`.
+- **Downloading a whole collection.** A reciter, an artist or a playlist can be
+  taken offline in one tap instead of 114 — the download button sits beside
+  Play, fetches at most three tracks at a time, reports progress across the
+  collection and can be cancelled or removed as a whole. The download record
+  map is now written through a queue, so parallel transfers can no longer drop
+  each other's entries.
+- **Choosing the playback mode before anything plays.** Shuffle used to be
+  reachable only from the full-screen player, i.e. after playback had already
+  started. A mode button beside Play now offers the same three modes up front;
+  starting shuffled picks a random track through the normal play path rather
+  than reordering a queue that is about to be replaced.
+- **Track actions menu with shareable deep links.** Every track list showed a
+  different set of inline icons — the artist screen crammed in three, mixes and
+  favorites offered only a heart, curated playlists nothing at all. One overflow
+  button now opens a single sheet, so the same track offers the same actions
+  wherever it is reached from: share, favorite, download, go to artist, and
+  playlist assignment for admins. Sharing sends a Universal/App Link rather than
+  a store link, so the recipient lands on the track itself and playback starts
+  before the artist or reciter screen takes over. The iOS entitlement and the
+  Android intent filter are native, so this needs a build rather than an OTA
+  update; `docs/universal-links.md` covers deployment and the Android signing
+  fingerprint that is still outstanding.
+- **`npm run promo:set` and `npm run check:promo`** publish a promo document to
+  Firestore and validate the promo logic offline, both using the exact rules the
+  app applies at runtime. The publish summary now also prints where each promo
+  will be shown.
+
+### Changed
+
+- **The premium prompt for downloads is a sheet, not an `Alert`.** Its parent
+  owns it, because iOS silently drops a modal presented while another one is
+  still being dismissed.
+- Sheet open/close animation and drag-to-dismiss moved out of
+  `TrackActionsSheet` into `hooks/useBottomSheet.ts`, shared by all three
+  sheets.
+
+---
+
 ## [1.1.0] — 2026-09-08
 
 ### Added
