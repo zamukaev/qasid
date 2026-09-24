@@ -8,6 +8,7 @@ import {
   BrowseAllRecitersPreview,
   ContinueListeningBlock,
   FeaturedList,
+  PromoHomeBanner,
   ReciterRailSection,
   ShowError,
 } from "../../../components";
@@ -140,8 +141,10 @@ export default function Quran() {
           />
         }
       >
+        <PromoHomeBanner />
         <ContinueListeningBlock />
         <FeaturedList
+          large
           featuredItems={featuredCollections}
           isLoading={isLoadingFeaturedCollections}
           title="Featured Collections"

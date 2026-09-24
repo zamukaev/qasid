@@ -1,0 +1,22 @@
+{
+  "freeDailyLimit": 5,
+  "promos": [
+    {
+      "id": "free-trial",
+      "enabled": true,
+      "endsAt": "2026-10-05T23:59:59Z",
+      "icon": "gift",
+      "badge": "Limited offer",
+      "title": "{trial} free",
+      "subtitle": "Then {price_monthly} per month. Cancel anytime.",
+      "highlightPlan": "monthly",
+      "ctaLabel": "Get the offer",
+      "showCountdown": true,
+      "showOnHome": true,
+      "showOnGate": true,
+      "showOnPremiumScreen": true,
+      "gateTitle": "Daily limit reached",
+      "gateBody": "Free listeners get {limit} nasheeds a day. Premium is unlimited."
+    }
+  ]
+}

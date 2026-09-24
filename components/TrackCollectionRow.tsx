@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 
 import { Nasheed } from "../types/nasheed";
 import { SharedCard } from "./SharedCard";
-import { FavoriteButton } from "./FavoriteButton";
+import { TrackActionsButton } from "./TrackActionsButton";
 
 interface Props {
   /** Queue-scoped id (`${trackPrefix}-${nasheed.id}`). */
@@ -16,7 +16,8 @@ interface Props {
   isActive: boolean;
   /** This row is the currently loaded track *and* playback is running. */
   isPlaying: boolean;
-  showFavorites: boolean;
+  /** Render the `⋯` actions menu on this row. */
+  showActions: boolean;
   nasheed: Nasheed;
   onPlay: (nasheedId: string) => void;
 }
@@ -38,7 +39,7 @@ export const TrackCollectionRow = React.memo(function TrackCollectionRow({
   imageUrl,
   isActive,
   isPlaying,
-  showFavorites,
+  showActions,
   nasheed,
   onPlay,
 }: Props) {
@@ -48,14 +49,23 @@ export const TrackCollectionRow = React.memo(function TrackCollectionRow({
   );
 
   const track = useMemo(
-    () => ({ id: trackId, title, artist, uri: audioPath }),
+    () => ({ id: trackId, title, artist, isNasheed: true, uri: audioPath }),
     [trackId, title, artist, audioPath],
   );
 
   const rightAction = useMemo(
     () =>
-      showFavorites ? <FavoriteButton nasheed={nasheed} /> : undefined,
-    [showFavorites, nasheed],
+      showActions ? (
+        <TrackActionsButton
+          title={title}
+          subtitle={artist}
+          image={imageUrl}
+          nasheed={nasheed}
+          track={track}
+          showGoToArtist
+        />
+      ) : undefined,
+    [showActions, title, artist, imageUrl, nasheed, track],
   );
 
   return (

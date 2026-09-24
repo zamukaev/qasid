@@ -1,5 +1,6 @@
 import { getApp } from "@react-native-firebase/app";
 import { getAuth } from "@react-native-firebase/auth";
+import { logQuranPlayback } from "./analytics";
 import {
   getFirestore,
   collection,
@@ -8,6 +9,7 @@ import {
   getDocs,
   query,
   startAfter,
+  where,
   doc,
   getDoc,
   addDoc,
@@ -341,6 +343,10 @@ export async function trackReciterPlayback({
   eventType: ReciterPlaybackEventType;
   playedSeconds: number;
 }) {
+  // Logged before the auth check so the funnel is captured even when the
+  // Firestore write below is skipped or fails.
+  void logQuranPlayback({ reciterId, surahId, eventType, playedSeconds });
+
   const db = getFirestore(getApp());
   const userId = getAuth().currentUser?.uid;
 
@@ -413,6 +419,47 @@ export async function fetchSurahs(
   return {
     surahs,
     nextCursor,
+  };
+}
+
+/**
+ * One surah of one reciter, by its number.
+ *
+ * Used by the share route, which has only the two ids from the link and must
+ * not page through `fetchSurahs` to find, say, surah 108. `where` rather than a
+ * doc id lookup because the doc id is not the surah number.
+ */
+export async function fetchSurahByNumber(
+  reciterId: string,
+  surahNumber: number,
+): Promise<(FirebaseSurah & { id: string }) | null> {
+  const db = getFirestore(getApp());
+  const snapshot = await getDocs(
+    query(
+      collection(db, "reciters", reciterId, "surahs"),
+      where("surah_number", "==", surahNumber),
+      limit(1),
+    ),
+  );
+
+  const docSnap = snapshot.docs[0];
+  if (!docSnap) return null;
+
+  const data = docSnap.data() as any;
+  const imageUrl = data.image_path
+    ? await getDownloadURL(ref(getStorage(getApp()), data.image_path))
+    : undefined;
+
+  return {
+    // The list screens key their tracks by `${reciter.id}-${surah.id}`, so the
+    // share route needs this to hand back a matching track id.
+    id: data.id,
+    audio_path: data.audio_path,
+    surah_number: data.surah_number,
+    image_path: imageUrl,
+    name_en: data.name_en,
+    name_ar: data.name_ar,
+    transliteration: data.transliteration,
   };
 }
 

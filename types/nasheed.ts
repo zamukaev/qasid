@@ -38,6 +38,12 @@ export interface Nasheed {
   image_path: string;
   artist_id: string;
   moods?: Mood[];
+  /**
+   * Curated playlist membership: the doc id of a `playlists` entry, or null
+   * when unassigned. A nasheed belongs to at most one curated playlist — see
+   * fetchNasheedsForPlaylist, which queries this field directly.
+   */
+  playlist_id?: string | null;
   favorite_count?: number;
   popularity_score?: number;
 }
@@ -73,6 +79,8 @@ export interface WeeklyMix {
   tracks: RecommendedTrack[];
   track_count: number;
   seed?: { top_artist_ids: string[]; top_moods: string[] };
+  /** Epoch ms. null while the server timestamp is still unresolved. */
+  generated_at: number | null;
 }
 
 export interface NasheedCursor {

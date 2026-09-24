@@ -1,6 +1,9 @@
 import { Stack } from "expo-router";
 import { GOLD } from "../constants/colors";
-import { AudioPlayerProvider } from "../context/AudioPlayerContext";
+import {
+  AudioPlayerProvider,
+  useAudioPlayer,
+} from "../context/AudioPlayerContext";
 import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { ErrorAlert } from "../components";
 import {
@@ -15,6 +18,9 @@ import Purchases, { LOG_LEVEL } from "react-native-purchases";
 import { getApp } from "@react-native-firebase/app";
 import { getMessaging, onMessage } from "@react-native-firebase/messaging";
 import { hydrateStorageUrlCache } from "../services/storage";
+import { initReviewTracking } from "../services/review-service";
+import { hydrateAnalyticsConsent } from "../services/analytics";
+import { useAuthBootstrap } from "../hooks/useAuthBootstrap";
 
 import "../global.css";
 
@@ -26,7 +32,25 @@ configureReanimatedLogger({
   strict: false,
 });
 
+/** Surfaces a failed play tap. Reads the audio context, so it has to be
+ *  rendered below AudioPlayerProvider rather than beside it. */
+function PlaybackErrorAlert() {
+  const { playbackError, clearPlaybackError } = useAudioPlayer();
+  return (
+    <ErrorAlert
+      visible={playbackError !== null}
+      message={playbackError ?? ""}
+      type="error"
+      onClose={clearPlaybackError}
+    />
+  );
+}
+
 export default function RootLayout() {
+  // Here rather than in a screen: a cold start into a deep link mounts no
+  // screen that would otherwise subscribe, and the target route waits on auth.
+  useAuthBootstrap();
+
   // RevenueCat aborts the app (fatalError in checkForSimulatedStoreAPIKeyInRelease)
   // if a Test/Simulated-Store key (test_…) is used in a Release build. Select the
   // key by build type so release/TestFlight ALWAYS uses the production appl_ key
@@ -41,6 +65,11 @@ export default function RootLayout() {
   // the first screen that resolves a Storage path.
   useEffect(() => {
     void hydrateStorageUrlCache();
+    // Device-scoped, so it runs before auth: records first launch and this
+    // session's day for the store-review eligibility check.
+    void initReviewTracking();
+    // Restores the analytics opt-out before any screen can log an event.
+    void hydrateAnalyticsConsent();
   }, []);
 
   useEffect(() => {
@@ -54,7 +83,7 @@ export default function RootLayout() {
   }, []);
 
   const [foregroundMessage, setForegroundMessage] = useState<string | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -80,6 +109,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="t/index" options={{ headerShown: false }} />
         </Stack>
         <ErrorAlert
           visible={foregroundMessage !== null}
@@ -87,6 +117,7 @@ export default function RootLayout() {
           type="info"
           onClose={() => setForegroundMessage(null)}
         />
+        <PlaybackErrorAlert />
       </AudioPlayerProvider>
     </AppErrorBoundary>
   );

@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { GOLD } from "../constants/colors";
 import { useRouter } from "expo-router";
 import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
+import { usePromo } from "../hooks/usePromo";
+import { PromoBanner } from "./PromoBanner";
 
 interface Props {
   visible: boolean;
@@ -9,13 +11,23 @@ interface Props {
   onClose: () => void;
 }
 
+const DEFAULT_TITLE = "Daily Limit Reached";
+const DEFAULT_CTA = "Upgrade to Premium →";
+
 export function PremiumGateModal({ visible, playsLeft, onClose }: Props) {
   const router = useRouter();
+  const { promo, freeDailyLimit } = usePromo({ playsLeft });
 
   const handleUpgrade = () => {
     onClose();
     router.push("/settings/premium");
   };
+
+  const title = promo?.gateTitle ?? DEFAULT_TITLE;
+  const body =
+    promo?.gateBody ??
+    `Free users can listen to ${freeDailyLimit} nasheeds per day. Upgrade to Premium for unlimited access.`;
+  const ctaLabel = promo?.ctaLabel ?? DEFAULT_CTA;
 
   return (
     <Modal
@@ -28,7 +40,10 @@ export function PremiumGateModal({ visible, playsLeft, onClose }: Props) {
         className="flex-1 items-center justify-center bg-black/70 px-6"
         onPress={onClose}
       >
-        <Pressable onPress={(e) => e.stopPropagation()} className="w-full max-w-sm">
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          className="w-full max-w-sm"
+        >
           <View className="relative overflow-hidden rounded-3xl">
             <View className="absolute inset-0 bg-qasid-bg-2" />
             <View className="absolute inset-0 rounded-3xl border border-qasid-gold/30" />
@@ -39,12 +54,16 @@ export function PremiumGateModal({ visible, playsLeft, onClose }: Props) {
                   <Ionicons name="lock-closed" size={24} color={GOLD} />
                 </View>
                 <Text className="text-white text-xl font-bold text-center">
-                  Daily Limit Reached
+                  {title}
                 </Text>
                 <Text className="text-white/60 text-sm text-center mt-2 leading-5">
-                  Free users can listen to 5 nasheeds per day. Upgrade to Premium for unlimited access.
+                  {body}
                 </Text>
               </View>
+
+              {promo && promo.showOnGate ? (
+                <PromoBanner promo={promo} compact />
+              ) : null}
 
               <TouchableOpacity activeOpacity={0.8} onPress={handleUpgrade}>
                 <View className="relative overflow-hidden rounded-2xl">
@@ -52,7 +71,7 @@ export function PremiumGateModal({ visible, playsLeft, onClose }: Props) {
                   <View className="absolute inset-0 rounded-2xl border border-qasid-gold/30" />
                   <View className="py-4 items-center">
                     <Text className="text-qasid-gold text-base font-semibold">
-                      Upgrade to Premium →
+                      {ctaLabel}
                     </Text>
                   </View>
                 </View>

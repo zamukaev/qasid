@@ -31,9 +31,12 @@ import {
   ShowError,
   ReciterHeaderSkeleton,
 } from "../../../../components";
-import { DownloadButton } from "../../../../components/DownloadButton";
-import { FavoriteButton } from "../../../../components/FavoriteButton";
+import { TrackActionsButton } from "../../../../components/TrackActionsButton";
+import { PlaybackModeButton } from "../../../../components/PlaybackModeButton";
+import { CollectionDownloadButton } from "../../../../components/CollectionDownloadButton";
 import { PremiumGateModal } from "../../../../components/PremiumGateModal";
+// TEMP admin curation hotfix — remove with PlaylistPickerModal.
+import { PlaylistPickerModal } from "../../../../components/PlaylistPickerModal";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -44,6 +47,7 @@ import {
   trackArtistPlayback,
 } from "../../../../services/nasheeds-service";
 import { addRecentArtist } from "../../../../services/recents-service";
+import { pickRandom } from "../../../../utils/random";
 import {
   markManualPlay,
   useNasheedLimit,
@@ -150,6 +154,8 @@ export default function ArtistScreen() {
   const isPremium = useIsPremium();
   const { canPlay, increment, playsLeft } = useNasheedLimit();
   const [gateVisible, setGateVisible] = useState(false);
+  // TEMP admin curation hotfix — remove with PlaylistPickerModal.
+  const [playlistTarget, setPlaylistTarget] = useState<Nasheed | null>(null);
 
   const [artist, setArtist] = useState<NasheedArtist | null>(null);
   const [nasheeds, setNasheeds] = useState<NasheedItem[]>([]);
@@ -331,6 +337,52 @@ export default function ArtistScreen() {
     if (first) await handlePlayNasheed(first);
   };
 
+  // Goes through handlePlayNasheed like a row tap does, so the free-tier gate,
+  // the queue build and the play counter all still apply.
+  const handlePlayShuffled = async () => {
+    const track = pickRandom(nasheeds.filter((n) => n.audioUrl));
+    if (track) await handlePlayNasheed(track);
+  };
+
+  // Raw storage paths and the same ids handlePlayNasheed builds — downloadTrack
+  // needs the path, and playback looks the file up by that id.
+  const downloadTracks = useMemo(
+    () =>
+      !artist
+        ? []
+        : nasheeds
+            .filter((n) => n.audioUrl)
+            .map((n) => ({
+              id: `${artist?.id}-${n.id}`,
+              title: n.title,
+              artist: artist?.name_en,
+              isNasheed: true,
+              uri: n.audioUrl,
+            })),
+    [nasheeds, artist],
+  );
+
+  // TEMP admin curation hotfix — remove with PlaylistPickerModal.
+  // `raw` is replaced rather than mutated so the memoized row re-renders and
+  // the plus icon picks up its new filled/outline state.
+  const handlePlaylistChange = (
+    nasheedId: string,
+    playlistId: string | null,
+  ) => {
+    setNasheeds((prev) =>
+      prev.map((n) =>
+        n.id === nasheedId
+          ? { ...n, raw: { ...n.raw, playlist_id: playlistId } }
+          : n,
+      ),
+    );
+    setPlaylistTarget((current) =>
+      current && current.id === nasheedId
+        ? { ...current, playlist_id: playlistId }
+        : current,
+    );
+  };
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     // Only setState when the flag actually flips — this fires on every scroll
     // frame otherwise, re-rendering the whole nasheed list.
@@ -371,6 +423,8 @@ export default function ArtistScreen() {
 
   const isArtistPlaying =
     isPlaying && !!currentTrack?.id.startsWith(`${artist?.id}-`);
+  // Paused still counts as loaded: switching mode then must not restart it.
+  const isArtistActive = !!currentTrack?.id.startsWith(`${artist?.id}-`);
 
   return (
     <SafeAreaView className="flex-1 bg-qasid-black">
@@ -383,6 +437,13 @@ export default function ArtistScreen() {
         visible={gateVisible}
         playsLeft={playsLeft}
         onClose={() => setGateVisible(false)}
+      />
+      {/* TEMP admin curation hotfix — remove with PlaylistPickerModal. */}
+      <PlaylistPickerModal
+        visible={!!playlistTarget}
+        nasheed={playlistTarget}
+        onClose={() => setPlaylistTarget(null)}
+        onPlaylistChange={handlePlaylistChange}
       />
       <ScrollView
         ref={scrollViewRef}
@@ -434,10 +495,22 @@ export default function ArtistScreen() {
                 </Text>
               </View>
             )}
-            <View className="mt-6">
+            <View className="mt-6 flex-row items-center gap-3">
+              <PlaybackModeButton
+                subtitle={artist?.name_en}
+                isCollectionActive={isArtistActive}
+                onPlayInOrder={() => void handlePlayAll()}
+                onPlayShuffled={() => void handlePlayShuffled()}
+              />
+              <CollectionDownloadButton
+                tracks={downloadTracks}
+                itemNoun="nasheeds"
+                subtitle={artist?.name_en}
+              />
               <PlayButton
+                clasName="flex-1 ml-10"
                 handlePlayAll={handlePlayAll}
-                label="Play"
+                label="Play All"
                 kind={PlayButtonVariant.PRIMARY}
                 isPlaying={isArtistPlaying}
               />
@@ -480,20 +553,27 @@ export default function ArtistScreen() {
                       uri: nasheed.audioUrl,
                     }}
                     rightAction={
-                      <View className="flex-row items-center">
-                        <FavoriteButton nasheed={nasheed.raw} />
-                        {nasheed.audioUrl ? (
-                          <DownloadButton
-                            track={{
-                              id: trackId,
-                              title: nasheed.title,
-                              artist: artist?.name_en,
-                              isNasheed: true,
-                              uri: nasheed.audioUrl,
-                            }}
-                          />
-                        ) : null}
-                      </View>
+                      <TrackActionsButton
+                        title={nasheed.title}
+                        subtitle={artist?.name_en}
+                        image={artworkFor(nasheed)}
+                        nasheed={nasheed.raw}
+                        track={
+                          nasheed.audioUrl
+                            ? {
+                                id: trackId,
+                                title: nasheed.title,
+                                artist: artist?.name_en,
+                                isNasheed: true,
+                                uri: nasheed.audioUrl,
+                              }
+                            : undefined
+                        }
+                        // Already on this artist's screen.
+                        showGoToArtist={false}
+                        // TEMP admin curation hotfix — remove with PlaylistPickerModal.
+                        onAddToPlaylist={setPlaylistTarget}
+                      />
                     }
                   />
                 );

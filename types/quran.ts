@@ -39,7 +39,7 @@ export interface FirebaseSurah {
   image_path?: string;
   name_en: string;
   name_ar: string;
-  transliteration: string;
+  transliteration?: string;
 }
 
 export interface Surah {

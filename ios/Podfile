@@ -11,6 +11,10 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 install! 'cocoapods',
   :deterministic_uuids => false
 
+# Qasid collects no ad identifiers and shows no ATT prompt, so Analytics is
+# installed without FirebaseAnalytics/IdentitySupport (no IDFA).
+$RNFirebaseAnalyticsWithoutAdIdSupport = true
+
 prepare_react_native_project!
 
 target 'QASID' do

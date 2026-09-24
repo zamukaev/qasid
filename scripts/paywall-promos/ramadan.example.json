@@ -1,0 +1,23 @@
+{
+  "freeDailyLimit": 5,
+  "promos": [
+    {
+      "id": "ramadan-2027",
+      "enabled": true,
+      "startsAt": "2027-02-08T00:00:00Z",
+      "endsAt": "2027-03-10T00:00:00Z",
+      "emoji": "🌙",
+      "badge": "Ramadan offer",
+      "title": "Your first month is on us",
+      "subtitle": "{trial} free, then {price_yearly} per year. Save {savings}.",
+      "discountPercent": 30,
+      "highlightPlan": "yearly",
+      "ctaLabel": "Start free →",
+      "showCountdown": true,
+      "showOnGate": true,
+      "showOnPremiumScreen": true,
+      "gateTitle": "Daily limit reached",
+      "gateBody": "Free listeners get {limit} nasheeds a day. Premium is unlimited."
+    }
+  ]
+}

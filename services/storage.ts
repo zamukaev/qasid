@@ -11,7 +11,12 @@ const CACHE_STORAGE_KEY = "@qasid-storage-url-cache";
 
 // Bump to invalidate every persisted entry in a release (e.g. after a bulk
 // Storage migration that regenerates download tokens).
-const CACHE_SCHEMA_VERSION = 1;
+//
+// v2: playback started failing on URLs cached under v1, the signature of audio
+// objects whose `firebaseStorageDownloadTokens` were reissued. The
+// PlaybackError handler heals one path per failed attempt, which is too slow
+// when the whole cache is stale, so v2 drops all of it on the next launch.
+const CACHE_SCHEMA_VERSION = 2;
 
 // Firebase download URLs embed a `firebaseStorageDownloadTokens` value that is
 // stable for the lifetime of the object — they do not expire on a clock. This

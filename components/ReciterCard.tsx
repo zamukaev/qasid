@@ -5,6 +5,12 @@ import { FirebaseReciter } from "../types/quran";
 import { useRouter } from "expo-router";
 import { useImageLoadState } from "../hooks/useImageLoadState";
 import ImageShimmerOverlay from "./ImageShimmerOverlay";
+import {
+  CardVariantProps,
+  CompactRailCard,
+  RECITER_CARD_SIZES,
+  resolveCardSize,
+} from "./CompactRailCard";
 
 interface ReciterCardProps {
   reciter: FirebaseReciter;
@@ -53,74 +59,37 @@ export default function ReciterCard({ reciter }: ReciterCardProps) {
   );
 }
 
-type CardSize = { cardWidth: number; imageSize: number };
+export type CompactReciterCardVariantProps = CardVariantProps;
 
-function resolveSize(large?: boolean, small?: boolean): CardSize {
-  if (large) return { cardWidth: 116, imageSize: 104 };
-  if (small) return { cardWidth: 84, imageSize: 72 };
-  return { cardWidth: 100, imageSize: 88 };
-}
-
-export interface CompactReciterCardVariantProps {
-  circle?: boolean;
-  large?: boolean;
-  small?: boolean;
-}
-
-interface CompactReciterCardProps extends CompactReciterCardVariantProps {
+interface CompactReciterCardProps extends CardVariantProps {
   reciter: FirebaseReciter;
 }
 
-export function CompactReciterCard({ reciter, circle, large, small }: CompactReciterCardProps) {
+export function CompactReciterCard({
+  reciter,
+  circle,
+  large,
+  small,
+}: CompactReciterCardProps) {
   const router = useRouter();
-  const { source, showSkeleton, onLoad, onError } = useImageLoadState(
-    reciter.image_path,
+  const { cardWidth, imageSize } = resolveCardSize(
+    { large, small },
+    RECITER_CARD_SIZES,
   );
-  const displayName = getReciterDisplayName(reciter);
-  const { cardWidth, imageSize } = resolveSize(large, small);
 
   return (
-    <Pressable
+    <CompactRailCard
+      imagePath={reciter.image_path}
+      label={getReciterDisplayName(reciter)}
+      cardWidth={cardWidth}
+      imageSize={imageSize}
+      circle={circle}
       onPress={() =>
         router.push({
           pathname: "/(tabs)/quran/reciter/[id]",
           params: { id: reciter.id.toString() },
         })
       }
-      className="items-center active:opacity-80"
-      android_ripple={{ color: GOLD_RIPPLE_20 }}
-      style={{ width: cardWidth }}
-    >
-      <View
-        className={`${circle ? "rounded-full" : "rounded-xl"} overflow-hidden border border-qasid-gold/20 mb-2`}
-        style={{
-          width: imageSize,
-          height: imageSize,
-          shadowColor: GOLD,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: circle ? 0.3 : 0.2,
-          shadowRadius: circle ? 8 : 6,
-          elevation: circle ? 8 : 5,
-        }}
-      >
-        <Image
-          source={source}
-          onLoad={onLoad}
-          onError={onError}
-          className="w-full h-full"
-          resizeMode="cover"
-        />
-        <ImageShimmerOverlay
-          visible={showSkeleton}
-          rounded={circle ? "full" : "xl"}
-        />
-      </View>
-      <Text
-        className="text-white/90 text-center text-xs leading-4"
-        numberOfLines={2}
-      >
-        {displayName}
-      </Text>
-    </Pressable>
+    />
   );
 }

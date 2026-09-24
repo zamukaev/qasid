@@ -116,10 +116,22 @@ export default function VerifyEmailScreen() {
           {user?.email ?? "your email"}
         </Text>
 
-        <Text className="text-white/50 text-sm text-center mb-10 leading-6">
-          Open your inbox and click the link to activate your account. Check
-          your spam folder if you don't see it.
+        <Text className="text-white/50 text-sm text-center mb-6 leading-6">
+          Open your inbox and click the link to activate your account.
         </Text>
+
+        <View className="w-full flex-row items-start rounded-2xl bg-qasid-gold/10 border border-qasid-gold/25 px-4 py-3 mb-10">
+          <Ionicons
+            name="alert-circle-outline"
+            size={20}
+            color={GOLD}
+            style={{ marginTop: 1 }}
+          />
+          <Text className="flex-1 ml-3 text-white/80 text-sm leading-5">
+            Emails sometimes land in the Spam folder. If nothing arrives within
+            a few minutes, check Spam or Junk.
+          </Text>
+        </View>
 
         {notVerifiedError && (
           <Text className="text-qasid-red text-sm text-center mb-4">

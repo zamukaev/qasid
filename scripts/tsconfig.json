@@ -7,7 +7,7 @@
     "esModuleInterop": true,
     "strict": true,
     "outDir": "../.tmp-scripts",
-    "rootDir": "."
+    "rootDir": ".."
   },
-  "include": ["./**/*.ts"]
+  "include": ["./**/*.ts", "../utils/**/*.ts", "../types/**/*.ts"]
 }

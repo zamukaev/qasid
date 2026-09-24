@@ -3,7 +3,7 @@
     "name": "QASID",
     "slug": "QASID",
     "scheme": "qasid",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,24 +16,49 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.abusafiia.qasid.dev",
-      "buildNumber": "1",
+      "appStoreUrl": "https://apps.apple.com/app/id6769446918?action=write-review",
+      "buildNumber": "1.1.0",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "remote-notification"],
+        "UIBackgroundModes": [
+          "audio",
+          "remote-notification"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       },
       "deploymentTarget": "16.0",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:qasid-sound.com"
+      ]
     },
     "android": {
-      "versionCode": 1,
+      "versionCode": 2,
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.abusafiia.qasid.dev&showAllReviews=true",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.abusafiia.qasid.dev",
       "googleServicesFile": "./google-services.json",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "qasid-sound.com",
+              "pathPrefix": "/t"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "plugins": [
       "expo-router",

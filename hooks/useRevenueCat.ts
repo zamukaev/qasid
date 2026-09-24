@@ -7,12 +7,36 @@ import Purchases, {
 import * as RevenueCatService from "../services/revenuecat";
 
 const ENTITLEMENT_ID = "qasid Premium";
+const OFFERINGS_ERROR_FALLBACK =
+  "Subscription options could not be loaded. Please try again.";
+
+function readStringProp(value: unknown, key: string): string | null {
+  if (typeof value !== "object" || value === null) return null;
+  const prop = (value as Record<string, unknown>)[key];
+  return typeof prop === "string" && prop.length > 0 ? prop : null;
+}
+
+// RevenueCat rejects with an object carrying a user-facing `message` plus an
+// `underlyingErrorMessage` naming the actual store problem (products missing
+// from App Store Connect, Paid Apps agreement not active, …). Both are worth
+// surfacing — the underlying one is what makes a misconfiguration diagnosable.
+function describeOfferingsError(error: unknown): string {
+  const parts = [
+    readStringProp(error, "message"),
+    readStringProp(error, "underlyingErrorMessage"),
+  ].filter((part): part is string => part !== null);
+
+  const unique = [...new Set(parts)];
+  return unique.length > 0 ? unique.join(" ") : OFFERINGS_ERROR_FALLBACK;
+}
 
 export function useRevenueCat() {
   const [offerings, setOfferings] = useState<PurchasesOffering | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -26,6 +50,16 @@ export function useRevenueCat() {
 
     Purchases.addCustomerInfoUpdateListener(listener);
 
+    return () => {
+      mountedRef.current = false;
+      Purchases.removeCustomerInfoUpdateListener(listener);
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+
     Promise.all([
       RevenueCatService.getOfferings(),
       Purchases.getCustomerInfo(),
@@ -36,15 +70,18 @@ export function useRevenueCat() {
         setCustomerInfo(info);
         setIsPremium(!!info.entitlements.active[ENTITLEMENT_ID]);
       })
-      .catch(() => {})
+      .catch((cause: unknown) => {
+        if (!mountedRef.current) return;
+        setOfferings(null);
+        setError(describeOfferingsError(cause));
+      })
       .finally(() => {
         if (mountedRef.current) setIsLoading(false);
       });
+  }, [reloadToken]);
 
-    return () => {
-      mountedRef.current = false;
-      Purchases.removeCustomerInfoUpdateListener(listener);
-    };
+  const reload = useCallback(() => {
+    setReloadToken((token) => token + 1);
   }, []);
 
   const purchasePackage = useCallback(
@@ -73,6 +110,8 @@ export function useRevenueCat() {
     customerInfo,
     isPremium,
     isLoading,
+    error,
+    reload,
     purchasePackage,
     restorePurchases,
   };

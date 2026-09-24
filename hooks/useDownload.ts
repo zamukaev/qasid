@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
-import { useRouter } from "expo-router";
 import { useIsPremium, useUserStore } from "../stores/userStore";
 import {
   getLocalPath,
@@ -12,8 +11,7 @@ import { Track } from "../context/AudioPlayerContext";
 export type DownloadStatus = "idle" | "downloading" | "downloaded";
 
 export function useDownload(track: Track) {
-  const { currentPlan } = useUserStore();
-  const router = useRouter();
+  const planResolved = useUserStore((s) => s.planResolved);
   const [status, setStatus] = useState<DownloadStatus>("idle");
   const [progress, setProgress] = useState(0);
   const isPremium = useIsPremium();
@@ -28,20 +26,9 @@ export function useDownload(track: Track) {
   }, [track.id]);
 
   const download = useCallback(async () => {
-    if (!isPremium) {
-      Alert.alert(
-        "Premium Required",
-        "Offline listening is a premium feature. Upgrade to download tracks for offline playback.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Upgrade",
-            onPress: () => router.push("/settings/premium"),
-          },
-        ],
-      );
-      return;
-    }
+    // The upgrade prompt is a sheet the caller owns — see PremiumRequiredSheet.
+    // These two only keep a mis-wired caller from downloading for free.
+    if (!planResolved || !isPremium) return;
 
     if (status === "downloading" || status === "downloaded") return;
 
@@ -58,7 +45,7 @@ export function useDownload(track: Track) {
         "Could not download the track. Please check your connection and try again.",
       );
     }
-  }, [isPremium, status, track, router]);
+  }, [planResolved, isPremium, status, track]);
 
   const remove = useCallback(async () => {
     await deleteDownload(track.id);
@@ -66,5 +53,5 @@ export function useDownload(track: Track) {
     setProgress(0);
   }, [track.id]);
 
-  return { status, progress, download, remove };
+  return { status, progress, download, remove, isPremium, planResolved };
 }

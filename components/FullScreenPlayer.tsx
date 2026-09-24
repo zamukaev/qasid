@@ -15,6 +15,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import {
+  RepeatMode,
   useAudioPlayer,
   useAudioProgress,
 } from "../context/AudioPlayerContext";
@@ -39,9 +40,7 @@ export default function FullScreenPlayer() {
     return positionMillis / durationMillis;
   }, [positionMillis, durationMillis]);
 
-  const handleRepeatModeChange = (
-    mode: "sequential" | "shuffle" | "repeat-one",
-  ) => {
+  const handleRepeatModeChange = (mode: RepeatMode) => {
     if (mode === "repeat-one" && repeatMode === "repeat-one") {
       setRepeatMode("sequential");
       return;

@@ -1,0 +1,233 @@
+# Changelog
+
+All notable changes to **Qasid** are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Versions map to the `version` field in `app.json` / `package.json`, bumped via
+`npm run version`.
+
+---
+
+## [1.1.0] — unreleased
+
+### Added
+
+- **Promotions reach the home screens.** An active promotion from
+  `config/paywall` now also appears as a hero banner at the top of the Quran and
+  Nasheeds tabs, not just in the premium gate modal and on the premium screen —
+  an offer used to reach nobody who had not already hit the daily nasheed limit
+  or gone looking for it in Settings. Free users only, hidden until RevenueCat
+  has confirmed the plan so a paying user never sees an upgrade pitch flash by,
+  and closing it hides that campaign for good while the next one is still shown.
+  Two new config fields: `showOnHome` (default on) decides whether a promo runs
+  there, and `icon` picks one of a curated set of Ionicons glyphs instead of an
+  emoji, whose look depends on the OS version. Views, taps and dismissals land
+  in Analytics as `promo_banner`. Field reference: `docs/paywall-config.md`.
+- **Downloading a whole collection.** A reciter, an artist or a playlist can be
+  taken offline in one tap instead of 114 — the download button sits beside
+  Play, fetches at most three tracks at a time, reports progress across the
+  collection and can be cancelled or removed as a whole. The download record
+  map is now written through a queue, so parallel transfers can no longer drop
+  each other's entries.
+- **Choosing the playback mode before anything plays.** Shuffle used to be
+  reachable only from the full-screen player, i.e. after playback had already
+  started. A mode button beside Play now offers the same three modes up front;
+  starting shuffled picks a random track through the normal play path rather
+  than reordering a queue that is about to be replaced.
+- **Track actions menu with shareable deep links.** Every track list showed a
+  different set of inline icons — the artist screen crammed in three, mixes and
+  favorites offered only a heart, curated playlists nothing at all. One overflow
+  button now opens a single sheet, so the same track offers the same actions
+  wherever it is reached from: share, favorite, download, go to artist, and
+  playlist assignment for admins. Sharing sends a Universal/App Link rather than
+  a store link, so the recipient lands on the track itself and playback starts
+  before the artist or reciter screen takes over. The iOS entitlement and the
+  Android intent filter are native, so this needs a build rather than an OTA
+  update; `docs/universal-links.md` covers deployment and the Android signing
+  fingerprint that is still outstanding.
+- **`npm run promo:set` and `npm run check:promo`** publish a promo document to
+  Firestore and validate the promo logic offline, both using the exact rules the
+  app applies at runtime. The publish summary now also prints where each promo
+  will be shown.
+
+- **In-app store review prompt.** New `services/review-service.ts` and
+  `hooks/useReviewPrompt.ts` request the native review sheet only from engaged
+  users: 5 qualified listens (30 s of actual playback each, Quran and Nasheeds
+  combined) or 7 days installed with app opens on at least 3 distinct days.
+  Capped at 3 prompts per user with a 120-day cooldown, never shown over the
+  full-screen player, and always deferred to a calm moment (4 s after app open
+  or foreground).
+- **"Rate Qasid" row in Settings** as a manual fallback, since the native sheet
+  can silently decline to appear once the OS quota is spent. Opens the store
+  listing straight at the review composer, via `ios.appStoreUrl` and
+  `android.playStoreUrl` in `app.json` — `expo-store-review` reads the link from
+  there and derives nothing from the bundle identifier, so the row stays hidden
+  on any platform whose URL is missing.
+- **Admin playlist tools.** `AdminPlaylistButton` and `PlaylistPickerModal` let
+  allow-listed admin accounts (`constants/admin.ts`, `hooks/useIsAdmin.ts`) add
+  nasheeds to curated playlists straight from the artist screen, backed by new
+  Firestore rules and a `run-daily-recommendations` script.
+- **Google/Apple profile photo** is now shown in Settings instead of the initial
+  letter avatar when the account has one.
+- **Firebase Analytics for the playback funnel.** `services/analytics.ts`
+  mirrors the `started` / `qualified` / `completed` playback events that already
+  land in the `reciter_plays` / `artist_plays` collections into GA4 as
+  `quran_playback` and `nasheed_playback`, and sets the user id plus a
+  `subscription_plan` user property. Firestore stays the source of truth for
+  recommendations and trending; Analytics only adds the funnel view. Every call
+  swallows its own errors and is fired before the Firestore write, so the funnel
+  survives a skipped or failing write and analytics can never delay playback.
+  Installed without ad-identifier support
+  (`$RNFirebaseAnalyticsWithoutAdIdSupport` in `ios/Podfile`), so the app
+  collects no IDFA and needs no ATT prompt.
+- **"Share usage data" toggle** in a new Privacy section in Settings. Opt-out by
+  default, persisted in AsyncStorage and hydrated in `app/_layout.tsx` before
+  any screen can log an event.
+- **Repeat mode survives an app restart.** Sequential, shuffle and repeat-one
+  are persisted to AsyncStorage and restored once the player is up.
+- **In-app alerts for events that used to pass silently.** A push notification
+  arriving while the app is in the foreground is shown as an info banner
+  instead of being swallowed by the OS, and a track whose audio cannot be
+  loaded raises an error banner instead of leaving the tap looking ignored
+  (`PlaybackErrorAlert` in `app/_layout.tsx`).
+- **`npm run verify:reciter-audio`** audits reciter surah documents against
+  Firebase Storage and reports the paths that no longer resolve.
+
+### Changed
+
+- **The premium prompt for downloads is a sheet, not an `Alert`.** Its parent
+  owns it, because iOS silently drops a modal presented while another one is
+  still being dismissed.
+- Sheet open/close animation and drag-to-dismiss moved out of
+  `TrackActionsSheet` into `hooks/useBottomSheet.ts`, shared by all three
+  sheets.
+
+- **Favorites state centralized in a Zustand store** (`stores/favoritesStore.ts`).
+  Favorite toggles are now optimistic and instantly consistent across the artist
+  screen, Weekly Mix, generated playlists, and the favorites tab — no more
+  per-screen fetching and drifting UI state.
+- Nasheed seed scripts (`seed-nasheed-artists`, `seed-nasheeds-abu-ali`)
+  updated for the current schema.
+- Settings and profile screens are fully in English — the delete-account,
+  change-password and profile-picture flows still had German copy from an early
+  draft.
+- `seed-nasheed-artists` seeds Abu Abdul Malik; Musab Al Adani and Khalid
+  al-Haqqan are already live.
+- Artist screen's play button reads "Play All" instead of "Play".
+
+### Fixed
+
+- **Shuffle only shuffled the in-app buttons.** The mode was applied in React's
+  `next()`/`prev()` but never to the queue that is loaded into the native
+  player, so CarPlay, the lock screen, Bluetooth controls and the player's own
+  end-of-track advance all kept walking the list in order. Switching shuffle on
+  now reorders the queue itself — the playing track stays where it is and the
+  rest is rebuilt behind it, so the audio never stops — and switching back
+  restores the original order continuing from the track you are on. Sequential,
+  shuffle and repeat-one now behave identically wherever they are triggered.
+- **Artist search ran on the Firestore fallback the whole time.** The client
+  called the `searchArtists` endpoint, but the Cloud Function behind that URL
+  was never written — the URL answered 404 and every query silently fell
+  through to the client-side path. The function now exists and is deployed,
+  mirroring `searchReciters`: cursor pagination over `name_en` plus document
+  id, with `is_active` filtered in code so no composite index is needed.
+- **One missing audio file no longer takes down the tracks around it.** A
+  Storage path that fails to resolve — a deleted object, or a surah seeded
+  ahead of its upload — used to reject the whole resolve batch in `playTrack`.
+  Unresolvable tracks are now dropped from the queue and remembered for the
+  session, so the queue rebuild and next/previous step over them. A tap on a
+  broken track leaves current playback untouched and reports the failure
+  instead; an explicit tap retries it, so a transient failure does not exile a
+  track for the rest of the session.
+- **The spam folder hint on the verify email screen** was buried at the end of
+  a low-contrast paragraph, where users who never received the mail did not
+  find it. It is now a callout with an alert icon above the action buttons.
+- **Premium paywall no longer renders empty and silent** when RevenueCat
+  offerings fail to load. The failure is surfaced with an explanatory message
+  and a retry instead of an inert screen.
+- **The "Made for You" Weekly Mix tile never appeared for anyone.**
+  `user_recommendations/{uid}.weekly_mix` was written only by the on-demand
+  `generateWeeklyMix` endpoint, which was called only from the mix screen —
+  a screen reachable only through the tile that required the document to
+  already exist. `dailyRecommendationJob` writes `generated_playlists` and
+  never touches `user_recommendations`, so the mix could never bootstrap
+  itself. New `ensureWeeklyMix()` in `services/recommendations-service.ts`
+  reads the mix, treats it as stale after 7 days, and generates one when
+  needed — guarded by a 6 h retry throttle and in-flight de-duplication, and
+  never throwing, since a stale mix beats an error state.
+- **Weekly Mix and favorites rails stayed empty until a manual pull-to-refresh**
+  on a cold start. The home screen loaded them before Firebase had restored the
+  session, so the queries ran with a null uid; they now wait for auth to settle.
+- `FirebaseSurah.transliteration` is optional, matching the documents that
+  genuinely lack it, and a stray `import { title } from "process"` is gone from
+  the settings layout.
+
+---
+
+## [1.0.0] — 2026-06-29
+
+First App Store release.
+
+### Added
+
+- **Quran tab** — reciter browsing, reciter detail screens with full surah
+  lists, featured reciters and collections, cursor-paginated "all reciters"
+  grid, and Cloud Function-backed search over reciters and surahs.
+- **Nasheeds tab** — artists, artist detail screens, curated playlists,
+  favorites, and artist search.
+- **Recommendations** — Weekly Mix and automatically generated playlists driven
+  by Cloud Functions over listening history and nasheed moods.
+- **Audio playback on `react-native-track-player` v4** — the full queue is
+  loaded into the native player, so next/previous, lock-screen controls, and
+  Bluetooth controls work everywhere. Sequential, shuffle, and repeat-one modes
+  are synced to the native repeat mode.
+- **Background playback** via a HeadlessJS `PlaybackService`, with
+  `HeadlessJsMediaService` on Android and the `audio` background mode on iOS.
+- **Mini player and full-screen player**, plus a "Continue listening" block;
+  playback position is persisted every 2.5 s and cleared once a track is ~98%
+  complete.
+- **Offline mode** — downloads for offline listening.
+- **Authentication** — Firebase email/password, Google, and Sign in with Apple,
+  with a mandatory email-verification gate before any tab content is reachable.
+- **Premium subscriptions via RevenueCat** (entitlement `qasid Premium`), a
+  paywall screen, restore purchases, and a free-tier limit of 5 nasheeds per
+  day for non-subscribers.
+- **Settings** — profile editing, notification preferences, app version,
+  contact & support, and terms & privacy.
+- **Push notifications** for new content, delivered over FCM topics.
+- **Playback analytics** — qualified plays recorded to the `reciter_plays` and
+  `artist_plays` collections.
+
+### Changed
+
+- Quran content is served from the internal Firebase backend instead of the
+  external `mp3quran.net` API.
+- Nasheeds screen redesigned; Quran screen, filters, and mini player reworked
+  across several passes.
+- Track collection screens consolidated behind shared
+  `TrackCollectionScreen` / `TrackCollectionRow` components with skeleton
+  loading states and shimmer placeholders for images.
+
+### Fixed
+
+- **iOS watchdog crash (`0x8BADF00D`) on real devices** — caused by Fabric plus
+  the JS-driven live equalizer. Fixed by disabling the New Architecture and
+  pausing the equalizer in the background.
+- **Xcode 26.4 build failure** — the `fmt` pod is now built as C++17, made
+  durable across prebuilds by a config plugin.
+- Sign-in failures, premium screen issues, free nasheed-limit counting, search,
+  and header layout bugs.
+- `ITSAppUsesNonExemptEncryption` declared in `app.json` so App Store uploads no
+  longer stall on the encryption question.
+
+### Performance
+
+- Storage URLs resolved in parallel with per-track resilience, so one bad track
+  no longer breaks a generated playlist.
+- Persistent Storage URL cache hydrated at launch
+  (`hydrateStorageUrlCache`) and progressive URL resolution for long lists
+  (`useProgressiveStorageUrls`).
+- Broad list-rendering and image-loading optimizations across the nasheed and
+  reciter screens.

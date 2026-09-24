@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -44,7 +45,10 @@ import {
   SharedCardSkeleton,
   ReciterHeaderSkeleton,
 } from "../../../../components";
-import { DownloadButton } from "../../../../components/DownloadButton";
+import { TrackActionsButton } from "../../../../components/TrackActionsButton";
+import { PlaybackModeButton } from "../../../../components/PlaybackModeButton";
+import { CollectionDownloadButton } from "../../../../components/CollectionDownloadButton";
+import { buildSurahShareUrl } from "../../../../constants/links";
 import {
   PlayButton,
   PlayButtonVariant,
@@ -56,6 +60,7 @@ import {
   trackReciterPlayback,
 } from "../../../../services/quran-service";
 import { addRecentReciter } from "../../../../services/recents-service";
+import { pickRandom } from "../../../../utils/random";
 
 interface SurahListItem {
   id: string;
@@ -179,6 +184,12 @@ type SurahListRowProps = {
   isActive: boolean;
   isPlayingRow: boolean;
   durationLabel?: string;
+  /**
+   * Absent on a collection screen: its surahs come from several reciters, so
+   * there is no `reciters/{id}/surahs` path for the link to resolve against.
+   * Share then falls back to the plain store link.
+   */
+  shareUrl?: string;
   onPlay: (surah: SurahListItem) => void;
 };
 
@@ -197,6 +208,7 @@ const SurahListRow = memo(function SurahListRow({
   isActive,
   isPlayingRow,
   durationLabel,
+  shareUrl,
   onPlay,
 }: SurahListRowProps) {
   return (
@@ -224,7 +236,13 @@ const SurahListRow = memo(function SurahListRow({
       }}
       rightAction={
         surah.audioUrl ? (
-          <DownloadButton
+          // No `nasheed`: favorites are nasheed-scoped, so a surah's sheet
+          // carries the download row alone.
+          <TrackActionsButton
+            title={surah.englishName}
+            subtitle={surah.reciterName ?? surah.arabicName}
+            image={surah.imageUrl ?? undefined}
+            shareUrl={shareUrl}
             track={{
               id: trackKey,
               surahNumber: surah.surahNumber,
@@ -246,6 +264,16 @@ export default function ReciterDetailsScreen() {
     target?: string;
   }>();
   const navigation = useNavigation();
+
+  // The reciter whose `surahs` subcollection these rows actually come from —
+  // what a share link has to carry. A collection mixes reciters and has no
+  // such path, so its rows share the store link instead.
+  const shareReciterId =
+    content_type === "collection"
+      ? undefined
+      : content_type === "reciter"
+        ? target
+        : id;
 
   const [reciter, setReciter] = useState<FirebaseReciter | null>(null);
   const [loading, setLoading] = useState(false);
@@ -701,6 +729,34 @@ export default function ReciterDetailsScreen() {
     await handlePlaySurah(first);
   }, [filteredSurahItems, reciter, handlePlaySurah]);
 
+  // Goes through handlePlaySurah like a row tap does, so URL resolution, the
+  // saved position and the playback analytics all still apply.
+  const handlePlayShuffled = useCallback(async () => {
+    if (!reciter) return;
+    const surah = pickRandom(
+      filteredSurahItems.filter((item) => item.audioUrl),
+    );
+    if (!surah) return;
+    await handlePlaySurah(surah);
+  }, [filteredSurahItems, reciter, handlePlaySurah]);
+
+  // Raw storage paths and the same ids handlePlaySurah builds — downloadTrack
+  // needs the path, and playback looks the file up by that id.
+  const downloadTracks = useMemo(
+    () =>
+      !reciter
+        ? []
+        : filteredSurahItems
+            .filter((item) => item.audioUrl)
+            .map((item) => ({
+              id: `${reciter?.id}-${item.id}`,
+              title: item.englishName,
+              artist: item.reciterName ?? reciter?.name_en,
+              uri: item.audioUrl,
+            })),
+    [filteredSurahItems, reciter],
+  );
+
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
     setShowScrollToTop(offsetY > 600);
@@ -866,9 +922,24 @@ export default function ReciterDetailsScreen() {
               </View>
             </View>
 
-            <View className="mt-6">
+            <View className="mt-6 mb-4 flex-row items-center gap-3">
+              <PlaybackModeButton
+                subtitle={reciter?.name_en}
+                // Paused still counts as loaded: switching mode then must not
+                // restart it.
+                isCollectionActive={
+                  !!currentTrack?.id.startsWith(`${reciter?.id}-`)
+                }
+                onPlayInOrder={() => void handlePlayAll()}
+                onPlayShuffled={() => void handlePlayShuffled()}
+              />
+              <CollectionDownloadButton
+                tracks={downloadTracks}
+                itemNoun="surahs"
+                subtitle={reciter?.name_en}
+              />
               <PlayButton
-                clasName="mb-4 mb-4"
+                clasName="flex-1 ml-10"
                 handlePlayAll={handlePlayAll}
                 label="Play all"
                 kind={PlayButtonVariant.PRIMARY}
@@ -919,6 +990,11 @@ export default function ReciterDetailsScreen() {
                     isActive={isActive}
                     isPlayingRow={isPlaying && isActive}
                     durationLabel={durationLabel}
+                    shareUrl={
+                      shareReciterId
+                        ? buildSurahShareUrl(shareReciterId, surah.surahNumber)
+                        : undefined
+                    }
                     onPlay={handlePlaySurah}
                   />
                 );

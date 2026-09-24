@@ -2,7 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useReducer } from "react";
 
 const STORAGE_KEY = "@qasid-nasheed-limit";
-const FREE_DAILY_LIMIT = 5;
+const DEFAULT_FREE_DAILY_LIMIT = 5;
+
+// Remote-configurable via `config/paywall` (stores/paywallStore). Kept as a
+// module value rather than a constant so the modal copy and the enforcement
+// below can never state different numbers.
+let _freeDailyLimit = DEFAULT_FREE_DAILY_LIMIT;
 
 // Module-level singleton so all hook instances and the layout guard share the same count.
 let _count = 0;
@@ -10,6 +15,16 @@ let _date = "";
 let _hydrated = false;
 let _manualPlayPending = false;
 const _listeners = new Set<() => void>();
+
+export function setFreeDailyLimit(limit: number): void {
+  if (!Number.isFinite(limit) || limit < 0 || limit === _freeDailyLimit) return;
+  _freeDailyLimit = Math.floor(limit);
+  _listeners.forEach((fn) => fn());
+}
+
+export function getFreeDailyLimit(): number {
+  return _freeDailyLimit;
+}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -76,7 +91,7 @@ export async function incrementNasheedCount(): Promise<void> {
 
 export function checkCanPlay(isPremium: boolean): boolean {
   resetIfNewDay();
-  return isPremium || _count < FREE_DAILY_LIMIT;
+  return isPremium || _count < _freeDailyLimit;
 }
 
 export function useNasheedLimit() {
@@ -93,8 +108,9 @@ export function useNasheedLimit() {
   resetIfNewDay();
 
   return {
-    canPlay: (isPremium: boolean) => isPremium || _count < FREE_DAILY_LIMIT,
+    canPlay: (isPremium: boolean) => isPremium || _count < _freeDailyLimit,
     increment: incrementNasheedCount,
-    playsLeft: Math.max(0, FREE_DAILY_LIMIT - _count),
+    playsLeft: Math.max(0, _freeDailyLimit - _count),
+    dailyLimit: _freeDailyLimit,
   };
 }

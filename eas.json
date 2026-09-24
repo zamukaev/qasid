@@ -22,11 +22,17 @@
       "env": {
         "EXPO_PUBLIC_IOS_API_KEY": "appl_HwxGFGKnsGozFZAYWcpAsOMcYnF",
         "EXPO_PUBLIC_ANDROID_API_KEY": "appl_HwxGFGKnsGozFZAYWcpAsOMcYnF",
+        "EXPO_PUBLIC_ADMIN_UIDS": "UTWOVcxhBVTksYtPXnipiSKHpdk2",
         "APS_ENVIRONMENT": "production"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6769446918",
+        "appleTeamId": "6Z569RUVAA"
+      }
+    }
   }
 }
