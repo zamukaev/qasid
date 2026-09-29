@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GOLD } from "../constants/colors";
 import { RepeatMode, useAudioPlayer } from "../context/AudioPlayerContext";
 import { useBottomSheet } from "../hooks/useBottomSheet";
+import { useRequireAccount } from "../hooks/useRequireAccount";
 
 const INACTIVE_ICON = "rgba(255,255,255,0.35)";
 
@@ -73,6 +74,7 @@ export function PlaybackModeSheet({
 }: PlaybackModeSheetProps) {
   const insets = useSafeAreaInsets();
   const { repeatMode, setRepeatMode } = useAudioPlayer();
+  const { isGuest, requireAccount } = useRequireAccount();
 
   const {
     translateY,
@@ -85,6 +87,12 @@ export function PlaybackModeSheet({
 
   const handleSelect = useCallback(
     (mode: RepeatMode) => {
+      if (mode === "shuffle" && isGuest) {
+        // closeThen: the sign-in gate is a modal and iOS drops one raised
+        // while this sheet is still dismissing.
+        closeThen(() => requireAccount("shuffle play"));
+        return;
+      }
       if (isCollectionActive) {
         // Already playing: setRepeatMode reorders the live queue around the
         // current track, so the mode changes without the audio breaking off.
@@ -103,6 +111,8 @@ export function PlaybackModeSheet({
       closeThen(mode === "shuffle" ? onPlayShuffled : onPlayInOrder);
     },
     [
+      isGuest,
+      requireAccount,
       isCollectionActive,
       setRepeatMode,
       animateClose,

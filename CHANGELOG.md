@@ -10,6 +10,36 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Guest mode — listen without an account.** Opening the app signed out used
+  to stop at a sign-up wall. Signed-out users now get a Firebase anonymous
+  session automatically and land straight in the tabs; the welcome screen only
+  appears as a fallback when that fails (e.g. offline on first launch).
+  Account-bound features — favorites, downloads, shuffle, Premium purchase and
+  restore, Weekly Mix, recents and the profile — open a sign-in prompt
+  (`components/SignInGateModal.tsx`, via `useRequireAccount`) instead. Settings
+  shows a guest card with sign-up and sign-in shortcuts. Requires the Anonymous
+  provider in Firebase Auth (enabled for `qasid-fd80d`).
+
+### Changed
+
+- **Signing up keeps the guest's identity.** Sign-up links the new credential
+  to the anonymous user, so the uid and the RevenueCat customer carry over; if
+  the credential already belongs to an account, that account is signed in
+  instead. Logging out or deleting the account continues as a guest rather
+  than returning to the welcome screen.
+- **Auth routing lives in the root layout.** `hooks/useAuthGate.ts` replaces
+  the redirect logic in `app/index.tsx`, which was unmounted once the tabs
+  opened and so never routed a sign-in started from inside the app. The
+  listener and its side effects moved into `syncAuthUser`
+  (`services/auth-service.ts`), still subscribed by `useAuthBootstrap`. Guests
+  can open shared track links directly.
+
+---
+
 ## [1.1.0] — unreleased
 
 ### Added

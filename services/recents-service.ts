@@ -1,5 +1,4 @@
 import { getApp } from "@react-native-firebase/app";
-import { getAuth } from "@react-native-firebase/auth";
 import {
   getFirestore,
   collection,
@@ -14,11 +13,12 @@ import {
 } from "@react-native-firebase/firestore";
 import { NasheedArtist } from "../types/nasheed";
 import { FirebaseReciter } from "../types/quran";
+import { accountUid } from "../utils/accountUid";
 
 const RECENTS_LIMIT = 10;
 
 export async function addRecentArtist(artist: NasheedArtist): Promise<void> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return;
 
   const db = getFirestore(getApp());
@@ -35,7 +35,7 @@ export async function addRecentArtist(artist: NasheedArtist): Promise<void> {
 }
 
 export async function addRecentReciter(reciter: FirebaseReciter): Promise<void> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return;
 
   const db = getFirestore(getApp());
@@ -52,7 +52,7 @@ export async function addRecentReciter(reciter: FirebaseReciter): Promise<void> 
 }
 
 export async function fetchRecentReciters(): Promise<FirebaseReciter[]> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return [];
 
   const db = getFirestore(getApp());
@@ -78,7 +78,7 @@ export async function fetchRecentReciters(): Promise<FirebaseReciter[]> {
 }
 
 export async function fetchRecentArtists(): Promise<NasheedArtist[]> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return [];
 
   const db = getFirestore(getApp());

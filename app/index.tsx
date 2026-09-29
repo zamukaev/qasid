@@ -1,55 +1,34 @@
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Link } from "expo-router";
-import { useEffect } from "react";
+import { useState } from "react";
 import { SafeAreaView, Image, Pressable } from "react-native";
-import { useRouter } from "expo-router";
-import { useSegments } from "expo-router";
+import { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { useUserStore } from "../stores/userStore";
-import { takePendingShare } from "../utils/pendingShare";
+import { continueAsGuest } from "../services/auth-service";
+import { ErrorAlert } from "../components";
+import { getFirebaseErrorMessage } from "../utils/firebaseErrors";
 
 import "../global.css";
 
+// Auth listening (hooks/useAuthBootstrap.ts) and redirects (hooks/useAuthGate.ts)
+// live in the root layout; this is only the fallback welcome UI.
 export default function Welcome() {
-  const { user, isLoading } = useUserStore();
+  const isLoading = useUserStore((s) => s.isLoading);
+  const [startingGuest, setStartingGuest] = useState(false);
+  const [error, setError] = useState("");
 
-  const router = useRouter();
-  const segments = useSegments();
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inTabs = segments[0] === "(tabs)";
-    const inVerifyEmail =
-      segments[0] === "(auth)" && segments.at(1) === "verify-email";
-    // The share landing route resolves the link itself and replaces itself
-    // with the destination, so this gate must not redirect out from under it.
-    const inShareTarget = segments[0] === "t";
-
-    if (!user) {
-      if (inTabs || inVerifyEmail) router.replace("/");
-      return;
+  const handleContinueAsGuest = async () => {
+    setStartingGuest(true);
+    try {
+      await continueAsGuest();
+    } catch (e) {
+      const err = e as FirebaseAuthTypes.NativeFirebaseAuthError;
+      setError(getFirebaseErrorMessage(err.code));
+    } finally {
+      setStartingGuest(false);
     }
-
-    if (!user.emailVerified) {
-      if (!inVerifyEmail) router.replace("/verify-email");
-      return;
-    }
-
-    if (inShareTarget) return;
-
-    // A link that arrived while signed out was stashed rather than followed;
-    // now that the user is through, send them where they were headed.
-    const pendingShare = takePendingShare();
-    if (pendingShare) {
-      router.replace(pendingShare);
-      return;
-    }
-
-    if (!inTabs) {
-      router.replace("(tabs)/quran");
-    }
-  }, [user, isLoading]);
+  };
 
   if (isLoading) {
     return (
@@ -92,7 +71,27 @@ export default function Welcome() {
             </Text>
           </Pressable>
         </Link>
+        <Pressable
+          onPress={handleContinueAsGuest}
+          disabled={startingGuest}
+          className="w-full py-4 mt-2"
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          accessibilityRole="button"
+        >
+          {startingGuest ? (
+            <ActivityIndicator className="text-qasid-gold" />
+          ) : (
+            <Text className="text-white/70 text-center text-base font-semibold">
+              Continue as guest
+            </Text>
+          )}
+        </Pressable>
       </View>
+      <ErrorAlert
+        visible={error !== ""}
+        message={error}
+        onClose={() => setError("")}
+      />
     </SafeAreaView>
   );
 }
