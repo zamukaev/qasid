@@ -20,6 +20,7 @@ export function SignInGateModal() {
       transparent
       animationType="fade"
       onRequestClose={close}
+      statusBarTranslucent
     >
       <Pressable
         className="flex-1 items-center justify-center bg-black/70 px-6"

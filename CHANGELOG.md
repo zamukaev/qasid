@@ -22,7 +22,8 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   restore, Weekly Mix, recents and the profile — open a sign-in prompt
   (`components/SignInGateModal.tsx`, via `useRequireAccount`) instead. That
   includes the `⋯` button on every track and the playback-mode and download
-  buttons beside Play All, which show the prompt before any sheet opens. Settings
+  buttons beside Play All, which show the prompt before any sheet opens. On
+  Android the prompt's backdrop also covers the status bar. Settings
   shows a guest card with sign-up and sign-in shortcuts. Requires the Anonymous
   provider in Firebase Auth (enabled for `qasid-fd80d`).
 
