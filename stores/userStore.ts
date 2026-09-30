@@ -7,6 +7,8 @@ export interface User {
   displayName: string | null;
   photoURL: string | null;
   emailVerified: boolean;
+  /** True for a Firebase anonymous (guest) session. */
+  isAnonymous: boolean;
 }
 
 export type SubscriptionPlan = "free" | "monthly" | "yearly" | "family";
@@ -44,6 +46,7 @@ const mapFirebaseUser = (
     displayName: firebaseUser.displayName,
     photoURL: firebaseUser.photoURL,
     emailVerified: firebaseUser.emailVerified,
+    isAnonymous: firebaseUser.isAnonymous,
   };
 };
 
@@ -101,3 +104,8 @@ export const useIsPremium = () =>
       s.currentPlan !== "free" ||
       s.premiumOverrideEmails.includes(s.user?.email || ""),
   );
+
+// Guests run on a Firebase anonymous session; account-bound features
+// (favorites, recents, purchases, …) are gated behind a real sign-in.
+export const useIsGuest = () =>
+  useUserStore((s) => !s.user || s.user.isAnonymous);

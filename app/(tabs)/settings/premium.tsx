@@ -23,6 +23,7 @@ import {
   formatIntroDuration,
   summarizeOffering,
 } from "../../../utils/store-offer";
+import { useRequireAccount } from "../../../hooks/useRequireAccount";
 
 type PlanId = "free" | "monthly" | "yearly";
 
@@ -79,6 +80,9 @@ export default function Premium() {
     purchasePackage,
     restorePurchases,
   } = useRevenueCat();
+  // Subscriptions are tied to an account so they survive reinstalls and
+  // follow the user to other devices.
+  const { requireAccount } = useRequireAccount();
 
   const summary = useMemo(() => summarizeOffering(offerings), [offerings]);
   const { promo, unitLabels } = usePromo({ summary });
@@ -189,6 +193,7 @@ export default function Premium() {
 
   const handleUpgrade = async () => {
     if (!selectedPkg) return;
+    if (!requireAccount("subscribe to Premium")) return;
 
     setIsPurchasing(true);
     try {
@@ -209,6 +214,7 @@ export default function Premium() {
   };
 
   const handleRestore = async () => {
+    if (!requireAccount("restore your purchases")) return;
     setIsPurchasing(true);
     try {
       await restorePurchases();

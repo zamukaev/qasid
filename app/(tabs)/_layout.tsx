@@ -1,14 +1,9 @@
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import { GOLD } from "../../constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  FirebaseAuthTypes,
-  getAuth,
-  onAuthStateChanged,
-} from "@react-native-firebase/auth";
 import { NowPlayingBar, FullScreenPlayer } from "../../components";
 import { useAudioPlayer } from "../../context/AudioPlayerContext";
 import { useReviewPrompt } from "../../hooks/useReviewPrompt";
@@ -51,22 +46,10 @@ function AnimatedTabIcon({
 }
 
 export default function TabsLayout() {
-  const router = useRouter();
   const { viewMode } = useAudioPlayer();
 
-  // Mounted once here so both tabs are covered, and only for signed-in users.
+  // Mounted once here so both tabs are covered.
   useReviewPrompt(viewMode);
-
-  const handleAuthStateChanged = (user: FirebaseAuthTypes.User | null) => {
-    if (!user) {
-      router.replace("/");
-    }
-  };
-
-  useEffect(() => {
-    const subscribe = onAuthStateChanged(getAuth(), handleAuthStateChanged);
-    return subscribe;
-  }, []);
 
   return (
     <>
