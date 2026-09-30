@@ -21,7 +21,6 @@ import { Track } from "../context/AudioPlayerContext";
 import { Nasheed } from "../types/nasheed";
 import { useBottomSheet } from "../hooks/useBottomSheet";
 import { useDownload } from "../hooks/useDownload";
-import { useRequireAccount } from "../hooks/useRequireAccount";
 // TEMP admin curation hotfix — remove with PlaylistPickerModal.
 import { useIsAdmin } from "../hooks/useIsAdmin";
 import { useFavoritesStore, useIsFavorite } from "../stores/favoritesStore";
@@ -87,7 +86,6 @@ export function TrackActionsSheet({
   const favorited = useIsFavorite(nasheed?.id ?? "");
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const isAdmin = useIsAdmin();
-  const { isGuest, requireAccount } = useRequireAccount();
 
   // `useDownload` is a hook, so it cannot be called conditionally. A placeholder
   // id keeps it inert for rows without audio; the row below is hidden anyway.
@@ -116,32 +114,16 @@ export function TrackActionsSheet({
 
   const handleFavorite = useCallback(() => {
     if (!nasheed) return;
-    if (isGuest) {
-      // The sign-in gate is a modal too, so it waits for this sheet to go.
-      closeThen(() => requireAccount("save favorites"));
-      return;
-    }
     // The store toggles optimistically and ignores taps while its own write is
     // in flight, so the sheet can close straight away.
     void toggleFavorite(nasheed);
     animateClose();
-  }, [
-    nasheed,
-    isGuest,
-    requireAccount,
-    closeThen,
-    toggleFavorite,
-    animateClose,
-  ]);
+  }, [nasheed, toggleFavorite, animateClose]);
 
   // Deliberately leaves the sheet open: `useDownload`'s state lives here, so
   // closing would hide the progress the row is showing. The label walks
   // Download → Downloading n% → Remove download in place instead.
   const handleDownload = useCallback(() => {
-    if (isGuest) {
-      closeThen(() => requireAccount("download for offline listening"));
-      return;
-    }
     // Wait for RevenueCat rather than guessing — a tap right after a cold start
     // would otherwise show a paying user the paywall.
     if (!planResolved) return;
@@ -168,8 +150,6 @@ export function TrackActionsSheet({
     // hook, and the row must stay responsive during the transfer.
     if (status === "idle") void download();
   }, [
-    isGuest,
-    requireAccount,
     planResolved,
     isPremium,
     onRequirePremium,

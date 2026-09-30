@@ -20,7 +20,9 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   appears as a fallback when that fails (e.g. offline on first launch).
   Account-bound features — favorites, downloads, shuffle, Premium purchase and
   restore, Weekly Mix, recents and the profile — open a sign-in prompt
-  (`components/SignInGateModal.tsx`, via `useRequireAccount`) instead. Settings
+  (`components/SignInGateModal.tsx`, via `useRequireAccount`) instead. That
+  includes the `⋯` button on every track and the playback-mode and download
+  buttons beside Play All, which show the prompt before any sheet opens. Settings
   shows a guest card with sign-up and sign-in shortcuts. Requires the Anonymous
   provider in Firebase Auth (enabled for `qasid-fd80d`).
 

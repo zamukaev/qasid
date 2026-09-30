@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { GestureResponderEvent, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
+import { useRequireAccount } from "../hooks/useRequireAccount";
 import { PremiumRequiredSheet } from "./PremiumRequiredSheet";
 import { TrackActionsSheet, TrackActionsSheetProps } from "./TrackActionsSheet";
 
@@ -26,12 +27,17 @@ export const TrackActionsButton = React.memo(function TrackActionsButton(
   // Raised by the actions sheet's download row for a free user. It only opens
   // once that sheet is gone: iOS drops a modal presented mid-dismissal.
   const [premiumOpen, setPremiumOpen] = useState(false);
+  const { requireAccount } = useRequireAccount();
 
-  const handlePress = useCallback((event: GestureResponderEvent) => {
-    // The surrounding SharedCard pressable starts playback otherwise.
-    event.stopPropagation();
-    setOpen(true);
-  }, []);
+  const handlePress = useCallback(
+    (event: GestureResponderEvent) => {
+      // The surrounding SharedCard pressable starts playback otherwise.
+      event.stopPropagation();
+      // Guests get the sign-in gate instead of the actions sheet.
+      if (requireAccount("share, save and download tracks")) setOpen(true);
+    },
+    [requireAccount],
+  );
 
   const handleClose = useCallback(() => setOpen(false), []);
   const handleRequirePremium = useCallback(() => setPremiumOpen(true), []);
