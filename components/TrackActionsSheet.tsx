@@ -19,6 +19,8 @@ import { GOLD } from "../constants/colors";
 import { buildNasheedShareUrl } from "../constants/links";
 import { Track } from "../context/AudioPlayerContext";
 import { Nasheed } from "../types/nasheed";
+import { UserPlaylistTrackInput } from "../types/userPlaylist";
+import { nasheedToPlaylistInput } from "../utils/user-playlists";
 import { useBottomSheet } from "../hooks/useBottomSheet";
 import { useDownload } from "../hooks/useDownload";
 // TEMP admin curation hotfix — remove with PlaylistPickerModal.
@@ -61,6 +63,16 @@ export type TrackActionsSheetProps = {
   /** Admin curation, supplied only by screens that own a PlaylistPickerModal. */
   onAddToPlaylist?: (nasheed: Nasheed) => void;
   /**
+   * What "Add to playlist" stores. Derived from `nasheed` when omitted; Quran
+   * rows pass their own, since a surah is addressed by reciter and surah.
+   */
+  playlistItem?: UserPlaylistTrackInput;
+  /**
+   * Raised by the "Add to playlist" row once this sheet is gone. The parent
+   * owns the picker, as it does the upgrade sheet.
+   */
+  onAddToUserPlaylist?: (item: UserPlaylistTrackInput) => void;
+  /**
    * Raised instead of downloading when the user is not premium. The parent owns
    * the upgrade sheet, because this one is gone by the time it opens.
    */
@@ -78,6 +90,8 @@ export function TrackActionsSheet({
   shareUrl,
   showGoToArtist = false,
   onAddToPlaylist,
+  playlistItem,
+  onAddToUserPlaylist,
   onRequirePremium,
 }: TrackActionsSheetProps) {
   const insets = useSafeAreaInsets();
@@ -170,6 +184,17 @@ export function TrackActionsSheet({
     );
   }, [nasheed?.artist_id, closeThen, router]);
 
+  const userPlaylistItem = useMemo(
+    () =>
+      playlistItem ?? (nasheed ? nasheedToPlaylistInput(nasheed) : undefined),
+    [playlistItem, nasheed],
+  );
+
+  const handleAddToUserPlaylist = useCallback(() => {
+    if (!userPlaylistItem || !onAddToUserPlaylist) return;
+    closeThen(() => onAddToUserPlaylist(userPlaylistItem));
+  }, [userPlaylistItem, onAddToUserPlaylist, closeThen]);
+
   const handleAddToPlaylist = useCallback(() => {
     if (!nasheed || !onAddToPlaylist) return;
     closeThen(() => onAddToPlaylist(nasheed));
@@ -193,6 +218,15 @@ export function TrackActionsSheet({
         label: favorited ? "Remove from Favorites" : "Add to Favorites",
         onPress: handleFavorite,
         tinted: favorited,
+      });
+    }
+
+    if (userPlaylistItem?.audio_path && onAddToUserPlaylist) {
+      list.push({
+        key: "user-playlist",
+        icon: "add-circle-outline",
+        label: "Add to playlist",
+        onPress: handleAddToUserPlaylist,
       });
     }
 
@@ -230,8 +264,8 @@ export function TrackActionsSheet({
     if (nasheed && onAddToPlaylist && isAdmin) {
       list.push({
         key: "playlist",
-        icon: nasheed.playlist_id ? "add-circle" : "add-circle-outline",
-        label: "Add to playlist",
+        icon: nasheed.playlist_id ? "albums" : "albums-outline",
+        label: "Curate playlist (admin)",
         onPress: handleAddToPlaylist,
         tinted: !!nasheed.playlist_id,
       });
@@ -243,6 +277,9 @@ export function TrackActionsSheet({
     nasheed,
     favorited,
     handleFavorite,
+    userPlaylistItem?.audio_path,
+    onAddToUserPlaylist,
+    handleAddToUserPlaylist,
     track?.uri,
     status,
     progress,

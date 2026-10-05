@@ -14,6 +14,33 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ### Added
 
+- **Your own playlists.** Signed-in users can now build private playlists that
+  mix nasheeds and Quran surahs. "Add to playlist" sits in the `⋯` menu of
+  every track. A `+` to the left of Play All adds the whole list. It is on
+  artist and reciter pages and on every nasheed collection (Weekly Mix,
+  Trending, Top, moods, Favorites and curated playlists), and it skips tracks
+  that are already in the playlist. Both open one picker with **New
+  playlist** at the top and your playlists below. From the `+`, **New
+  playlist** skips the form: the playlist is created right away under the
+  artist's, reciter's or collection's name, with its image as the cover, and
+  the whole list goes in. For a
+  single track, each playlist shows a checkmark when it already holds it. A
+  playlist has a name, an optional description and either your own photo or
+  an automatic collage of its first four covers. You can edit it, delete it,
+  remove tracks from it, and play or shuffle it like any other collection.
+  Download and Edit buttons sit beside its Play All, so the whole playlist can
+  be saved for offline listening in one tap. The Edit (pencil) button opens a
+  sheet with "Edit playlist" and "Delete playlist". A
+  **My Playlists** rail appears in both the Nasheeds and the Quran tab once you
+  have a playlist. Guests get the sign-in prompt instead. Free accounts get one
+  playlist of up to 20 tracks: a bulk add fills what fits, then offers Premium.
+  Premium has no limit beyond 200 tracks per playlist. Data lives in Firestore
+  under `user_playlists/{uid}`, readable only by its owner
+  (`backend/firestore.rules`), and cover photos go to Storage at
+  `users/{uid}/playlists/`. The admin "Add to playlist" curation row is now
+  labelled "Curate playlist (admin)" so the two don't clash. Logic
+  checks: `npm run check:playlists`.
+
 - **Guest mode — listen without an account.** Opening the app signed out used
   to stop at a sign-up wall. Signed-out users now get a Firebase anonymous
   session automatically and land straight in the tabs; the welcome screen only

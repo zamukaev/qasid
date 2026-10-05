@@ -21,12 +21,16 @@ import { NasheedTrackMeta } from "../utils/nasheedTrack";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useImageLoadState } from "../hooks/useImageLoadState";
 import { useProgressiveStorageUrls } from "../hooks/useProgressiveStorageUrls";
-import { resolveStorageUrlPrioritized } from "../services/storage";
+import {
+  peekStorageUrl,
+  resolveStorageUrlPrioritized,
+} from "../services/storage";
 import SharedCardSkeleton from "./SharedCardSkeleton";
 import ShowError from "./ShowError";
 import ReciterHeaderSkeleton from "./ReciterHeaderSkeleton";
 import ImageShimmerOverlay from "./ImageShimmerOverlay";
 import { PremiumGateModal } from "./PremiumGateModal";
+import { AddToPlaylistButton } from "./AddToPlaylistButton";
 import { CollectionDownloadButton } from "./CollectionDownloadButton";
 import { PlaybackModeButton } from "./PlaybackModeButton";
 import { PlayButton, PlayButtonVariant } from "./PlayButton";
@@ -34,6 +38,7 @@ import { TrackCollectionRow } from "./TrackCollectionRow";
 import { markManualPlay, useNasheedLimit } from "../hooks/useNasheedLimit";
 import { useIsPremium } from "../stores/userStore";
 import { pickRandom } from "../utils/random";
+import { nasheedToPlaylistInput } from "../utils/user-playlists";
 
 export interface CollectionTrack extends NasheedTrackMeta {
   nasheed: Nasheed;
@@ -225,6 +230,11 @@ export function TrackCollectionScreen({
     [playableTracks, trackPrefix],
   );
 
+  const playlistItems = useMemo(
+    () => playableTracks.map((item) => nasheedToPlaylistInput(item.nasheed)),
+    [playableTracks],
+  );
+
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const next =
@@ -310,6 +320,12 @@ export function TrackCollectionScreen({
                 itemNoun="nasheeds"
                 subtitle={title}
               />
+              <AddToPlaylistButton
+                items={playlistItems}
+                title={`All nasheeds · ${title}`}
+                image={peekStorageUrl(headerImagePath)}
+                seed={{ title: title, imagePath: headerImagePath }}
+              />
               <PlayButton
                 clasName="flex-1 ml-10"
                 handlePlayAll={handlePlayAll}
@@ -343,6 +359,8 @@ export function TrackCollectionScreen({
       handlePlayAll,
       handlePlayShuffled,
       downloadTracks,
+      playlistItems,
+      headerImagePath,
     ],
   );
 

@@ -21,6 +21,7 @@ import {
 } from "../../../services/quran-service";
 import { fetchRecentReciters } from "../../../services/recents-service";
 import { useIsGuest } from "../../../stores/userStore";
+import { MyPlaylistsRail } from "../../../components/MyPlaylistsRail";
 
 export default function Quran() {
   const router = useRouter();
@@ -149,6 +150,7 @@ export default function Quran() {
       >
         <PromoHomeBanner />
         <ContinueListeningBlock />
+        <MyPlaylistsRail tab="quran" />
         <FeaturedList
           large
           featuredItems={featuredCollections}

@@ -7,6 +7,7 @@ import {
 } from "@react-native-firebase/auth";
 import { useUserStore } from "../stores/userStore";
 import { useFavoritesStore } from "../stores/favoritesStore";
+import { useUserPlaylistsStore } from "../stores/userPlaylistsStore";
 import * as RevenueCatService from "./revenuecat";
 import { fetchPremiumOverrideEmails } from "./config-service";
 import { hydrateAndSyncSubscription } from "./notifications-service";
@@ -23,9 +24,10 @@ const ACCOUNT_EXISTS_CODES = new Set([
 
 /**
  * Mirrors a Firebase user into the app: store, analytics, RevenueCat, paywall
- * config, push subscription and favorites. Called by `useAuthBootstrap` on
- * every auth state change and by `signInOrLink` after a guest is upgraded —
- * linking keeps the uid, so `onAuthStateChanged` does not fire for it.
+ * config, push subscription, favorites and playlists. Called by
+ * `useAuthBootstrap` on every auth state change and by `signInOrLink` after a
+ * guest is upgraded — linking keeps the uid, so `onAuthStateChanged` does not
+ * fire for it.
  */
 export async function syncAuthUser(
   firebaseUser: FirebaseAuthTypes.User | null,
@@ -60,6 +62,9 @@ export async function syncAuthUser(
     // notification subscription failure should not block the auth flow
   }
 
+  // Dropped on every account change, so one user's playlists can never be
+  // shown, or written to, under the next user's session.
+  useUserPlaylistsStore.getState().clear();
   if (firebaseUser.isAnonymous) {
     useFavoritesStore.getState().clear();
     return;
@@ -69,6 +74,10 @@ export async function syncAuthUser(
   void useFavoritesStore
     .getState()
     .hydrate(true)
+    .catch(() => {});
+  void useUserPlaylistsStore
+    .getState()
+    .hydrate()
     .catch(() => {});
 }
 
@@ -89,6 +98,7 @@ async function startGuestSession(): Promise<void> {
   setLoading(true);
   void setAnalyticsUser(null);
   useFavoritesStore.getState().clear();
+  useUserPlaylistsStore.getState().clear();
   await RevenueCatService.logout();
   try {
     await continueAsGuest();

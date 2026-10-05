@@ -29,6 +29,7 @@ import {
   fetchGeneratedPlaylists,
 } from "../../../services/recommendations-service";
 import { fetchFavoriteCovers } from "../../../services/favorites-service";
+import { MyPlaylistsRail } from "../../../components/MyPlaylistsRail";
 
 // Generated playlists carry a `key` (not `id`); ArtistRailSection only reads
 // id/name_en/image_path, so a light projection is enough. `coverOverride`
@@ -321,6 +322,8 @@ export default function Nasheeds() {
             }}
           />
         )}
+
+        <MyPlaylistsRail tab="nasheeds" />
 
         {(isLoadingGenerated || trendingItems.length > 0) && (
           <ArtistRailSection

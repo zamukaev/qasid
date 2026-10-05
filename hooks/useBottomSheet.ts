@@ -20,7 +20,7 @@ const INITIAL_PANEL_HEIGHT = 600;
 const DIM_OPACITY = 0.7;
 // iOS silently drops an Alert or a second Modal presented while this one is
 // still being dismissed, so a follow-up action waits out the unmount commit.
-const MODAL_HANDOFF_MS = 120;
+export const MODAL_HANDOFF_MS = 120;
 
 type UseBottomSheetOptions = {
   visible: boolean;

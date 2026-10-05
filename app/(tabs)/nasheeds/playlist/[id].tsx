@@ -45,7 +45,12 @@ import { useIsPremium } from "../../../../stores/userStore";
 import { toNasheedTrackMeta } from "../../../../utils/nasheedTrack";
 import { pickRandom } from "../../../../utils/random";
 import { useProgressiveStorageUrls } from "../../../../hooks/useProgressiveStorageUrls";
-import { resolveStorageUrlPrioritized } from "../../../../services/storage";
+import {
+  peekStorageUrl,
+  resolveStorageUrlPrioritized,
+} from "../../../../services/storage";
+import { AddToPlaylistButton } from "../../../../components/AddToPlaylistButton";
+import { nasheedToPlaylistInput } from "../../../../utils/user-playlists";
 
 const SCROLL_TO_TOP_THRESHOLD_PX = 400;
 const SCROLL_EVENT_THROTTLE_MS = 32;
@@ -258,6 +263,14 @@ export default function PlaylistScreen() {
     [nasheeds, trackPrefix, playlist],
   );
 
+  const playlistItems = useMemo(
+    () =>
+      nasheeds
+        .filter((n) => n.audioPath)
+        .map((n) => nasheedToPlaylistInput(n.raw)),
+    [nasheeds],
+  );
+
   // Only setState when the flag actually flips — this fires on every scroll
   // frame otherwise, re-rendering the whole list.
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -366,6 +379,15 @@ export default function PlaylistScreen() {
                 tracks={downloadTracks}
                 itemNoun="nasheeds"
                 subtitle={playlist?.name_en}
+              />
+              <AddToPlaylistButton
+                items={playlistItems}
+                title={`All nasheeds · ${playlist?.name_en ?? ""}`}
+                image={peekStorageUrl(playlist?.image_path)}
+                seed={{
+                  title: playlist?.name_en,
+                  imagePath: playlist?.image_path,
+                }}
               />
               <PlayButton
                 clasName="flex-1  ml-10"

@@ -31,6 +31,7 @@ export default function QuranLayout() {
           title: "Reciter",
         }}
       />
+      <Stack.Screen name="my-playlist/[id]" options={{ title: "Playlist" }} />
     </Stack>
   );
 }

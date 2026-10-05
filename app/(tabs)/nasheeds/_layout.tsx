@@ -104,6 +104,7 @@ export default function NasheedLayout() {
       <Stack.Screen name="generated/[key]" options={{ title: "Playlist" }} />
       <Stack.Screen name="mix/index" options={{ title: "Weekly Mix" }} />
       <Stack.Screen name="favorites" options={{ title: "Favorites" }} />
+      <Stack.Screen name="my-playlist/[id]" options={{ title: "Playlist" }} />
     </Stack>
   );
 }
