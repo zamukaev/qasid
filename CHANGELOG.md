@@ -27,6 +27,14 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   shows a guest card with sign-up and sign-in shortcuts. Requires the Anonymous
   provider in Firebase Auth (enabled for `qasid-fd80d`).
 
+- **Guests are invited to create an account after a few listens.** Guests who
+  only listen never hit a feature gate, so they were never asked to sign up.
+  After three qualified listens (30 s each) as a guest, the sign-in prompt now
+  opens with an "Enjoying Qasid?" invitation, at a calm moment only (app open
+  or return to the foreground, never over the full-screen player). It shows at
+  most three times, at least three days apart, and takes the place of the
+  store-review prompt for that moment (`services/guest-nudge-service.ts`).
+
 ### Changed
 
 - **Signing up keeps the guest's identity.** Sign-up links the new credential

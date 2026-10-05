@@ -6,6 +6,8 @@ import { useSignInGateStore } from "../stores/signInGateStore";
 
 export function SignInGateModal() {
   const router = useRouter();
+  const visible = useSignInGateStore((s) => s.visible);
+  const reason = useSignInGateStore((s) => s.reason);
   const feature = useSignInGateStore((s) => s.feature);
   const close = useSignInGateStore((s) => s.close);
 
@@ -16,7 +18,7 @@ export function SignInGateModal() {
 
   return (
     <Modal
-      visible={feature !== null}
+      visible={visible}
       transparent
       animationType="fade"
       onRequestClose={close}
@@ -44,11 +46,14 @@ export function SignInGateModal() {
                   />
                 </View>
                 <Text className="text-white text-xl font-bold text-center">
-                  Create a free account
+                  {reason === "nudge"
+                    ? "Enjoying Qasid?"
+                    : "Create a free account"}
                 </Text>
                 <Text className="text-white/60 text-sm text-center mt-2 leading-5">
-                  Sign in to {feature ?? "use this feature"}. It's free and
-                  keeps your library in sync across devices.
+                  {reason === "nudge"
+                    ? "Create a free account to save favorites, download for offline listening and keep your library on all your devices."
+                    : `Sign in to ${feature ?? "use this feature"}. It's free and keeps your library in sync across devices.`}
                 </Text>
               </View>
 
