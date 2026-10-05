@@ -64,6 +64,12 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ### Changed
 
+- **The free tier's nasheed guards run from any tab.** Counting auto-advances
+  against the daily limit and stopping a free user's nasheed in the
+  background lived in the Nasheeds tab's layout, which only exists once that
+  tab has been opened. Nasheeds played from the Library right after launch
+  would have slipped past both. They now live in
+  `hooks/useNasheedPlaybackGuards.ts`, mounted once in the tabs layout.
 - **Signing up keeps the guest's identity.** Sign-up links the new credential
   to the anonymous user, so the uid and the RevenueCat customer carry over; if
   the credential already belongs to an account, that account is signed in

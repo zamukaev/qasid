@@ -7,6 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { NowPlayingBar, FullScreenPlayer } from "../../components";
 import { useAudioPlayer } from "../../context/AudioPlayerContext";
 import { useReviewPrompt } from "../../hooks/useReviewPrompt";
+import { useNasheedPlaybackGuards } from "../../hooks/useNasheedPlaybackGuards";
 
 function AnimatedTabIcon({
   name,
@@ -48,8 +49,9 @@ function AnimatedTabIcon({
 export default function TabsLayout() {
   const { viewMode } = useAudioPlayer();
 
-  // Mounted once here so both tabs are covered.
+  // Mounted once here so every tab is covered.
   useReviewPrompt(viewMode);
+  useNasheedPlaybackGuards();
 
   return (
     <>
@@ -84,10 +86,7 @@ export default function TabsLayout() {
           tabBarInactiveTintColor: "rgba(255, 255, 255, 0.58)",
           tabBarBackground: () => (
             <LinearGradient
-              colors={[
-                "rgba(20, 20, 22, 0.92)",
-                "rgba(11, 11, 12, 0.96)",
-              ]}
+              colors={["rgba(20, 20, 22, 0.92)", "rgba(11, 11, 12, 0.96)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={{ flex: 1 }}
