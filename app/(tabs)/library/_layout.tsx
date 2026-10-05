@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { GOLD } from "../../../constants/colors";
 
-export default function QuranLayout() {
+export default function LibraryLayout() {
   return (
     <Stack
       screenOptions={{
@@ -15,22 +15,11 @@ export default function QuranLayout() {
     >
       <Stack.Screen
         name="index"
-        options={{
-          headerShown: false,
-        }}
+        options={{ headerShown: false, title: "Your Library" }}
       />
-      <Stack.Screen
-        name="all-reciters"
-        options={{
-          title: "All Reciters",
-        }}
-      />
-      <Stack.Screen
-        name="reciter/[id]"
-        options={{
-          title: "Reciter",
-        }}
-      />
+      <Stack.Screen name="favorites" options={{ title: "Favorites" }} />
+      <Stack.Screen name="downloads" options={{ title: "Downloads" }} />
+      <Stack.Screen name="my-playlist/[id]" options={{ title: "Playlist" }} />
     </Stack>
   );
 }

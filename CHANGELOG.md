@@ -30,9 +30,8 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   remove tracks from it, and play or shuffle it like any other collection.
   Download and Edit buttons sit beside its Play All, so the whole playlist can
   be saved for offline listening in one tap. The Edit (pencil) button opens a
-  sheet with "Edit playlist" and "Delete playlist". A
-  **My Playlists** rail appears in both the Nasheeds and the Quran tab once you
-  have a playlist. Guests get the sign-in prompt instead. Free accounts get one
+  sheet with "Edit playlist" and "Delete playlist". Playlists are listed in
+  the new **Your Library** tab. Guests get the sign-in prompt instead. Free accounts get one
   playlist of up to 20 tracks: a bulk add fills what fits, then offers Premium.
   Premium has no limit beyond 200 tracks per playlist. Data lives in Firestore
   under `user_playlists/{uid}`, readable only by its owner
@@ -53,6 +52,12 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   Android the prompt's backdrop also covers the status bar. Settings
   shows a guest card with sign-up and sign-in shortcuts. Requires the Anonymous
   provider in Firebase Auth (enabled for `qasid-fd80d`).
+
+- **Your Library tab.** A fourth tab, between Nasheeds and Settings, gathers
+  what belongs to you: Favorites, Downloads (moved here from Settings, with a
+  track count) and your playlists, with a `+` to start a new one. Guests see a
+  sign-up card instead. The "My Playlists" rails on the Quran and Nasheeds
+  home screens are gone.
 
 - **Guests are invited to create an account after a few listens.** Guests who
   only listen never hit a feature gate, so they were never asked to sign up.

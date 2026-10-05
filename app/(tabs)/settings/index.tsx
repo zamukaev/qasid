@@ -188,16 +188,15 @@ export default function Settings() {
         )}
 
         {/* Account Section */}
-        <View className="mb-6">
-          <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
-            Account
-          </Text>
+        {!isGuest && (
+          <View className="mb-6">
+            <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
+              Account
+            </Text>
 
-          {!isGuest && (
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => router.push("/(tabs)/settings/profile")}
-              className="mb-3"
             >
               <View className="relative overflow-hidden rounded-2xl">
                 <View className="absolute inset-0 bg-qasid-bg-2" />
@@ -215,29 +214,8 @@ export default function Settings() {
                 </View>
               </View>
             </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push("/(tabs)/settings/downloads")}
-          >
-            <View className="relative overflow-hidden rounded-2xl">
-              <View className="absolute inset-0 bg-qasid-bg-2" />
-              <LinearGradient
-                colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ position: "absolute", inset: 0 }}
-              />
-              <View className="absolute inset-0 rounded-2xl border border-white/10" />
-
-              <View className="px-4 py-4 flex-row items-center justify-between">
-                <Text className="text-white text-base">Downloads</Text>
-                <Text className="text-white/40 text-base">→</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
+          </View>
+        )}
 
         {/* Subscription Section */}
         <View className="mb-6">

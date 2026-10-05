@@ -259,7 +259,7 @@ export function UserPlaylistScreen() {
         );
     setQueue(ordered.map(toQueueTrack));
 
-    // Only nasheeds: the nasheeds layout consumes this flag on the next
+    // Only nasheeds: useNasheedPlaybackGuards consumes this flag on the next
     // nasheed it sees, so setting it for a surah would skip a real count.
     if (isNasheed) markManualPlay();
     await playTrack({ ...toQueueTrack(track), uri: { uri: audioUrl } });

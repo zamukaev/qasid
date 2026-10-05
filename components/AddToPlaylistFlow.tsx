@@ -15,7 +15,7 @@ import {
 import { PlaylistFormResult, PlaylistFormSheet } from "./PlaylistFormSheet";
 import { PremiumRequiredSheet } from "./PremiumRequiredSheet";
 
-const PLAYLISTS_PITCH = `Free accounts get ${FREE_PLAYLIST_LIMIT} playlist. Upgrade to make as many as you like.`;
+export const PLAYLISTS_PITCH = `Free accounts get ${FREE_PLAYLIST_LIMIT} playlist. Upgrade to make as many as you like.`;
 const TRACKS_PITCH = `Free playlists hold up to ${FREE_PLAYLIST_TRACK_LIMIT} tracks. Upgrade for bigger playlists.`;
 
 /** "between" — one sheet has gone, the next waits out the modal hand-off. */

@@ -124,6 +124,20 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="library"
+          options={{
+            title: "Your Library",
+            tabBarIcon: ({ color, size, focused }) => (
+              <AnimatedTabIcon
+                name="library-outline"
+                color={color}
+                size={size}
+                focused={focused}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="settings"
           options={{
             title: "Settings",
