@@ -34,26 +34,32 @@ There are no test or lint scripts configured.
 ### Navigation — Expo Router (file-based)
 
 ```
-app/index.tsx                    ← auth gate + welcome screen
+app/index.tsx                    ← welcome screen (gate: hooks/useAuthGate.ts)
 app/(auth)/signin/               ← sign-in screens (index = provider picker, email = form)
 app/(auth)/signup/               ← sign-up screens (index = provider picker, email = form)
 app/(auth)/verify-email.tsx      ← email verification wall
 app/(tabs)/quran/                ← Quran recitations tab
 app/(tabs)/nasheeds/             ← Nasheeds tab
+app/(tabs)/library/              ← Your Library tab (favorites, downloads, user playlists)
 app/(tabs)/settings/             ← Settings tab
 ```
 
-Auth routing is enforced in two places: `app/index.tsx` listens to `onAuthStateChanged` and redirects based on `user` + `emailVerified`; `app/(tabs)/_layout.tsx` also listens and kicks unauthenticated users back to the welcome screen.
+Auth lives in the always-mounted root layout (`app/_layout.tsx`), split in two hooks: `hooks/useAuthBootstrap.ts` owns the `onAuthStateChanged` listener (side effects in `syncAuthUser()` in `services/auth-service.ts`: store, analytics, RevenueCat, paywall config, notifications, favorites) and `hooks/useAuthGate.ts` owns the redirects, including replaying a stashed share link (`utils/pendingShare.ts`). `app/index.tsx` is only the welcome UI.
 
 ### Auth Flow
 
-Three-state gate in `app/index.tsx`:
+Four-state gate in `hooks/useAuthGate.ts`:
 
-1. No user → welcome screen (sign up / sign in)
-2. User exists but `emailVerified === false` → redirect to `/verify-email`
-3. User exists and verified → redirect to `(tabs)/quran`
+1. No user → a guest session is started automatically (`startGuestSession` in `services/auth-service.ts`, loading held meanwhile); the welcome screen (sign up / sign in / continue as guest) only shows if that fails, e.g. offline
+2. Guest (Firebase **anonymous** user, `user.isAnonymous`) → tabs; may open `(auth)/signin|signup`
+3. Real user with `emailVerified === false` → `/verify-email`
+4. Real verified user → tabs
 
-Email verification is required before accessing any tab content. `useAuth()` (`hooks/useAuth.ts`) is a thin wrapper over `useUserStore` that surfaces `{ user, emailVerified, loading }`.
+**Guest mode:** on launch, logout or account deletion the app calls `signInAnonymously`, so users land in the tabs as a guest. Logout/delete screens just call `signOut`/`deleteAccount` and let the gate handle the rest (Anonymous provider must be enabled in the Firebase console). Guests can browse and play (free-tier limits apply; analytics writes still work since `request.auth != null`). Account-only features are gated with `useRequireAccount().requireAccount("<feature>")`, which opens the single global `SignInGateModal` (state in `stores/signInGateStore.ts`): favorites, downloads, shuffle, Premium purchase/restore, Weekly Mix, recents, profile. Per-user services use `accountUid()` (`utils/accountUid.ts`), which is null for guests. `useIsGuest()` is exported from `stores/userStore.ts`. Guests who only listen get a periodic nudge to sign up (`services/guest-nudge-service.ts`: after 3 qualified listens, max 3×, 3 days apart), shown through the same modal (`signInGateStore.nudge()`) at the calm moment owned by `hooks/useReviewPrompt.ts`, where it takes precedence over the review prompt.
+
+**Upgrading a guest:** the sign-up screens use `signInOrLink(credential)`, which links the credential to the anonymous user (same uid, RevenueCat identity kept) and falls back to a normal sign-in if the credential already belongs to an account. Linking does not fire `onAuthStateChanged`, so `signInOrLink` calls `syncAuthUser` itself. The sign-in screens use plain `signInWithCredential` (an existing account replaces the guest session).
+
+`useAuth()` (`hooks/useAuth.ts`) is a thin wrapper over `useUserStore` that surfaces `{ user, emailVerified, loading }`.
 
 ### State Management — Hybrid
 
@@ -66,13 +72,19 @@ Email verification is required before accessing any tab content. `useAuth()` (`h
 
 RevenueCat (`react-native-purchases`) manages subscriptions. The entitlement ID is `"qasid Premium"`. Product identifiers: `com.abusafiia.qasid.premium.yearly` (yearly) and anything else maps to `"monthly"`. `currentPlan` on `useUserStore` is one of `"free" | "monthly" | "yearly" | "family"`.
 
-RevenueCat is initialized on auth state change (`app/index.tsx`) via `RevenueCatService.initialize(uid)`. Use `useRevenueCat()` hook for UI-level purchase and restore flows; use `services/revenuecat.ts` functions for lower-level access.
+RevenueCat is initialized on auth state change (`syncAuthUser` in `services/auth-service.ts`) via `RevenueCatService.initialize(uid)`. Use `useRevenueCat()` hook for UI-level purchase and restore flows; use `services/revenuecat.ts` functions for lower-level access.
 
-**Free-tier nasheed limit:** Free users can play 5 nasheeds per day (default; overridable remotely via `freeDailyLimit`, see below). This is tracked by `hooks/useNasheedLimit.ts`, which uses module-level singleton state (not React state) so all instances and the layout guard share one counter. Key pattern: before calling `playTrack()` for a manual tap, call `markManualPlay()` so the layout's `useEffect` watcher skips double-counting auto-advances. The layout (`app/(tabs)/nasheeds/_layout.tsx`) detects track changes that are auto-advances and calls `incrementNasheedCount()` for those.
+**Free-tier nasheed limit:** Free users can play 5 nasheeds per day (default; overridable remotely via `freeDailyLimit`, see below). This is tracked by `hooks/useNasheedLimit.ts`, which uses module-level singleton state (not React state) so all instances and the guard share one counter. Key pattern: before calling `playTrack()` for a manual tap, call `markManualPlay()` so the guard's `useEffect` watcher skips double-counting auto-advances. The guard (`hooks/useNasheedPlaybackGuards.ts`, mounted once in `app/(tabs)/_layout.tsx` so it covers every tab) detects track changes that are auto-advances and calls `incrementNasheedCount()` for those, and stops a free user's nasheed when the app goes to the background.
 
-**Remote paywall promos:** Promotions ("first month free", "-30%", Ramadan banners with countdown) are authored in Firestore `config/paywall` — no code change, no release. `services/paywall-config-service.ts` reads the doc, `utils/paywall-config.ts` normalizes it (never throws; malformed → shipped defaults), `stores/paywallStore.ts` caches it in AsyncStorage and hydrates on login (`app/index.tsx`), `hooks/usePromo.ts` resolves the active promo and its `{placeholders}`, `components/PromoBanner.tsx` renders it in `PremiumGateModal` and the premium screen.
+**Remote paywall promos:** Promotions ("first month free", "-30%", Ramadan banners with countdown) are authored in Firestore `config/paywall` — no code change, no release. `services/paywall-config-service.ts` reads the doc, `utils/paywall-config.ts` normalizes it (never throws; malformed → shipped defaults), `stores/paywallStore.ts` caches it in AsyncStorage and hydrates on login (`syncAuthUser`), `hooks/usePromo.ts` resolves the active promo and its `{placeholders}`, `components/PromoBanner.tsx` renders it in `PremiumGateModal` and the premium screen.
 
 **Rule:** trial/intro copy comes only from the store (`utils/store-offer.ts` reads `product.defaultOption.freePhase/introPhase` on Android, `product.introPrice` on iOS). Any promo line with an unresolvable placeholder is dropped rather than rendered incomplete, so copy can never promise an offer App Store Connect / Play Console does not have. Field reference and recipes: `docs/paywall-config.md`. Publish with `npm run promo:set -- <file.json>`; logic checks: `npm run check:promo`.
+
+### User Playlists
+
+Private, signed-in-only playlists that mix nasheeds and surahs. Firestore: `user_playlists/{uid}/playlists/{id}` (`title`, `description?`, `image_path?`, `cover_paths` (≤4, for the collage), `track_count`, epoch-ms `createdAt`/`updatedAt`) with a `tracks/{trackKey}` subcollection. The `trackKey` is `n_{nasheedId}` or `q_{reciterId}_{surahId}`, so a track can't be added twice. Add and remove run in transactions, which keeps `track_count` and the collage exact. Pure rules and limits (`FREE_PLAYLIST_LIMIT` 1, `FREE_PLAYLIST_TRACK_LIMIT` 20, `MAX_PLAYLIST_TRACKS` 200) live in `utils/user-playlists.ts`, checked by `npm run check:playlists`. The service is `services/user-playlists-service.ts` and the store is `stores/userPlaylistsStore.ts`, which `syncAuthUser` clears on every account change.
+
+Entry points: the "Add to playlist" row in `TrackActionsSheet` (derived from `nasheed`, or from the `playlistItem` prop for surahs) and `AddToPlaylistButton`, the "+" left of Play All on the artist and reciter screens, on `TrackCollectionScreen` (Weekly Mix, generated playlists, Favorites) and on curated playlists. That button adds the whole list through `addTracksToPlaylist`, using `planBulkAdd` to skip tracks that are already present and to stop at the user's `trackCapacity`. Both open `AddToPlaylistFlow` (picker, then the form or the upgrade sheet). Playlists are listed in the Your Library tab (`app/(tabs)/library/index.tsx`, alongside Favorites and Downloads, with a "+" for an empty new playlist) and open `UserPlaylistScreen` through `library/my-playlist/[id]`. Free users: only the nasheeds in a playlist queue are capped and counted against the daily limit (`capNasheedsInQueue`).
 
 ### Audio Architecture (critical — read before touching)
 

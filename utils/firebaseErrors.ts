@@ -15,6 +15,10 @@ export const getFirebaseErrorMessage = (errorCode: string): string => {
     "auth/missing-email": "Please enter your email address",
     "auth/missing-password": "Please enter your password",
     "auth/invalid-login-credentials": "Invalid email or password",
+    "auth/credential-already-in-use":
+      "An account already exists for this login. Please sign in instead",
+    "auth/provider-already-linked": "This login is already connected",
+    "auth/admin-restricted-operation": "Guest access is currently unavailable",
 
     // Google Sign-In errors
     "auth/popup-closed-by-user": "Sign-in was cancelled",

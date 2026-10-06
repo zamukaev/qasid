@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { maybeRequestReview } from "../services/review-service";
+import {
+  isEligibleForGuestNudge,
+  markGuestNudgeShown,
+} from "../services/guest-nudge-service";
+import { useSignInGateStore } from "../stores/signInGateStore";
 import type { PlayerViewMode } from "../context/AudioPlayerContext";
 
 /** Breathing room after the app becomes visible, so the sheet never lands
@@ -13,8 +18,13 @@ const PROMPT_DELAY_MS = 4000;
  * crossed: a listen that qualifies mid-session surfaces the sheet on the next
  * app open instead of interrupting playback.
  *
- * Mount once, globally (app/(tabs)/_layout.tsx). `maybeRequestReview` owns all
- * eligibility and cooldown checks, so extra calls are harmless.
+ * The same moment carries the guest "create an account" nudge. It takes
+ * precedence, and a moment that shows it skips the review, so the two never
+ * stack.
+ *
+ * Mount once, globally (app/(tabs)/_layout.tsx). `maybeRequestReview` and
+ * `isEligibleForGuestNudge` own all eligibility and cooldown checks, so extra
+ * calls are harmless.
  */
 export function useReviewPrompt(viewMode: PlayerViewMode): void {
   // Read without re-arming the effects on every view-mode change.
@@ -26,6 +36,13 @@ export function useReviewPrompt(viewMode: PlayerViewMode): void {
       setTimeout(() => {
         // Don't cover the immersive full-screen player.
         if (viewModeRef.current === "full") return;
+        const gate = useSignInGateStore.getState();
+        if (gate.visible) return;
+        if (isEligibleForGuestNudge()) {
+          markGuestNudgeShown();
+          gate.nudge();
+          return;
+        }
         void maybeRequestReview();
       }, PROMPT_DELAY_MS);
 

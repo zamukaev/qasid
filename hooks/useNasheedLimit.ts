@@ -9,7 +9,7 @@ const DEFAULT_FREE_DAILY_LIMIT = 5;
 // below can never state different numbers.
 let _freeDailyLimit = DEFAULT_FREE_DAILY_LIMIT;
 
-// Module-level singleton so all hook instances and the layout guard share the same count.
+// Module-level singleton so all hook instances and useNasheedPlaybackGuards share the same count.
 let _count = 0;
 let _date = "";
 let _hydrated = false;
@@ -67,7 +67,7 @@ async function hydrate(): Promise<void> {
   _listeners.forEach((fn) => fn());
 }
 
-// Called by handlePlayNasheed before playTrack() — tells the layout guard to skip
+// Called by handlePlayNasheed before playTrack() — tells useNasheedPlaybackGuards to skip
 // this track change since the screen already called increment().
 export function markManualPlay(): void {
   _manualPlayPending = true;

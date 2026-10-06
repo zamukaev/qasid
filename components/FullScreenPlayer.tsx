@@ -19,6 +19,7 @@ import {
   useAudioPlayer,
   useAudioProgress,
 } from "../context/AudioPlayerContext";
+import { useRequireAccount } from "../hooks/useRequireAccount";
 
 export default function FullScreenPlayer() {
   const {
@@ -34,6 +35,7 @@ export default function FullScreenPlayer() {
     embeddedArtwork,
   } = useAudioPlayer();
   const { positionMillis, durationMillis } = useAudioProgress();
+  const { requireAccount } = useRequireAccount();
 
   const progress = useMemo(() => {
     if (!durationMillis) return 0;
@@ -41,6 +43,7 @@ export default function FullScreenPlayer() {
   }, [positionMillis, durationMillis]);
 
   const handleRepeatModeChange = (mode: RepeatMode) => {
+    if (mode === "shuffle" && !requireAccount("shuffle play")) return;
     if (mode === "repeat-one" && repeatMode === "repeat-one") {
       setRepeatMode("sequential");
       return;

@@ -7,6 +7,7 @@ import {
   enrichWithLiveImageAndAudio,
   toNasheedTrackMeta,
 } from "../../../../utils/nasheedTrack";
+import { useIsGuest } from "../../../../stores/userStore";
 
 // Synchronous: storage paths stay raw so the list paints immediately.
 const toCollectionTrack = (track: RecommendedTrack): CollectionTrack => ({
@@ -23,6 +24,7 @@ const toCollectionTrack = (track: RecommendedTrack): CollectionTrack => ({
 });
 
 export default function WeeklyMixScreen() {
+  const isGuest = useIsGuest();
   const [tracks, setTracks] = useState<CollectionTrack[]>([]);
   const [headerImagePath, setHeaderImagePath] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,13 @@ export default function WeeklyMixScreen() {
   }, []);
 
   const load = useCallback(async () => {
+    // Per-account data: a guest (e.g. arriving via a deep link) gets the
+    // sign-in hint from the empty state instead of a failed request.
+    if (isGuest) {
+      setTracks([]);
+      setLoading(false);
+      return;
+    }
     if (!hasLoadedRef.current) setLoading(true);
     try {
       // Shared with the home rail: serves the stored mix, generating or
@@ -70,7 +79,7 @@ export default function WeeklyMixScreen() {
       hasLoadedRef.current = true;
       if (isMountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     void load();
@@ -86,7 +95,11 @@ export default function WeeklyMixScreen() {
       tracks={tracks}
       loading={loading}
       error={error}
-      emptyMessage="Listen to a few nasheeds to build your weekly mix."
+      emptyMessage={
+        isGuest
+          ? "Sign in to get a personalized weekly mix."
+          : "Listen to a few nasheeds to build your weekly mix."
+      }
       onRefresh={load}
     />
   );

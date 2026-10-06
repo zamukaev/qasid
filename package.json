@@ -18,6 +18,7 @@
     "verify:storage": "ts-node --project scripts/tsconfig.json scripts/verify-storage-paths.ts",
     "verify:reciter-audio": "ts-node --project scripts/tsconfig.json scripts/verify-reciter-audio.ts",
     "check:promo": "ts-node --project scripts/tsconfig.json scripts/check-promo-config.ts",
+    "check:playlists": "ts-node --project scripts/tsconfig.json scripts/check-user-playlists.ts",
     "promo:set": "ts-node --project scripts/tsconfig.json scripts/set-paywall-config.ts",
     "build:ios": "eas build --platform ios --profile production",
     "build:android": "eas build --platform android --profile production",

@@ -1,5 +1,4 @@
 import { getApp } from "@react-native-firebase/app";
-import { getAuth } from "@react-native-firebase/auth";
 import {
   getFirestore,
   collection,
@@ -17,6 +16,7 @@ import {
 import { Nasheed } from "../types/nasheed";
 import { fetchArtistImagePath } from "./nasheeds-service";
 import { enrichWithLiveImageAndAudio } from "../utils/nasheedTrack";
+import { accountUid } from "../utils/accountUid";
 
 const FAVORITES_LIMIT = 200;
 
@@ -27,7 +27,7 @@ function favoritesCollection(userId: string) {
 
 // Returns true if the nasheed is now favorited, false if it was removed.
 export async function toggleFavorite(nasheed: Nasheed): Promise<boolean> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) throw new Error("Sign in required");
 
   const db = getFirestore(getApp());
@@ -55,7 +55,7 @@ export async function toggleFavorite(nasheed: Nasheed): Promise<boolean> {
 }
 
 export async function fetchFavoriteIds(): Promise<Set<string>> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return new Set();
   const snapshot = await getDocs(favoritesCollection(userId));
   return new Set(
@@ -72,7 +72,7 @@ export async function fetchFavoriteCovers(): Promise<{
   hasFavorites: boolean;
   cover: string | null;
 }> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return { hasFavorites: false, cover: null };
 
   const q = query(
@@ -92,7 +92,7 @@ export async function fetchFavoriteCovers(): Promise<{
 }
 
 export async function fetchFavorites(): Promise<Nasheed[]> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return [];
 
   const q = query(

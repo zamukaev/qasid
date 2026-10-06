@@ -53,8 +53,13 @@ import {
   useNasheedLimit,
 } from "../../../../hooks/useNasheedLimit";
 import { useIsPremium } from "../../../../stores/userStore";
-import { resolveStorageUrlPrioritized } from "../../../../services/storage";
+import {
+  peekStorageUrl,
+  resolveStorageUrlPrioritized,
+} from "../../../../services/storage";
 import { useProgressiveStorageUrls } from "../../../../hooks/useProgressiveStorageUrls";
+import { AddToPlaylistButton } from "../../../../components/AddToPlaylistButton";
+import { nasheedToPlaylistInput } from "../../../../utils/user-playlists";
 
 const SCROLL_TO_TOP_THRESHOLD_PX = 400;
 const SCROLL_EVENT_THROTTLE_MS = 32;
@@ -362,6 +367,14 @@ export default function ArtistScreen() {
     [nasheeds, artist],
   );
 
+  const playlistItems = useMemo(
+    () =>
+      nasheeds
+        .filter((n) => n.audioUrl)
+        .map((n) => nasheedToPlaylistInput(n.raw)),
+    [nasheeds],
+  );
+
   // TEMP admin curation hotfix — remove with PlaylistPickerModal.
   // `raw` is replaced rather than mutated so the memoized row re-renders and
   // the plus icon picks up its new filled/outline state.
@@ -506,6 +519,12 @@ export default function ArtistScreen() {
                 tracks={downloadTracks}
                 itemNoun="nasheeds"
                 subtitle={artist?.name_en}
+              />
+              <AddToPlaylistButton
+                items={playlistItems}
+                title={`All nasheeds · ${artist?.name_en ?? ""}`}
+                image={peekStorageUrl(artist?.image_path)}
+                seed={{ title: artist?.name_en, imagePath: artist?.image_path }}
               />
               <PlayButton
                 clasName="flex-1 ml-10"

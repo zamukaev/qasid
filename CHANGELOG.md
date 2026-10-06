@@ -10,6 +10,88 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Your own playlists.** Signed-in users can now build private playlists that
+  mix nasheeds and Quran surahs. "Add to playlist" sits in the `⋯` menu of
+  every track. A `+` to the left of Play All adds the whole list. It is on
+  artist and reciter pages and on every nasheed collection (Weekly Mix,
+  Trending, Top, moods, Favorites and curated playlists), and it skips tracks
+  that are already in the playlist. Both open one picker with **New
+  playlist** at the top and your playlists below. From the `+`, **New
+  playlist** skips the form: the playlist is created right away under the
+  artist's, reciter's or collection's name, with its image as the cover, and
+  the whole list goes in. For a
+  single track, each playlist shows a checkmark when it already holds it. A
+  playlist has a name, an optional description and either your own photo or
+  an automatic collage of its first four covers. You can edit it, delete it,
+  remove tracks from it, and play or shuffle it like any other collection.
+  Download and Edit buttons sit beside its Play All, so the whole playlist can
+  be saved for offline listening in one tap. The Edit (pencil) button opens a
+  sheet with "Edit playlist" and "Delete playlist". A track's `⋯` there opens
+  the same sheet as everywhere else (Share, Favorites, Download, Go to artist
+  or reciter), with "Remove from this playlist" at the bottom in place of "Add
+  to playlist". Playlists are listed in
+  the new **Your Library** tab. Guests get the sign-in prompt instead. Free accounts get one
+  playlist of up to 20 tracks: a bulk add fills what fits, then offers Premium.
+  Premium has no limit beyond 200 tracks per playlist. Data lives in Firestore
+  under `user_playlists/{uid}`, readable only by its owner
+  (`backend/firestore.rules`), and cover photos go to Storage at
+  `users/{uid}/playlists/`. The admin "Add to playlist" curation row is now
+  labelled "Curate playlist (admin)" so the two don't clash. Logic
+  checks: `npm run check:playlists`.
+
+- **Guest mode — listen without an account.** Opening the app signed out used
+  to stop at a sign-up wall. Signed-out users now get a Firebase anonymous
+  session automatically and land straight in the tabs; the welcome screen only
+  appears as a fallback when that fails (e.g. offline on first launch).
+  Account-bound features — favorites, downloads, shuffle, Premium purchase and
+  restore, Weekly Mix, recents and the profile — open a sign-in prompt
+  (`components/SignInGateModal.tsx`, via `useRequireAccount`) instead. That
+  includes the `⋯` button on every track and the playback-mode and download
+  buttons beside Play All, which show the prompt before any sheet opens. On
+  Android the prompt's backdrop also covers the status bar. Settings
+  shows a guest card with sign-up and sign-in shortcuts. Requires the Anonymous
+  provider in Firebase Auth (enabled for `qasid-fd80d`).
+
+- **Your Library tab.** A fourth tab, between Nasheeds and Settings, gathers
+  what belongs to you: Favorites, Downloads (moved here from Settings, with a
+  track count) and your playlists, with a `+` to start a new one. Guests see a
+  sign-up card instead. The "My Playlists" rails on the Quran and Nasheeds
+  home screens are gone.
+
+- **Guests are invited to create an account after a few listens.** Guests who
+  only listen never hit a feature gate, so they were never asked to sign up.
+  After three qualified listens (30 s each) as a guest, the sign-in prompt now
+  opens with an "Enjoying Qasid?" invitation, at a calm moment only (app open
+  or return to the foreground, never over the full-screen player). It shows at
+  most three times, at least three days apart, and takes the place of the
+  store-review prompt for that moment (`services/guest-nudge-service.ts`).
+
+### Changed
+
+- **The free tier's nasheed guards run from any tab.** Counting auto-advances
+  against the daily limit and stopping a free user's nasheed in the
+  background lived in the Nasheeds tab's layout, which only exists once that
+  tab has been opened. Nasheeds played from the Library right after launch
+  would have slipped past both. They now live in
+  `hooks/useNasheedPlaybackGuards.ts`, mounted once in the tabs layout.
+- **Signing up keeps the guest's identity.** Sign-up links the new credential
+  to the anonymous user, so the uid and the RevenueCat customer carry over; if
+  the credential already belongs to an account, that account is signed in
+  instead. Logging out or deleting the account continues as a guest rather
+  than returning to the welcome screen.
+- **Auth routing lives in the root layout.** `hooks/useAuthGate.ts` replaces
+  the redirect logic in `app/index.tsx`, which was unmounted once the tabs
+  opened and so never routed a sign-in started from inside the app. The
+  listener and its side effects moved into `syncAuthUser`
+  (`services/auth-service.ts`), still subscribed by `useAuthBootstrap`. Guests
+  can open shared track links directly.
+
+---
+
 ## [1.1.0] — unreleased
 
 ### Added

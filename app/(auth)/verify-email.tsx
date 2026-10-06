@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
   getAuth,
@@ -23,8 +23,7 @@ import { getFirebaseErrorMessage } from "../../utils/firebaseErrors";
 const RESEND_COOLDOWN = 60;
 
 export default function VerifyEmailScreen() {
-  const { user, setUser, clearUser } = useUserStore();
-  const router = useRouter();
+  const { user, setUser } = useUserStore();
 
   const [checking, setChecking] = useState(false);
   const [resending, setResending] = useState(false);
@@ -48,7 +47,7 @@ export default function VerifyEmailScreen() {
       const refreshed = auth.currentUser;
       if (refreshed?.emailVerified) {
         setUser(refreshed);
-        // routing in app/index.tsx picks up the store change and navigates to tabs
+        // hooks/useAuthGate.ts picks up the store change and navigates to tabs
       } else {
         setNotVerifiedError(true);
       }
@@ -86,9 +85,8 @@ export default function VerifyEmailScreen() {
 
   const handleLogOut = async () => {
     try {
+      // The auth gate starts a guest session and routes to the tabs.
       await signOut(getAuth());
-      clearUser();
-      router.replace("/");
     } catch (error) {
       console.error("Error signing out", error);
       setError("Could not sign out. Please try again.");

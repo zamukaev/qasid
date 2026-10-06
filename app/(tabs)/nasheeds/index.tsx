@@ -10,6 +10,7 @@ import {
   PromoHomeBanner,
 } from "../../../components";
 import { useAuth } from "../../../hooks/useAuth";
+import { useRequireAccount } from "../../../hooks/useRequireAccount";
 import {
   GeneratedPlaylist,
   NasheedArtist,
@@ -46,6 +47,7 @@ const toRailItem = (p: GeneratedPlaylist, coverOverride?: string): Playlist =>
 export default function Nasheeds() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { isGuest, requireAccount } = useRequireAccount();
   const [popularArtists, setPopularArtists] = useState<NasheedArtist[]>([]);
   const [newArtists, setNewArtists] = useState<NasheedArtist[]>([]);
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
@@ -148,7 +150,8 @@ export default function Nasheeds() {
       // Firebase restores the session asynchronously; running before that reads
       // a null uid and would silently leave the rail empty until a manual pull.
       if (authLoading) return;
-      if (!user?.uid) {
+      // Both sources are per-account, so guests skip the reads entirely.
+      if (!user?.uid || isGuest) {
         setHasWeeklyMix(false);
         setHasFavorites(false);
         setIsLoadingForYou(false);
@@ -175,10 +178,15 @@ export default function Nasheeds() {
         setIsLoadingForYou(false);
       }
     },
-    [authLoading, user?.uid],
+    [authLoading, user?.uid, isGuest],
   );
 
   const loadRecents = useCallback(async () => {
+    if (isGuest) {
+      setRecentArtists([]);
+      setIsLoadingRecents(false);
+      return;
+    }
     setIsLoadingRecents(true);
     try {
       const artists = await fetchRecentArtists();
@@ -188,7 +196,7 @@ export default function Nasheeds() {
     } finally {
       setIsLoadingRecents(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     void loadMain();
@@ -257,13 +265,14 @@ export default function Nasheeds() {
 
   const firstName = user?.displayName?.trim().split(/\s+/)[0];
   const madeForTitle = firstName ? `Made for ${firstName}` : "Made for You";
+  // Guests see both tiles as a teaser; tapping one opens the sign-in gate.
   const forYouItems = [
-    hasWeeklyMix && {
+    (isGuest || hasWeeklyMix) && {
       id: "weekly-mix",
       name_en: "Weekly Mix",
       image_path: mixCovers[0],
     },
-    hasFavorites && {
+    (isGuest || hasFavorites) && {
       id: "favorites",
       name_en: "Favorites",
       image_path: favCovers[0],
@@ -297,15 +306,22 @@ export default function Nasheeds() {
             title={madeForTitle}
             artists={forYouItems}
             isLoading={isLoadingForYou}
-            onPressItem={(id) =>
+            onPressItem={(id) => {
+              const isMix = id === "weekly-mix";
+              if (
+                !requireAccount(
+                  isMix ? "get your Weekly Mix" : "save favorites",
+                )
+              ) {
+                return;
+              }
               router.push(
-                id === "weekly-mix"
-                  ? "/(tabs)/nasheeds/mix"
-                  : "/(tabs)/nasheeds/favorites",
-              )
-            }
+                isMix ? "/(tabs)/nasheeds/mix" : "/(tabs)/nasheeds/favorites",
+              );
+            }}
           />
         )}
+
 
         {(isLoadingGenerated || trendingItems.length > 0) && (
           <ArtistRailSection
@@ -347,11 +363,13 @@ export default function Nasheeds() {
             })
           }
         />
-        <ArtistRailSection
-          title="Recently Visited"
-          artists={recentArtists}
-          isLoading={isLoadingRecents}
-        />
+        {!isGuest && (
+          <ArtistRailSection
+            title="Recently Visited"
+            artists={recentArtists}
+            isLoading={isLoadingRecents}
+          />
+        )}
         <ArtistRailSection
           title="Popular Artists"
           artists={popularArtists}
