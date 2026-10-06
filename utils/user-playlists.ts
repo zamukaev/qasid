@@ -1,5 +1,6 @@
-import type { Nasheed } from "../types/nasheed";
+import type { Mood, Nasheed } from "../types/nasheed";
 import type {
+  NasheedPlaylistTrackInput,
   SurahPlaylistTrackInput,
   UserPlaylistTrackInput,
 } from "../types/userPlaylist";
@@ -135,6 +136,28 @@ export function nasheedToPlaylistInput(
     audio_path: nasheed.audio_path ?? "",
     image_path: nasheed.image_path || undefined,
     moods: nasheed.moods ?? [],
+  };
+}
+
+const MOODS: readonly Mood[] = ["calm", "motivational", "sleep", "focus"];
+const isMood = (value: string): value is Mood =>
+  (MOODS as readonly string[]).includes(value);
+
+/**
+ * The inverse of `nasheedToPlaylistInput`: what the `⋯` sheet's favorite and
+ * share rows need, rebuilt from the fields a playlist track stores.
+ */
+export function playlistTrackToNasheed(
+  track: NasheedPlaylistTrackInput,
+): Nasheed {
+  return {
+    id: track.nasheed_id,
+    title_en: track.title,
+    name_en: track.subtitle,
+    artist_id: track.artist_id,
+    audio_path: track.audio_path,
+    image_path: track.image_path ?? "",
+    moods: (track.moods ?? []).filter(isMood),
   };
 }
 

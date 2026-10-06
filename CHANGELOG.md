@@ -30,7 +30,10 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   remove tracks from it, and play or shuffle it like any other collection.
   Download and Edit buttons sit beside its Play All, so the whole playlist can
   be saved for offline listening in one tap. The Edit (pencil) button opens a
-  sheet with "Edit playlist" and "Delete playlist". Playlists are listed in
+  sheet with "Edit playlist" and "Delete playlist". A track's `⋯` there opens
+  the same sheet as everywhere else (Share, Favorites, Download, Go to artist
+  or reciter), with "Remove from this playlist" at the bottom in place of "Add
+  to playlist". Playlists are listed in
   the new **Your Library** tab. Guests get the sign-in prompt instead. Free accounts get one
   playlist of up to 20 tracks: a bulk add fills what fits, then offers Premium.
   Premium has no limit beyond 200 tracks per playlist. Data lives in Firestore

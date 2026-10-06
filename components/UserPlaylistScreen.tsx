@@ -33,7 +33,12 @@ import {
 import { useIsPremium } from "../stores/userStore";
 import { UserPlaylistTrack } from "../types/userPlaylist";
 import { pickRandom } from "../utils/random";
-import { capNasheedsInQueue, rotateFrom } from "../utils/user-playlists";
+import { buildSurahShareUrl } from "../constants/links";
+import {
+  capNasheedsInQueue,
+  playlistTrackToNasheed,
+  rotateFrom,
+} from "../utils/user-playlists";
 import { ActionListItem, ActionListSheet } from "./ActionListSheet";
 import { CollectionDownloadButton } from "./CollectionDownloadButton";
 import { PlaybackModeButton } from "./PlaybackModeButton";
@@ -42,11 +47,11 @@ import { PlaylistCover } from "./PlaylistCover";
 import { PlaylistFormSheet } from "./PlaylistFormSheet";
 import { PremiumGateModal } from "./PremiumGateModal";
 import { SharedCard } from "./SharedCard";
+import { TrackActionsButton } from "./TrackActionsButton";
 import SharedCardSkeleton from "./SharedCardSkeleton";
 
 const HEADER_COVER_SIZE = 160;
 const SKELETON_ROW_COUNT = 6;
-const INACTIVE_ICON = "rgba(255,255,255,0.35)";
 const HEADER_ACTION_ICON_SIZE = 20;
 const HEADER_ACTION_ICON_COLOR = "#ffffff";
 
@@ -59,7 +64,7 @@ type PlaylistRowProps = {
   isActive: boolean;
   isPlaying: boolean;
   onPlay: (key: string) => void;
-  onMenu: (track: UserPlaylistTrack) => void;
+  onRemove: (key: string) => void;
 };
 
 const PlaylistRow = React.memo(function PlaylistRow({
@@ -69,7 +74,7 @@ const PlaylistRow = React.memo(function PlaylistRow({
   isActive,
   isPlaying,
   onPlay,
-  onMenu,
+  onRemove,
 }: PlaylistRowProps) {
   const rowTrack = useMemo<Track>(
     () => ({
@@ -80,6 +85,25 @@ const PlaylistRow = React.memo(function PlaylistRow({
       uri: track.audio_path,
     }),
     [trackId, track],
+  );
+
+  // The same ⋯ sheet as on every other track row, minus "Add to playlist" and
+  // plus the playlist's own "Remove" row. Share links and favorites need the original ids.
+  const nasheed = useMemo(
+    () =>
+      track.kind === "nasheed" ? playlistTrackToNasheed(track) : undefined,
+    [track],
+  );
+  const shareUrl = useMemo(
+    () =>
+      track.kind === "surah"
+        ? buildSurahShareUrl(track.reciter_id, track.surah_number)
+        : undefined,
+    [track],
+  );
+  const handleRemove = useCallback(
+    () => onRemove(track.key),
+    [onRemove, track.key],
   );
 
   return (
@@ -93,23 +117,18 @@ const PlaylistRow = React.memo(function PlaylistRow({
       isPlaying={isPlaying}
       isPaused={isActive}
       rightAction={
-        <TouchableOpacity
-          onPress={(event) => {
-            // The surrounding SharedCard pressable starts playback otherwise.
-            event.stopPropagation();
-            onMenu(track);
-          }}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={{ padding: 6 }}
-          accessibilityLabel="Track options"
-        >
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={22}
-            color={INACTIVE_ICON}
-          />
-        </TouchableOpacity>
+        <TrackActionsButton
+          title={track.title}
+          subtitle={track.subtitle}
+          image={imageUrl}
+          nasheed={nasheed}
+          shareUrl={shareUrl}
+          showAddToPlaylist={false}
+          track={rowTrack}
+          showGoToArtist
+          reciterId={track.kind === "surah" ? track.reciter_id : undefined}
+          onRemoveFromPlaylist={handleRemove}
+        />
       }
     />
   );
@@ -149,7 +168,6 @@ export function UserPlaylistScreen() {
   const [gateVisible, setGateVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [menuTrack, setMenuTrack] = useState<UserPlaylistTrack | null>(null);
   const pendingPlayIdRef = useRef(0);
 
   useEffect(() => {
@@ -327,50 +345,17 @@ export function UserPlaylistScreen() {
     [confirmDelete],
   );
 
-  const trackActions = useMemo<ActionListItem[]>(() => {
-    if (!menuTrack) return [];
-    const list: ActionListItem[] = [
-      {
-        key: "remove",
-        icon: "remove-circle-outline",
-        label: "Remove from this playlist",
-        destructive: true,
-        onPress: async () => {
-          setTracks((prev) => prev.filter((t) => t.key !== menuTrack.key));
-          try {
-            await removeTrack(playlistId, menuTrack.key);
-          } catch {
-            void loadTracks();
-          }
-        },
-      },
-    ];
-    if (menuTrack.kind === "nasheed" && menuTrack.artist_id) {
-      list.push({
-        key: "artist",
-        icon: "person-outline",
-        label: "Go to artist",
-        onPress: () =>
-          router.push({
-            pathname: "/(tabs)/nasheeds/artist/[id]",
-            params: { id: menuTrack.artist_id },
-          }),
-      });
-    }
-    if (menuTrack.kind === "surah") {
-      list.push({
-        key: "reciter",
-        icon: "person-outline",
-        label: "Go to reciter",
-        onPress: () =>
-          router.push({
-            pathname: "/(tabs)/quran/reciter/[id]",
-            params: { id: menuTrack.reciter_id },
-          }),
-      });
-    }
-    return list;
-  }, [menuTrack, removeTrack, playlistId, loadTracks, router]);
+  const handleRemoveTrack = useCallback(
+    async (key: string) => {
+      setTracks((prev) => prev.filter((t) => t.key !== key));
+      try {
+        await removeTrack(playlistId, key);
+      } catch {
+        void loadTracks();
+      }
+    },
+    [removeTrack, playlistId, loadTracks],
+  );
 
   const isCollectionActive = !!currentTrack?.id.startsWith(trackPrefix);
   const isCollectionPlaying = isPlaying && isCollectionActive;
@@ -387,11 +372,18 @@ export function UserPlaylistScreen() {
           isActive={isActive}
           isPlaying={isPlaying && isActive}
           onPlay={onPlay}
-          onMenu={setMenuTrack}
+          onRemove={handleRemoveTrack}
         />
       );
     },
-    [trackPrefix, currentTrack?.id, artworkFor, isPlaying, onPlay],
+    [
+      trackPrefix,
+      currentTrack?.id,
+      artworkFor,
+      isPlaying,
+      onPlay,
+      handleRemoveTrack,
+    ],
   );
 
   if (hydrated && !playlist) {
@@ -539,15 +531,6 @@ export function UserPlaylistScreen() {
           visible
           onClose={() => setEditOpen(false)}
           playlist={playlist}
-        />
-      )}
-      {menuTrack && (
-        <ActionListSheet
-          visible
-          onClose={() => setMenuTrack(null)}
-          title={menuTrack.title}
-          subtitle={menuTrack.subtitle}
-          actions={trackActions}
         />
       )}
     </SafeAreaView>
