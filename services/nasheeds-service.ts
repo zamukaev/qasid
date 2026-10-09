@@ -63,9 +63,17 @@ const isRecentArtist = (data: {
 
 const normalizeSearchText = (value: string) => value.trim().toLowerCase();
 
+// Unlisted artists (the shared `unknown` artist, artists with only a few
+// nasheeds) live in the "singles" collection rather than in artist rails.
+// Filtered client-side: a missing flag means listed, and is_listed != false
+// would need a composite index per query.
+const isListedArtist = (artist: NasheedArtist): boolean =>
+  artist.is_listed !== false;
+
 export async function fetchNasheedArtists(
   pageSize: number = 20,
   cursor?: ArtistCursor,
+  options?: { includeUnlisted?: boolean },
 ): Promise<ResponseArtists> {
   const db = getFirestore(getApp());
   const base = [
@@ -92,12 +100,16 @@ export async function fetchNasheedArtists(
     }),
   ) as NasheedArtist[];
 
+  // The cursor comes from the raw page so filtering never skips artists.
   const lastDoc = docs.length ? docs[docs.length - 1] : undefined;
   const nextCursor = lastDoc
     ? { name_en: (lastDoc.data() as any).name_en, id: lastDoc.id }
     : undefined;
 
-  return { artists, nextCursor };
+  return {
+    artists: options?.includeUnlisted ? artists : artists.filter(isListedArtist),
+    nextCursor,
+  };
 }
 
 export async function fetchFilteredArtists(
@@ -152,7 +164,9 @@ export async function fetchPopularArtists(
       ({ id: doc.id, ...doc.data() }) as NasheedArtist,
   );
 
-  return mapped.filter((a: NasheedArtist) => (a.popularity_score ?? 0) > 0);
+  return mapped.filter(
+    (a: NasheedArtist) => (a.popularity_score ?? 0) > 0 && isListedArtist(a),
+  );
 }
 
 export async function fetchNewArtists(
@@ -170,8 +184,10 @@ export async function fetchNewArtists(
       ({ id: doc.id, ...doc.data() }) as NasheedArtist,
   );
   return mapped
-    .filter((a: NasheedArtist) =>
-      isRecentArtist({ publishedAt: a.publishedAt, createdAt: a.createdAt }),
+    .filter(
+      (a: NasheedArtist) =>
+        isListedArtist(a) &&
+        isRecentArtist({ publishedAt: a.publishedAt, createdAt: a.createdAt }),
     )
     .slice(0, pageSize);
 }
@@ -192,9 +208,11 @@ async function fetchFilteredArtistsFallback(
     hasMore &&
     pagesScanned < MAX_SEARCH_SCAN_PAGES
   ) {
+    // Search still finds unlisted artists, like the searchArtists function.
     const response = await fetchNasheedArtists(
       SEARCH_BATCH_SIZE,
       currentCursor,
+      { includeUnlisted: true },
     );
 
     const matching = response.artists.filter((artist) => {

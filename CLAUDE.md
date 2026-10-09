@@ -88,7 +88,7 @@ Entry points: the "Add to playlist" row in `TrackActionsSheet` (derived from `na
 
 ### Nasheed Collections
 
-Curated and rule-based lists (singles & unknown authors, tag themes, eras by `year`) in Firestore `collections/{id}`, tracks denormalized on the doc. Defined in `scripts/collections/collections.json`, written by `npm run collections:build` (also sets `is_listed` on artists: false for the `unknown` artist and artists with < 3 nasheeds). Pure logic in `utils/collections.ts`, checks: `npm run check:collections`. Not read by the app yet; the 1.1.0 app still reads `playlists` / `nasheeds.playlist_id`, so do not touch those. Migration plan: `docs/collections.md`.
+Curated and rule-based lists (singles & unknown authors, tag themes, eras by `year`) in Firestore `collections/{id}`, tracks denormalized on the doc. Defined in `scripts/collections/collections.json`, written by `npm run collections:build` (also sets `is_listed` on artists: false for the `unknown` artist and artists with < 3 nasheeds). Pure logic in `utils/collections.ts`, checks: `npm run check:collections`. The app reads them through `services/collections-service.ts` for the "Collections" and "Through the Years" rails (`nasheeds/collection/[id]`); artist rails and the artist list skip `is_listed: false`. "Featured Playlists" still reads `playlists` / `nasheeds.playlist_id`, which the 1.1.0 app depends on, so do not touch those. The playback function never raises `popularity_score` on unlisted artists, and they get no `publishedAt`, which keeps them out of 1.1.0's artist rails. Migration plan: `docs/collections.md`.
 
 ### Audio Architecture (critical — read before touching)
 

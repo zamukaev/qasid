@@ -69,7 +69,13 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   or return to the foreground, never over the full-screen player). It shows at
   most three times, at least three days apart, and takes the place of the
   store-review prompt for that moment (`services/guest-nudge-service.ts`).
-- **Nasheed collections (data only, not shown in the app yet).** A new
+- **Collections and Through the Years on the Nasheeds tab.** Two new rails
+  open collections such as "Singles & Rare Voices" (nasheeds by unknown
+  authors and artists with fewer than three nasheeds), "Ramadan & Eid" and
+  eras by release year. Empty collections stay hidden. Those artists no
+  longer get their own tile in the Popular, New and All Artists lists, but
+  search still finds them and their artist page still opens from the player.
+- **Nasheed collections data.** A new
   Firestore `collections` collection holds curated and rule-based lists:
   "Singles & Rare Voices" (unknown authors and artists with fewer than three
   nasheeds), tag themes and eras by release year. Collections are defined in
@@ -77,7 +83,10 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   `npm run collections:build`, which stores the tracks on each doc and sets
   `is_listed` on every artist. The three curated playlists are mirrored from
   `playlist_id`, which the 1.1.0 app still reads and is left untouched. See
-  `docs/collections.md`; logic checks: `npm run check:collections`.
+  `docs/collections.md`; logic checks: `npm run check:collections`. The
+  playback function no longer raises `popularity_score` for unlisted
+  artists, and the artist seed leaves out their `publishedAt`, so they stay
+  out of the 1.1.0 app's artist rails.
 
 ### Changed
 

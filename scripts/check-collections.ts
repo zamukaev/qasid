@@ -11,13 +11,16 @@
 import * as fs from "fs";
 import * as path from "path";
 import {
+  CollectionDoc,
   CollectionNasheed,
   MAX_COLLECTION_TRACKS,
   UNKNOWN_ARTIST_ID,
+  collectionCover,
   isArtistListed,
   listedArtists,
   parseCollectionDefinitions,
   resolveCollection,
+  shelfCollections,
 } from "../utils/collections";
 
 let failures = 0;
@@ -130,6 +133,51 @@ check(
     new Map(),
   ).tracks.length,
   MAX_COLLECTION_TRACKS,
+);
+
+// Home shelves
+const doc = (id: string, overrides: Partial<CollectionDoc> = {}): CollectionDoc => {
+  const { tracks } = resolveCollection(
+    { type: "manual", track_ids: ["b1"] },
+    catalog,
+    new Map(),
+  );
+  return {
+    id,
+    name_en: id,
+    name_ar: "",
+    desc: "",
+    image_path: "",
+    shelf: "collections",
+    sort_order: 0,
+    is_active: true,
+    tracks,
+    track_count: tracks.length,
+    ...overrides,
+  };
+};
+check(
+  "shelf keeps active, non-empty collections of that shelf in sort_order",
+  shelfCollections(
+    [
+      doc("late", { sort_order: 20 }),
+      doc("early", { sort_order: 10 }),
+      doc("empty", { tracks: [], track_count: 0 }),
+      doc("off", { is_active: false }),
+      doc("era", { shelf: "eras" }),
+    ],
+    "collections",
+  ).map((c) => c.id),
+  ["early", "late"],
+);
+check(
+  "cover falls back to the first track's image",
+  [
+    collectionCover(doc("own", { image_path: "own.webp" })),
+    collectionCover({ ...doc("x"), tracks: [{ ...doc("x").tracks[0], image_path: "track.webp" }] }),
+    collectionCover(doc("none", { tracks: [] })),
+  ],
+  ["own.webp", "track.webp", ""],
 );
 
 // Validation

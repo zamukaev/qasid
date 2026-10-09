@@ -29,6 +29,13 @@ import {
   fetchGeneratedPlaylists,
 } from "../../../services/recommendations-service";
 import { fetchFavoriteCovers } from "../../../services/favorites-service";
+import { fetchCollections } from "../../../services/collections-service";
+import {
+  CollectionDoc,
+  CollectionShelf,
+  collectionCover,
+  shelfCollections,
+} from "../../../utils/collections";
 
 // Generated playlists carry a `key` (not `id`); ArtistRailSection only reads
 // id/name_en/image_path, so a light projection is enough. `coverOverride`
@@ -44,6 +51,22 @@ const toRailItem = (p: GeneratedPlaylist, coverOverride?: string): Playlist =>
     is_active: p.is_active,
   }) as unknown as Playlist;
 
+const toCollectionRailItems = (
+  collections: readonly CollectionDoc[],
+  shelf: CollectionShelf,
+): Playlist[] =>
+  shelfCollections(collections, shelf).map(
+    (c) =>
+      ({
+        id: c.id,
+        name_en: c.name_en,
+        name_ar: c.name_ar,
+        desc: c.desc,
+        image_path: collectionCover(c),
+        is_active: c.is_active,
+      }) as unknown as Playlist,
+  );
+
 export default function Nasheeds() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -54,6 +77,7 @@ export default function Nasheeds() {
   const [recentArtists, setRecentArtists] = useState<NasheedArtist[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [generated, setGenerated] = useState<GeneratedPlaylist[]>([]);
+  const [collections, setCollections] = useState<CollectionDoc[]>([]);
   const [generatedCovers, setGeneratedCovers] = useState<
     Record<string, string>
   >({});
@@ -64,6 +88,7 @@ export default function Nasheeds() {
   const [isLoadingForYou, setIsLoadingForYou] = useState(true);
   const [isLoadingGenerated, setIsLoadingGenerated] = useState(true);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(true);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [isLoadingMain, setIsLoadingMain] = useState(true);
   const [isLoadingNew, setIsLoadingNew] = useState(true);
   const [isLoadingRecents, setIsLoadingRecents] = useState(true);
@@ -108,6 +133,17 @@ export default function Nasheeds() {
       console.error("Error loading playlists:", error);
     } finally {
       setIsLoadingPlaylists(false);
+    }
+  }, []);
+
+  const loadCollections = useCallback(async (force = false) => {
+    setIsLoadingCollections(true);
+    try {
+      setCollections(await fetchCollections({ force }));
+    } catch (error) {
+      console.error("Error loading collections:", error);
+    } finally {
+      setIsLoadingCollections(false);
     }
   }, []);
 
@@ -204,7 +240,15 @@ export default function Nasheeds() {
     void loadRecents();
     void loadPlaylists();
     void loadGenerated();
-  }, [loadMain, loadNew, loadRecents, loadPlaylists, loadGenerated]);
+    void loadCollections();
+  }, [
+    loadMain,
+    loadNew,
+    loadRecents,
+    loadPlaylists,
+    loadGenerated,
+    loadCollections,
+  ]);
 
   // Own effect: this is the only loader whose identity changes (it depends on
   // the restored session), and the rails above must not refetch when it does.
@@ -221,6 +265,7 @@ export default function Nasheeds() {
         loadRecents(),
         loadPlaylists(),
         loadGenerated(true),
+        loadCollections(true),
         loadForYouCovers(true),
       ]);
     } finally {
@@ -232,6 +277,7 @@ export default function Nasheeds() {
     loadRecents,
     loadPlaylists,
     loadGenerated,
+    loadCollections,
     loadForYouCovers,
   ]);
 
@@ -256,6 +302,21 @@ export default function Nasheeds() {
         .map((p) => toRailItem(p)),
     [generated],
   );
+
+  const collectionItems = useMemo(
+    () => toCollectionRailItems(collections, "collections"),
+    [collections],
+  );
+  const eraItems = useMemo(
+    () => toCollectionRailItems(collections, "eras"),
+    [collections],
+  );
+
+  const openCollection = (id: string) =>
+    router.push({
+      pathname: "/(tabs)/nasheeds/collection/[id]",
+      params: { id },
+    });
 
   const openGenerated = (id: string) =>
     router.push({
@@ -348,6 +409,24 @@ export default function Nasheeds() {
             artists={moodItems}
             isLoading={isLoadingGenerated}
             onPressItem={openGenerated}
+          />
+        )}
+        {(isLoadingCollections || collectionItems.length > 0) && (
+          <ArtistRailSection
+            large
+            title="Collections"
+            artists={collectionItems}
+            isLoading={isLoadingCollections}
+            onPressItem={openCollection}
+          />
+        )}
+        {(isLoadingCollections || eraItems.length > 0) && (
+          <ArtistRailSection
+            large
+            title="Through the Years"
+            artists={eraItems}
+            isLoading={isLoadingCollections}
+            onPressItem={openCollection}
           />
         )}
 

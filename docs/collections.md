@@ -55,12 +55,23 @@ entry. The build script owns this field — do not edit it by hand.
 The 1.1.0 app reads `playlists` and `nasheeds.playlist_id`, never
 `collections` or `is_listed`.
 
-1. **Now:** collections are built alongside the old data. Keep assigning
-   curated tracks through `playlist_id`; `legacy_playlist` mirrors it.
-2. **Before adding the `unknown` artist or small artists:** stop the playback
-   function from raising `popularity_score` on unlisted artists and leave
-   their `publishedAt` unset. 1.1.0's Popular and New artist rails do not
-   filter on `is_active`, so otherwise they would appear there.
-3. **1.2.0:** the app reads `collections` and filters artists by `is_listed`.
-4. **Once 1.1.0 is gone:** turn the legacy sources into `manual` ones, then
-   remove `playlists`, `playlist_id`, `PlaylistPickerModal` and its rule.
+1. **Done — data:** collections are built alongside the old data. Keep
+   assigning curated tracks through `playlist_id`; `legacy_playlist` mirrors
+   it.
+2. **Done in code — protecting 1.1.0** (needs `firebase deploy --only
+   functions`): the playback function no longer raises `popularity_score` on
+   artists with `is_listed: false`, and `seed-nasheed-artists.ts` gives an
+   artist with `is_listed: false` no `publishedAt`. 1.1.0's Popular and New
+   artist rails order by those fields without filtering, and Firestore leaves
+   out docs that lack the ordered field. Deploy this before adding the
+   `unknown` artist or a small artist, and seed those with `is_listed: false`.
+3. **1.2.0 — the app reads collections:** the "Collections" and "Through the
+   Years" rails come from `collections` (`services/collections-service.ts`,
+   `nasheeds/collection/[id]`), and artist rails and the artist list skip
+   `is_listed: false` (search still finds them). "Featured Playlists" still
+   reads `playlists`, so the admin playlist picker keeps working; the
+   `featured` collections are its mirror for step 4. A shelf this build does
+   not know is ignored, so later releases can add shelves safely.
+4. **Once 1.1.0 is gone:** move "Featured Playlists" to the `featured`
+   shelf, turn the legacy sources into `manual` ones, then remove `playlists`,
+   `playlist_id`, `PlaylistPickerModal` and its rule.

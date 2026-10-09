@@ -57,6 +57,31 @@ export interface CollectionDefinition {
   source: CollectionSource;
 }
 
+/** A materialized `collections/{id}` doc, as the app reads it. */
+export interface CollectionDoc extends Omit<CollectionDefinition, "source"> {
+  tracks: RecommendedTrack[];
+  track_count: number;
+}
+
+/**
+ * The collections a home-screen shelf shows: active, non-empty, in
+ * sort_order. Rule-based collections can be empty (no nasheed has a `year`
+ * yet), and an empty tile would open an empty screen.
+ */
+export function shelfCollections(
+  collections: readonly CollectionDoc[],
+  shelf: CollectionShelf,
+): CollectionDoc[] {
+  return collections
+    .filter((c) => c.shelf === shelf && c.is_active && c.tracks.length > 0)
+    .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id));
+}
+
+/** Rail and header cover: the collection's own image, else its first track's. */
+export function collectionCover(collection: CollectionDoc): string {
+  return collection.image_path || collection.tracks[0]?.image_path || "";
+}
+
 /** The nasheed fields the resolver needs, as read from Firestore. */
 export interface CollectionNasheed {
   id: string;
@@ -192,7 +217,7 @@ const isStringArray = (v: unknown): v is string[] =>
 const isYear = (v: unknown): v is number =>
   typeof v === "number" && Number.isInteger(v) && v >= MIN_YEAR && v <= MAX_YEAR;
 
-const isShelf = (v: unknown): v is CollectionShelf =>
+export const isCollectionShelf = (v: unknown): v is CollectionShelf =>
   typeof v === "string" && (COLLECTION_SHELVES as readonly string[]).includes(v);
 
 function parseRule(raw: unknown, errors: string[]): CollectionRule | null {
@@ -285,7 +310,7 @@ function parseDefinition(raw: unknown, errors: string[]): CollectionDefinition |
   if (typeof raw.name_en !== "string" || raw.name_en.trim() === "") {
     errors.push("name_en is required");
   }
-  if (!isShelf(raw.shelf)) {
+  if (!isCollectionShelf(raw.shelf)) {
     errors.push(`shelf must be one of ${COLLECTION_SHELVES.join(", ")}`);
   }
   if (typeof raw.sort_order !== "number" || !Number.isFinite(raw.sort_order)) {
