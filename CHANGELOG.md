@@ -89,6 +89,10 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   out of the 1.1.0 app's artist rails. `npm run years:set` writes
   `nasheeds.year` from `scripts/collections/nasheed-years.json` (exported
   with `--export`), which feeds the era collections.
+- **Seeding singles.** `npm run seed:singles` uploads nasheeds by unknown
+  authors or artists with one or two nasheeds from
+  `scripts/collections/singles.json`. It checks every file is in Storage
+  before writing, creates those artists hidden and rebuilds the collections.
 
 ### Changed
 
@@ -109,6 +113,12 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   listener and its side effects moved into `syncAuthUser`
   (`services/auth-service.ts`), still subscribed by `useAuthBootstrap`. Guests
   can open shared track links directly.
+
+### Fixed
+
+- **No "new artist" push for unlisted artists.** Creating the shared
+  `unknown` artist or an artist with only a few nasheeds no longer notifies
+  every user: `onArtistCreated` skips artists with `is_listed: false`.
 
 ---
 

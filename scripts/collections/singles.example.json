@@ -1,0 +1,22 @@
+[
+  {
+    "title_en": "Ya Rasul Allah",
+    "audio": "ya_rasul_allah.mp3",
+    "image": "ya_rasul_allah.webp",
+    "tags": ["nasheed", "prophet"],
+    "year": 2003
+  },
+  {
+    "title_en": "Tala'al Badru Alayna",
+    "audio": "talaal_badru.mp3",
+    "image": "talaal_badru.webp",
+    "moods": ["calm"],
+    "tags": ["nasheed", "madinah"],
+    "artist": {
+      "id": "omar_example",
+      "name_en": "Omar Example",
+      "name_ar": "عمر",
+      "image": "omar_example.webp"
+    }
+  }
+]

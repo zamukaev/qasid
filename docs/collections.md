@@ -59,6 +59,34 @@ Era rules match on `nasheeds.year`, set from
 
 `--file <path>` uses another file, e.g. one artist's years only.
 
+## Uploading singles (unknown authors, artists with 1–2 nasheeds)
+
+1. Upload the files to Storage. The folder is the artist id, `unknown` for
+   an unknown author:
+   - `nasheeds/{artist id}/{audio}`
+   - `banners/{artist id}/{image}`
+   - `avatars/{artist image}`, for a new artist only (`avatars/unknown.webp`
+     once, for the unknown artist; it is also the Trending cover in 1.1.0
+     when one of its tracks leads)
+2. Write `scripts/collections/singles.json` (format:
+   `scripts/collections/singles.example.json`). Leave `artist` out for an
+   unknown author; `artist.image` defaults to `{id}.webp`; `moods`, `tags`
+   and `year` are optional.
+3. `npm run seed:singles -- --dry-run` — validates the file, checks every
+   file exists in Storage and lists what will be created or updated.
+4. `npm run seed:singles` — writes, then runs `collections:build`.
+
+New artists are created with `is_active: false` and `is_listed: false`:
+no "new artist" push (`onArtistCreated` skips them), absent from every
+artist list in 1.1.0 and 1.2.0 and from artist search, but their page opens
+from the player. Existing artists are never modified. Nasheed ids are
+`{artist id}_{audio file stem}`, so a rerun updates the same docs and keeps
+their counters.
+
+When such an artist reaches 3 nasheeds, `collections:build` sets
+`is_listed: true`; set `is_active: true` by hand to show it in the lists (no
+push is sent: that only fires on create).
+
 ## Artists: `is_listed`
 
 `is_listed` is `false` for the shared `unknown` artist (put every nasheed of

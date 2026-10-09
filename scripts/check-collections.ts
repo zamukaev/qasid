@@ -23,6 +23,14 @@ import {
   resolveCollection,
   shelfCollections,
 } from "../utils/collections";
+import {
+  UNKNOWN_ARTIST,
+  parseSinglesFile,
+  singleArtists,
+  singleAudioPath,
+  singleImagePath,
+  singleNasheedId,
+} from "../utils/singles";
 
 let failures = 0;
 
@@ -256,6 +264,84 @@ check(
     ],
   },
 );
+
+// Singles file
+check(
+  "nasheed id is stable and slug-safe",
+  singleNasheedId("unknown", "Ya Rasul-Allah (Live).MP3"),
+  "unknown_ya_rasul_allah_live",
+);
+const singles = parseSinglesFile([
+  { title_en: " Ya Rasul Allah ", audio: "ya_rasul.mp3", image: "ya_rasul.webp", year: 2003 },
+  {
+    title_en: "Badr",
+    audio: "badr.mp3",
+    image: "badr.webp",
+    moods: ["calm"],
+    artist: { id: "omar", name_en: "Omar" },
+  },
+  {
+    title_en: "Badr 2",
+    audio: "badr2.mp3",
+    image: "badr2.webp",
+    artist: { id: "omar", name_en: "Omar" },
+  },
+]);
+check(
+  "no artist means the shared unknown artist",
+  singles.ok && singles.value[0].artist,
+  UNKNOWN_ARTIST,
+);
+check(
+  "single track fields, paths and defaults",
+  singles.ok && [
+    singles.value[0].nasheed_id,
+    singles.value[0].title_en,
+    singles.value[0].year,
+    singleAudioPath(singles.value[1]),
+    singleImagePath(singles.value[1]),
+    singles.value[1].artist.image,
+    singles.value[1].artist.name_ar,
+  ],
+  ["unknown_ya_rasul", "Ya Rasul Allah", 2003, "nasheeds/omar/badr.mp3", "banners/omar/badr.webp", "omar.webp", ""],
+);
+check(
+  "artists are deduplicated",
+  singles.ok && singleArtists(singles.value).map((a) => a.id),
+  ["unknown", "omar"],
+);
+check(
+  "bad singles entries are all reported",
+  parseSinglesFile([
+    { title_en: "A", audio: "a.wav", image: "a.webp", moods: ["happy"] },
+    { title_en: "B", audio: "b.mp3", image: "b.webp", artist: { id: "unknown", name_en: "X" } },
+    { title_en: "C", audio: "c.mp3", image: "c.webp", artist: { id: "omar", name_en: "Omar" } },
+    { title_en: "D", audio: "d.mp3", image: "d.webp", artist: { id: "omar", name_en: "Omar K" } },
+    { title_en: "E", audio: "e.mp3", image: "e.webp" },
+    { title_en: "E again", audio: "e.mp3", image: "e2.webp" },
+  ]),
+  {
+    ok: false,
+    errors: [
+      "A: audio must be a file name such as ya_rasul_allah.mp3",
+      "A: moods must be an array of calm, motivational, sleep, focus",
+      'B: leave artist out instead of using "unknown"',
+      'D: artist omar is also named "Omar"',
+      "E again: e.mp3 is listed twice for unknown",
+    ],
+  },
+);
+check(
+  "an empty singles file is rejected",
+  parseSinglesFile([]),
+  { ok: false, errors: ["the singles file must be a non-empty array"] },
+);
+const example = parseSinglesFile(
+  JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "collections/singles.example.json"), "utf8"),
+  ),
+);
+check("scripts/collections/singles.example.json is valid", example.ok || example.errors, true);
 
 const realFile = parseCollectionDefinitions(
   JSON.parse(

@@ -22,6 +22,7 @@
     "check:collections": "ts-node --project scripts/tsconfig.json scripts/check-collections.ts",
     "collections:build": "ts-node --project scripts/tsconfig.json scripts/build-collections.ts",
     "years:set": "ts-node --project scripts/tsconfig.json scripts/set-nasheed-years.ts",
+    "seed:singles": "ts-node --project scripts/tsconfig.json scripts/seed-singles.ts",
     "promo:set": "ts-node --project scripts/tsconfig.json scripts/set-paywall-config.ts",
     "build:ios": "eas build --platform ios --profile production",
     "build:android": "eas build --platform android --profile production",
