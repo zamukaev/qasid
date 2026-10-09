@@ -45,9 +45,7 @@ export const onArtistPlaybackCreated = onDocumentCreated(
     });
     const lockRef = firestore.collection("artist_playback_locks").doc(lockId);
 
-    const counterUpdate = {
-      popularity_score:
-        admin.firestore.FieldValue.increment(scoreIncrement),
+    const playCounters = {
       play_count: admin.firestore.FieldValue.increment(
         eventType === "started" ? 1 : 0,
       ),
@@ -57,6 +55,11 @@ export const onArtistPlaybackCreated = onDocumentCreated(
       completed_play_count: admin.firestore.FieldValue.increment(
         eventType === "completed" ? 1 : 0,
       ),
+    };
+    const counterUpdate = {
+      ...playCounters,
+      popularity_score:
+        admin.firestore.FieldValue.increment(scoreIncrement),
     };
 
     await firestore.runTransaction(async (transaction) => {
@@ -82,7 +85,15 @@ export const onArtistPlaybackCreated = onDocumentCreated(
         );
         return;
       }
-      transaction.set(artistRef, counterUpdate, {merge: true});
+      // Unlisted artists (the shared `unknown` artist, artists with only a
+      // few nasheeds) never gain a popularity_score: the 1.1.0 app orders its
+      // Popular rail by it without filtering on is_listed, so they would
+      // show up there. Their nasheeds still score normally.
+      const artistUpdate =
+        artistSnapshot.get("is_listed") === false ?
+          playCounters :
+          counterUpdate;
+      transaction.set(artistRef, artistUpdate, {merge: true});
       transaction.set(nasheedRef, counterUpdate, {merge: true});
       transaction.set(lockRef, {
         playId: snapshot.id,
