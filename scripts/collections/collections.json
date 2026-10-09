@@ -1,0 +1,56 @@
+[
+  {
+    "id": "beast_mode",
+    "name_en": "Beast Mode",
+    "image_path": "playlists/banner/beastmode.webp",
+    "shelf": "featured",
+    "sort_order": 10,
+    "source": { "type": "legacy_playlist", "playlist_id": "beast_mode" }
+  },
+  {
+    "id": "good_energy",
+    "name_en": "Good Energy",
+    "image_path": "playlists/banner/goodenergy.webp",
+    "shelf": "featured",
+    "sort_order": 20,
+    "source": { "type": "legacy_playlist", "playlist_id": "good_energy" }
+  },
+  {
+    "id": "night_thought",
+    "name_en": "Night Thought",
+    "image_path": "playlists/banner/nightthoughts.webp",
+    "shelf": "featured",
+    "sort_order": 30,
+    "source": { "type": "legacy_playlist", "playlist_id": "night_thought" }
+  },
+  {
+    "id": "singles",
+    "name_en": "Singles & Rare Voices",
+    "desc": "Nasheeds by unknown authors and artists with only a few tracks",
+    "shelf": "collections",
+    "sort_order": 10,
+    "source": { "type": "rule", "rule": { "unlisted_artists": true } }
+  },
+  {
+    "id": "ramadan_eid",
+    "name_en": "Ramadan & Eid",
+    "shelf": "collections",
+    "sort_order": 20,
+    "source": { "type": "rule", "rule": { "tags": ["ramadan", "eid", "fasting"] } }
+  },
+  {
+    "id": "retro",
+    "name_en": "Retro",
+    "desc": "Classic nasheeds from before 2010",
+    "shelf": "eras",
+    "sort_order": 10,
+    "source": { "type": "rule", "rule": { "year_to": 2009 } }
+  },
+  {
+    "id": "year_2025",
+    "name_en": "Nasheeds of 2025",
+    "shelf": "eras",
+    "sort_order": 20,
+    "source": { "type": "rule", "rule": { "year_from": 2025, "year_to": 2025 } }
+  }
+]

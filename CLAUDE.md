@@ -86,6 +86,10 @@ Private, signed-in-only playlists that mix nasheeds and surahs. Firestore: `user
 
 Entry points: the "Add to playlist" row in `TrackActionsSheet` (derived from `nasheed`, or from the `playlistItem` prop for surahs) and `AddToPlaylistButton`, the "+" left of Play All on the artist and reciter screens, on `TrackCollectionScreen` (Weekly Mix, generated playlists, Favorites) and on curated playlists. That button adds the whole list through `addTracksToPlaylist`, using `planBulkAdd` to skip tracks that are already present and to stop at the user's `trackCapacity`. Both open `AddToPlaylistFlow` (picker, then the form or the upgrade sheet). Playlists are listed in the Your Library tab (`app/(tabs)/library/index.tsx`, alongside Favorites and Downloads, with a "+" for an empty new playlist) and open `UserPlaylistScreen` through `library/my-playlist/[id]`. Free users: only the nasheeds in a playlist queue are capped and counted against the daily limit (`capNasheedsInQueue`).
 
+### Nasheed Collections
+
+Curated and rule-based lists (singles & unknown authors, tag themes, eras by `year`) in Firestore `collections/{id}`, tracks denormalized on the doc. Defined in `scripts/collections/collections.json`, written by `npm run collections:build` (also sets `is_listed` on artists: false for the `unknown` artist and artists with < 3 nasheeds). Pure logic in `utils/collections.ts`, checks: `npm run check:collections`. Not read by the app yet; the 1.1.0 app still reads `playlists` / `nasheeds.playlist_id`, so do not touch those. Migration plan: `docs/collections.md`.
+
 ### Audio Architecture (critical — read before touching)
 
 Audio uses **`react-native-track-player` v4.1.2**, not `expo-audio`. `expo-audio` is still in package.json but only used in the reciter screen to probe track durations.

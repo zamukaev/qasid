@@ -19,6 +19,8 @@
     "verify:reciter-audio": "ts-node --project scripts/tsconfig.json scripts/verify-reciter-audio.ts",
     "check:promo": "ts-node --project scripts/tsconfig.json scripts/check-promo-config.ts",
     "check:playlists": "ts-node --project scripts/tsconfig.json scripts/check-user-playlists.ts",
+    "check:collections": "ts-node --project scripts/tsconfig.json scripts/check-collections.ts",
+    "collections:build": "ts-node --project scripts/tsconfig.json scripts/build-collections.ts",
     "promo:set": "ts-node --project scripts/tsconfig.json scripts/set-paywall-config.ts",
     "build:ios": "eas build --platform ios --profile production",
     "build:android": "eas build --platform android --profile production",
