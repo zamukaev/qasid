@@ -86,7 +86,9 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
   `docs/collections.md`; logic checks: `npm run check:collections`. The
   playback function no longer raises `popularity_score` for unlisted
   artists, and the artist seed leaves out their `publishedAt`, so they stay
-  out of the 1.1.0 app's artist rails.
+  out of the 1.1.0 app's artist rails. `npm run years:set` writes
+  `nasheeds.year` from `scripts/collections/nasheed-years.json` (exported
+  with `--export`), which feeds the era collections.
 
 ### Changed
 

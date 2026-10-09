@@ -43,6 +43,22 @@ update by themselves. A collection removed from the file is set to
 
 Lists are capped at 200 tracks.
 
+## Nasheed years
+
+Era rules match on `nasheeds.year`, set from
+`scripts/collections/nasheed-years.json`: an array of
+`{ "id", "artist", "title", "year" }`, where `year` is a number or `null`
+(clears it). `artist` and `title` are only there so the file is readable.
+
+1. `npm run years:set -- --export` — writes every nasheed with its current
+   year (refuses to overwrite the file without `--force`).
+2. Fill in the years you know; leave the rest `null`.
+3. `npm run years:set -- --dry-run` — lists each change; an unknown id or a
+   bad year aborts before anything is written.
+4. `npm run years:set`, then `npm run collections:build`.
+
+`--file <path>` uses another file, e.g. one artist's years only.
+
 ## Artists: `is_listed`
 
 `is_listed` is `false` for the shared `unknown` artist (put every nasheed of

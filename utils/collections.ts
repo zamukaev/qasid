@@ -368,3 +368,47 @@ export function parseCollectionDefinitions(
     ? { ok: false, errors }
     : { ok: true, value: definitions };
 }
+
+// ---------------------------------------------------------------------------
+// Nasheed years file (scripts/collections/nasheed-years.json)
+
+/** One row of the years file. `artist` and `title` are only there to read. */
+export interface NasheedYearEntry {
+  id: string;
+  artist?: string;
+  title?: string;
+  year: number | null;
+}
+
+/**
+ * Validates the years file into nasheed id → year, where null clears the
+ * year. Every problem is reported, so a typo never half-applies a file.
+ */
+export function parseNasheedYears(
+  raw: unknown,
+): ParseResult<Map<string, number | null>> {
+  if (!Array.isArray(raw)) {
+    return { ok: false, errors: ["the years file must be an array"] };
+  }
+  const errors: string[] = [];
+  const years = new Map<string, number | null>();
+
+  raw.forEach((entry, index) => {
+    if (!isRecord(entry) || typeof entry.id !== "string" || entry.id === "") {
+      errors.push(`#${index}: needs a string id`);
+      return;
+    }
+    const { id, year } = entry;
+    if (year !== null && !isYear(year)) {
+      errors.push(`${id}: year must be null or a year between ${MIN_YEAR} and ${MAX_YEAR}`);
+      return;
+    }
+    if (years.has(id)) {
+      errors.push(`${id}: listed twice`);
+      return;
+    }
+    years.set(id, year);
+  });
+
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, value: years };
+}

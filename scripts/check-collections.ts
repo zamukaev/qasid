@@ -19,6 +19,7 @@ import {
   isArtistListed,
   listedArtists,
   parseCollectionDefinitions,
+  parseNasheedYears,
   resolveCollection,
   shelfCollections,
 } from "../utils/collections";
@@ -223,6 +224,37 @@ check(
   "duplicate ids are rejected",
   parseCollectionDefinitions([valid, valid]),
   { ok: false, errors: ["retro: duplicate id"] },
+);
+
+// Years file
+const years = parseNasheedYears([
+  { id: "a", artist: "X", title: "Y", year: 2005 },
+  { id: "b", year: null },
+]);
+check("years file parses, null clears", years.ok && [...years.value], [
+  ["a", 2005],
+  ["b", null],
+]);
+check(
+  "bad years, missing ids and duplicates are all reported",
+  parseNasheedYears([
+    { id: "a", year: "2005" },
+    { id: "b", year: 1850 },
+    { year: 2000 },
+    { id: "c", year: 2001 },
+    { id: "c", year: 2002 },
+    { id: "d" },
+  ]),
+  {
+    ok: false,
+    errors: [
+      "a: year must be null or a year between 1900 and 2100",
+      "b: year must be null or a year between 1900 and 2100",
+      "#2: needs a string id",
+      "c: listed twice",
+      "d: year must be null or a year between 1900 and 2100",
+    ],
+  },
 );
 
 const realFile = parseCollectionDefinitions(
