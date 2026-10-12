@@ -1,40 +1,59 @@
-import { useMemo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { GOLD, GOLD_RIPPLE } from "../constants/colors";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import {
-  useAudioPlayer,
-  useAudioProgress,
-} from "../context/AudioPlayerContext";
-import { Progressbar } from "./Progressbar";
+import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { QasidLiveEqualizer } from "./QasidLiveEqualizer";
 
 type Variant = "quran" | "nasheeds";
+
+const ARTWORK_SIZE = 56;
+const ICON_SIZE = 20;
+const PRESSED_OPACITY = 0.85;
+const EQUALIZER = {
+  bars: 6,
+  minHeight: 4,
+  maxHeight: 26,
+  barWidth: 3,
+  gap: 3,
+} as const;
 
 const VARIANT_CONFIG: Record<
   Variant,
   {
     emptyTitle: string;
     emptyDescription: string;
-    emptyButtonText: string;
+    emptyIcon: keyof typeof Ionicons.glyphMap;
     emptyRoute: string;
   }
 > = {
   quran: {
     emptyTitle: "Play Quran",
-    emptyDescription: "Browse reciters and start a new recitation.",
-    emptyButtonText: "Browse Reciters",
+    emptyDescription: "Browse reciters and start a recitation",
+    emptyIcon: "book-outline",
     emptyRoute: "/(tabs)/quran/all-reciters",
   },
   nasheeds: {
     emptyTitle: "Play Nasheeds",
-    emptyDescription: "Browse artists and start listening.",
-    emptyButtonText: "Browse Artists",
+    emptyDescription: "Browse artists and start listening",
+    emptyIcon: "musical-notes-outline",
     emptyRoute: "/(tabs)/nasheeds/all-artists",
   },
 };
+
+function artworkUriOf(artwork: unknown): string | null {
+  if (typeof artwork === "string") return artwork;
+  if (
+    artwork &&
+    typeof artwork === "object" &&
+    "uri" in artwork &&
+    typeof artwork.uri === "string"
+  ) {
+    return artwork.uri;
+  }
+  return null;
+}
 
 export default function ContinueListeningBlock({
   variant = "quran",
@@ -42,169 +61,102 @@ export default function ContinueListeningBlock({
   variant?: Variant;
 }) {
   const router = useRouter();
-  const { currentTrack, resume, pause, isPlaying, playTrack } =
-    useAudioPlayer();
-  const { positionMillis, durationMillis } = useAudioProgress();
+  const { currentTrack, isPlaying, setViewMode } = useAudioPlayer();
 
   const config = VARIANT_CONFIG[variant];
-  const hasHistory = Boolean(currentTrack);
 
-  const progressPercent = useMemo(() => {
-    if (!durationMillis) return 0;
-    return Math.max(
-      0,
-      Math.min(100, Math.round((positionMillis / durationMillis) * 100)),
+  if (!currentTrack) {
+    return (
+      <View className="px-4 pt-6 pb-5">
+        <Pressable
+          onPress={() =>
+            router.push(config.emptyRoute as Parameters<typeof router.push>[0])
+          }
+          android_ripple={{ color: GOLD_RIPPLE }}
+          accessibilityRole="button"
+          accessibilityLabel={`${config.emptyTitle}. ${config.emptyDescription}`}
+          style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}
+          className="flex-row items-center overflow-hidden rounded-2xl border border-qasid-gold/20 bg-qasid-bg-2 p-3"
+        >
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-qasid-gold/15">
+            <Ionicons name={config.emptyIcon} size={ICON_SIZE} color={GOLD} />
+          </View>
+          <View className="ml-3 flex-1">
+            <Text className="text-qasid-white text-base font-semibold">
+              {config.emptyTitle}
+            </Text>
+            <Text className="mt-0.5 text-white/55 text-sm" numberOfLines={1}>
+              {config.emptyDescription}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={ICON_SIZE} color={GOLD} />
+        </Pressable>
+      </View>
     );
-  }, [positionMillis, durationMillis]);
+  }
 
-  const handlePress = async () => {
-    if (hasHistory) {
-      if (!isPlaying) {
-        await resume();
-      }
-      if (isPlaying) {
-        await pause();
-      }
-      return;
-    }
-
-    router.push(config.emptyRoute as Parameters<typeof router.push>[0]);
-  };
+  const artUri = artworkUriOf(currentTrack.artworkUri);
 
   return (
     <View className="px-4 pt-6 pb-5">
-      <View className="relative overflow-hidden rounded-[30px] border border-qasid-gold/20 bg-qasid-bg-2 shadow-black/30">
-        <LinearGradient
-          colors={[
-            "rgba(201,168,76,0.22)",
-            "rgba(201,168,76,0.08)",
-            "rgba(0,0,0,0.0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ position: "absolute", inset: 0 }}
-        />
-        <View className="absolute inset-0 rounded-3xl border border-white/10" />
+      <Text className="mb-2 text-qasid-gold text-[11px] font-semibold uppercase tracking-[1.5px]">
+        {isPlaying ? "Now playing" : "Continue listening"}
+      </Text>
 
-        <View className="px-5 py-6">
-          <View className="mb-4 self-start rounded-full border border-qasid-gold/15 bg-qasid-black/40 px-3 py-1.5">
-            <Text className="text-qasid-gold text-[10px] font-semibold uppercase tracking-[2px]">
-              {hasHistory ? "Continue listening" : "Start here"}
-            </Text>
+      <Pressable
+        onPress={() => setViewMode("full")}
+        android_ripple={{ color: GOLD_RIPPLE }}
+        accessibilityRole="button"
+        accessibilityLabel={`Open player: ${currentTrack.title}`}
+        style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}
+        className="overflow-hidden rounded-2xl border border-qasid-gold/20 bg-qasid-bg-2"
+      >
+        <View className="flex-row items-center p-3">
+          <View
+            className="items-center justify-center overflow-hidden rounded-xl bg-qasid-gold/15"
+            style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE }}
+          >
+            {artUri ? (
+              <Image
+                source={{ uri: artUri }}
+                style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Ionicons name="musical-notes" size={ICON_SIZE} color={GOLD} />
+            )}
           </View>
 
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 pr-4">
-              <Text className="text-qasid-white text-[30px] leading-9 font-bold tracking-tight">
-                {hasHistory ? "Continue Listening" : config.emptyTitle}
-              </Text>
-              <Text className="mt-2 text-white/60 text-[15px] leading-6">
-                {hasHistory
-                  ? "Continue from where you left off."
-                  : config.emptyDescription}
-              </Text>
-            </View>
-
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-qasid-gold/15 border border-qasid-gold/25">
-              {!hasHistory ? (
-                <Pressable
-                  onPress={handlePress}
-                  android_ripple={{ color: GOLD_RIPPLE }}
-                  style={({ pressed }) => [
-                    {
-                      opacity: pressed ? 0.94 : 1,
-                      transform: [{ scale: pressed ? 0.992 : 1 }],
-                    },
-                  ]}
-                >
-                  <Ionicons name={"library-outline"} size={24} color={GOLD} />
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={handlePress}
-                  android_ripple={{ color: GOLD_RIPPLE }}
-                  style={({ pressed }) => [
-                    {
-                      opacity: pressed ? 0.94 : 1,
-                      transform: [{ scale: pressed ? 0.992 : 1 }],
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={isPlaying ? "pause" : "play"}
-                    size={24}
-                    color={GOLD}
-                  />
-                </Pressable>
-              )}
-            </View>
-          </View>
-
-          {hasHistory ? (
-            <View className="mt-6">
+          <View className="ml-3 mr-2 flex-1 flex-row items-center">
+            <View className="shrink">
               <Text
-                className="text-qasid-gold text-xl font-semibold"
+                className="text-qasid-white text-base font-semibold"
                 numberOfLines={1}
               >
-                {currentTrack?.title}
+                {currentTrack.title}
               </Text>
-              {currentTrack?.artist ? (
-                <Text className="mt-1 text-white/55 text-sm" numberOfLines={1}>
+              {currentTrack.artist ? (
+                <Text
+                  className="mt-0.5 text-white/55 text-sm"
+                  numberOfLines={1}
+                >
                   {currentTrack.artist}
                 </Text>
               ) : null}
-
-              {durationMillis > 0 ? (
-                <View className="mt-4">
-                  <Progressbar
-                    progressPercent={progressPercent}
-                    resumeMillis={positionMillis}
-                  />
-                </View>
-              ) : null}
             </View>
-          ) : null}
 
-          <View className="mt-6 self-start flex-row items-center rounded-2xl bg-qasid-gold px-4 py-3">
-            <Ionicons
-              name={hasHistory ? "musical-notes" : "search"}
-              size={16}
-              color="#090A07"
-            />
-            {hasHistory ? (
-              <Pressable
-                onPress={handlePress}
-                android_ripple={{ color: GOLD_RIPPLE }}
-                style={({ pressed }) => [
-                  {
-                    opacity: pressed ? 0.94 : 1,
-                    transform: [{ scale: pressed ? 0.992 : 1 }],
-                  },
-                ]}
-                className="ml-2 text-qasid-black font-semibold"
-              >
-                <Text>
-                  {isPlaying ? "Pause Listening" : "Resume Listening"}
-                </Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={handlePress}
-                android_ripple={{ color: GOLD_RIPPLE }}
-                style={({ pressed }) => [
-                  {
-                    opacity: pressed ? 0.94 : 1,
-                    transform: [{ scale: pressed ? 0.992 : 1 }],
-                  },
-                ]}
-                className="ml-2 text-qasid-black font-semibold"
-              >
-                <Text>{config.emptyButtonText}</Text>
-              </Pressable>
-            )}
+            {isPlaying ? (
+              <QasidLiveEqualizer
+                status="playing"
+                {...EQUALIZER}
+                className="ml-4 shrink-0"
+              />
+            ) : null}
           </View>
+
+          <Ionicons name="chevron-forward" size={ICON_SIZE} color={GOLD} />
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }
