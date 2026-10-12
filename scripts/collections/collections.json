@@ -36,7 +36,10 @@
     "name_en": "Ramadan & Eid",
     "shelf": "collections",
     "sort_order": 20,
-    "source": { "type": "rule", "rule": { "tags": ["ramadan", "eid", "fasting"] } }
+    "source": {
+      "type": "rule",
+      "rule": { "tags": ["ramadan", "eid", "fasting"] }
+    }
   },
   {
     "id": "retro",
