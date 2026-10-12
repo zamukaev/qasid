@@ -12,7 +12,14 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-10-13
+
 ### Added
+
+- **New on Qasid.** A section on the Nasheeds tab, right under Continue
+  listening, with the 4 newest nasheeds. Tap a row to play it, or **See
+  all** for everything added in the last 30 days, newest first. The section
+  hides itself when nothing was added that month.
 
 - **Your own playlists.** Signed-in users can now build private playlists that
   mix nasheeds and Quran surahs. "Add to playlist" sits in the `⋯` menu of
@@ -96,6 +103,13 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ### Changed
 
+- **Smaller "Continue listening" card.** On the Quran and Nasheeds tabs it is
+  now one compact row with the artwork, title and artist. Tapping it opens
+  the full player; play/pause stays in the mini player.
+  While a track plays the label reads "Now playing" and gold equalizer bars
+  move right after the title.
+  With nothing played yet it is a single "Play Quran" / "Play Nasheeds" row.
+
 - **Playlist covers show the first nasheed.** Moods, Trending, Top, Weekly
   Mix and Favorites now use the artwork of their first nasheed as the cover
   on the Nasheeds tab and in the playlist header, instead of the artist's
@@ -139,7 +153,7 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ---
 
-## [1.1.0] — unreleased
+## [1.1.0] — 2026-09-09
 
 ### Added
 
