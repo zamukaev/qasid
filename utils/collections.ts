@@ -19,11 +19,20 @@ export const MIN_LISTED_TRACKS = 3;
 /** Keeps a materialized collection doc well under the Firestore size limit. */
 export const MAX_COLLECTION_TRACKS = 200;
 
+/** Upper bound for a `recent` collection's window. */
+export const MAX_RECENT_DAYS = 365;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 const COLLECTION_ID_PATTERN = /^[a-z0-9_]+$/;
 const MIN_YEAR = 1900;
 const MAX_YEAR = 2100;
 
-export const COLLECTION_SHELVES = ["collections", "eras", "featured"] as const;
+export const COLLECTION_SHELVES = [
+  "collections",
+  "eras",
+  "featured",
+  "new",
+] as const;
 export type CollectionShelf = (typeof COLLECTION_SHELVES)[number];
 
 export interface CollectionRule {
@@ -43,7 +52,9 @@ export type CollectionSource =
    * `nasheeds.playlist_id`, which the 1.1.0 app reads. Removed once that
    * version is gone.
    */
-  | { type: "legacy_playlist"; playlist_id: string };
+  | { type: "legacy_playlist"; playlist_id: string }
+  /** Nasheeds added in the last `days` days, newest first. */
+  | { type: "recent"; days: number };
 
 export interface CollectionDefinition {
   id: string;
@@ -61,6 +72,11 @@ export interface CollectionDefinition {
 export interface CollectionDoc extends Omit<CollectionDefinition, "source"> {
   tracks: RecommendedTrack[];
   track_count: number;
+  /**
+   * Set on `recent` collections: the app drops tracks added longer ago than
+   * this, so the list stays honest between builds (see freshTracks).
+   */
+  fresh_days?: number;
 }
 
 /**
@@ -95,6 +111,8 @@ export interface CollectionNasheed {
   year?: number;
   playlist_id?: string | null;
   popularity_score: number;
+  /** When the nasheed doc was created, epoch ms (Firestore createTime). */
+  added_at?: number;
 }
 
 export function isArtistListed(artistId: string, trackCount: number): boolean {
@@ -145,6 +163,28 @@ const byTitle = (a: CollectionNasheed, b: CollectionNasheed): number =>
 const byPopularity = (a: CollectionNasheed, b: CollectionNasheed): number =>
   b.popularity_score - a.popularity_score || byTitle(a, b);
 
+const byNewest = (a: CollectionNasheed, b: CollectionNasheed): number =>
+  (b.added_at ?? 0) - (a.added_at ?? 0) || byTitle(a, b);
+
+const addedWithin = (
+  addedAt: number | undefined,
+  days: number,
+  now: number,
+): boolean => addedAt !== undefined && addedAt >= now - days * DAY_MS;
+
+/**
+ * The tracks of a `recent` collection that are still within its window. The
+ * doc is only rebuilt when nasheeds are seeded, so without this a quiet month
+ * would keep showing the last batch as new.
+ */
+export function freshTracks<T extends { added_at?: number }>(
+  tracks: readonly T[],
+  days: number,
+  now: number = Date.now(),
+): T[] {
+  return tracks.filter((t) => addedWithin(t.added_at, days, now));
+}
+
 export function toCollectionTrack(n: CollectionNasheed): RecommendedTrack {
   return {
     id: n.id,
@@ -154,6 +194,7 @@ export function toCollectionTrack(n: CollectionNasheed): RecommendedTrack {
     audio_path: n.audio_path,
     image_path: n.image_path,
     moods: n.moods,
+    ...(n.added_at !== undefined ? { added_at: n.added_at } : {}),
   };
 }
 
@@ -166,12 +207,14 @@ export interface ResolvedCollection {
 /**
  * Resolves a collection's tracks. Manual collections keep their own order,
  * legacy playlists sort by title like the 1.1.0 app does, rules sort by
- * popularity. Nasheeds without audio are never included.
+ * popularity, recent collections put the newest first. Nasheeds without audio
+ * are never included.
  */
 export function resolveCollection(
   source: CollectionSource,
   nasheeds: readonly CollectionNasheed[],
   listed: ReadonlyMap<string, boolean>,
+  now: number = Date.now(),
 ): ResolvedCollection {
   const playable = nasheeds.filter((n) => n.audio_path !== "");
   let picked: CollectionNasheed[];
@@ -194,6 +237,11 @@ export function resolveCollection(
       picked = playable
         .filter((n) => matchesRule(n, source.rule, listed))
         .sort(byPopularity);
+      break;
+    case "recent":
+      picked = playable
+        .filter((n) => addedWithin(n.added_at, source.days, now))
+        .sort(byNewest);
       break;
   }
 
@@ -284,8 +332,23 @@ function parseSource(raw: unknown, errors: string[]): CollectionSource | null {
       const rule = parseRule(raw.rule, errors);
       return rule ? { type: "rule", rule } : null;
     }
+    case "recent": {
+      const days = raw.days;
+      if (
+        typeof days !== "number" ||
+        !Number.isInteger(days) ||
+        days < 1 ||
+        days > MAX_RECENT_DAYS
+      ) {
+        errors.push(`recent source needs days between 1 and ${MAX_RECENT_DAYS}`);
+        return null;
+      }
+      return { type: "recent", days };
+    }
     default:
-      errors.push('source.type must be "manual", "rule" or "legacy_playlist"');
+      errors.push(
+        'source.type must be "manual", "rule", "legacy_playlist" or "recent"',
+      );
       return null;
   }
 }

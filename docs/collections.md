@@ -24,7 +24,7 @@ update by themselves. A collection removed from the file is set to
 | `name_ar`    | no       |                                                       |
 | `desc`       | no       |                                                       |
 | `image_path` | no       | Storage path, like on artists and playlists           |
-| `shelf`      | yes      | `collections`, `eras` or `featured` — the home rail   |
+| `shelf`      | yes      | `collections`, `eras`, `featured` or `new`            |
 | `sort_order` | yes      | order within the shelf, ascending                     |
 | `is_active`  | no       | defaults to `true`                                    |
 | `source`     | yes      | see below                                             |
@@ -40,6 +40,15 @@ update by themselves. A collection removed from the file is set to
     `year` never match
 - `{ "type": "legacy_playlist", "playlist_id": "beast_mode" }` — mirrors
   `nasheeds.playlist_id`, sorted by title like the 1.1.0 app. Transitional.
+- `{ "type": "recent", "days": 30 }` — nasheeds added in the last `days`
+  days, newest first. Nasheed docs have no date field, so the build uses the
+  doc's Firestore `createTime` (set on the first write, kept by later merge
+  writes). The doc gets `fresh_days` and every track an `added_at`, and the
+  app drops tracks that aged out since the build. When none are left, the
+  section is hidden. Used by `new_on_qasid` on the `new` shelf: the "New on
+  Qasid" section under Continue Listening on the Nasheeds tab (4 rows, then
+  See all). `seed:singles` rebuilds it; after `seed:nasheeds` run
+  `npm run collections:build` yourself.
 
 Lists are capped at 200 tracks.
 

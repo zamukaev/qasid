@@ -16,6 +16,7 @@ import {
   MAX_COLLECTION_TRACKS,
   UNKNOWN_ARTIST_ID,
   collectionCover,
+  freshTracks,
   isArtistListed,
   listedArtists,
   parseCollectionDefinitions,
@@ -110,6 +111,49 @@ check(
   "conditions combine with AND",
   ids({ type: "rule", rule: { unlisted_artists: true, tags: ["ramadan"] } }, catalog),
   [],
+);
+
+// Recent
+const NOW = Date.UTC(2026, 9, 13);
+const DAY = 24 * 60 * 60 * 1000;
+const recentCatalog = [
+  nasheed("old", { added_at: NOW - 31 * DAY }),
+  nasheed("week", { added_at: NOW - 7 * DAY }),
+  nasheed("today", { added_at: NOW - 1000 }),
+  nasheed("undated"),
+  nasheed("silent_new", { audio_path: "", added_at: NOW }),
+];
+check(
+  "recent keeps the window, newest first, skips undated and silent",
+  resolveCollection(
+    { type: "recent", days: 30 },
+    recentCatalog,
+    new Map(),
+    NOW,
+  ).tracks.map((t) => t.id),
+  ["today", "week"],
+);
+check(
+  "recent tracks carry added_at",
+  resolveCollection({ type: "recent", days: 30 }, recentCatalog, new Map(), NOW)
+    .tracks[0].added_at,
+  NOW - 1000,
+);
+check(
+  "freshTracks drops tracks that aged out since the build",
+  freshTracks(
+    [{ id: "a", added_at: NOW - 40 * DAY }, { id: "b", added_at: NOW - DAY }, { id: "c" }],
+    30,
+    NOW,
+  ).map((t) => t.id),
+  ["b"],
+);
+check(
+  "recent days must be a whole number in range",
+  parseCollectionDefinitions([
+    { id: "r", name_en: "R", shelf: "new", sort_order: 1, source: { type: "recent", days: 0 } },
+  ]),
+  { ok: false, errors: ["r: recent source needs days between 1 and 365"] },
 );
 
 // Other sources
@@ -223,7 +267,7 @@ check(
     ok: false,
     errors: [
       "Bad Id: id must match [a-z0-9_]+",
-      "Bad Id: shelf must be one of collections, eras, featured",
+      "Bad Id: shelf must be one of collections, eras, featured, new",
       "Bad Id: rule.year_from must not be after rule.year_to",
     ],
   },

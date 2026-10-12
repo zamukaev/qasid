@@ -1,25 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
-import { CollectionTrack, TrackCollectionScreen } from "../../../../components";
-import { Mood, RecommendedTrack } from "../../../../types/nasheed";
+import {
+  CollectionTrack,
+  TrackCollectionScreen,
+  recommendedToCollectionTrack,
+} from "../../../../components";
 import { fetchCollectionById } from "../../../../services/collections-service";
 import { CollectionDoc, collectionCover } from "../../../../utils/collections";
-import { toNasheedTrackMeta } from "../../../../utils/nasheedTrack";
-
-// Synchronous: storage paths stay raw so the list paints on the single
-// Firestore read.
-const toCollectionTrack = (track: RecommendedTrack): CollectionTrack => ({
-  ...toNasheedTrackMeta(track),
-  nasheed: {
-    id: track.id,
-    name_en: track.name_en,
-    title_en: track.title_en,
-    audio_path: track.audio_path,
-    image_path: track.image_path,
-    artist_id: track.artist_id,
-    moods: track.moods as Mood[],
-  },
-});
 
 export default function CollectionScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -53,7 +40,7 @@ export default function CollectionScreen() {
           return;
         }
         setCollection(data);
-        setTracks(data.tracks.map(toCollectionTrack));
+        setTracks(data.tracks.map(recommendedToCollectionTrack));
         setError(null);
       } catch (e) {
         if (isMountedRef.current) {

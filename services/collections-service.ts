@@ -9,7 +9,11 @@ import {
   doc,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
-import { CollectionDoc, isCollectionShelf } from "../utils/collections";
+import {
+  CollectionDoc,
+  freshTracks,
+  isCollectionShelf,
+} from "../utils/collections";
 
 // Collections change only when `npm run collections:build` runs.
 const COLLECTIONS_TTL_MS = 30 * 60 * 1000;
@@ -32,7 +36,11 @@ const toCollectionDoc = (
 ): CollectionDoc | null => {
   const data = snap.data() ?? {};
   if (!isCollectionShelf(data.shelf)) return null;
-  const tracks = Array.isArray(data.tracks) ? data.tracks : [];
+  const allTracks = Array.isArray(data.tracks) ? data.tracks : [];
+  const freshDays =
+    typeof data.fresh_days === "number" ? data.fresh_days : undefined;
+  const tracks =
+    freshDays === undefined ? allTracks : freshTracks(allTracks, freshDays);
   return {
     id: snap.id,
     name_en: typeof data.name_en === "string" ? data.name_en : "",
@@ -44,6 +52,7 @@ const toCollectionDoc = (
     is_active: data.is_active === true,
     tracks,
     track_count: tracks.length,
+    fresh_days: freshDays,
   };
 };
 

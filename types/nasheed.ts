@@ -68,6 +68,8 @@ export interface RecommendedTrack {
   audio_path: string;
   image_path: string;
   moods: string[];
+  /** Set on `recent` collection tracks: when the nasheed was added, epoch ms. */
+  added_at?: number;
 }
 
 export type GeneratedPlaylistType = "trending" | "top" | "mood";

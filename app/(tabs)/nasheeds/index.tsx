@@ -7,6 +7,7 @@ import {
   ArtistRailSection,
   BrowseAllArtistsPreview,
   ContinueListeningBlock,
+  NewNasheedsSection,
   PromoHomeBanner,
 } from "../../../components";
 import { useAuth } from "../../../hooks/useAuth";
@@ -341,6 +342,10 @@ export default function Nasheeds() {
     () => toCollectionRailItems(collections, "eras"),
     [collections],
   );
+  const newCollection = useMemo(
+    () => shelfCollections(collections, "new")[0],
+    [collections],
+  );
 
   const openCollection = (id: string) =>
     router.push({
@@ -390,6 +395,11 @@ export default function Nasheeds() {
       >
         <PromoHomeBanner />
         <ContinueListeningBlock variant="nasheeds" />
+        <NewNasheedsSection
+          collection={newCollection}
+          isLoading={isLoadingCollections}
+          onPressSeeAll={openCollection}
+        />
 
         {(isLoadingForYou || forYouItems.length > 0) && (
           <ArtistRailSection

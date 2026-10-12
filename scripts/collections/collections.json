@@ -1,5 +1,13 @@
 [
   {
+    "id": "new_on_qasid",
+    "name_en": "New on Qasid",
+    "desc": "Nasheeds added in the last 30 days",
+    "shelf": "new",
+    "sort_order": 10,
+    "source": { "type": "recent", "days": 30 }
+  },
+  {
     "id": "beast_mode",
     "name_en": "Beast Mode",
     "image_path": "playlists/banner/beastmode.webp",

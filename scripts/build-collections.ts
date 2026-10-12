@@ -10,7 +10,9 @@
  * this script does not touch `playlists` or `nasheeds.playlist_id`.
  *
  * A collection removed from the file is deactivated, not deleted. Rerun
- * after adding nasheeds, changing tags/years or editing the file.
+ * after adding nasheeds, changing tags/years or editing the file. A `recent`
+ * collection dates nasheeds by their doc's createTime and is filtered again
+ * in the app, so it never shows a stale batch as new.
  *
  * Usage:
  *   npm run collections:build               — write to Firestore
@@ -82,6 +84,9 @@ function toCollectionNasheed(
     year: typeof d.year === "number" ? d.year : undefined,
     playlist_id: typeof d.playlist_id === "string" ? d.playlist_id : null,
     popularity_score: typeof d.popularity_score === "number" ? d.popularity_score : 0,
+    // Nasheed docs carry no date of their own; createTime is set once when
+    // the doc is first written and survives later merge writes.
+    added_at: snap.createTime.toMillis(),
   };
 }
 
@@ -134,6 +139,7 @@ async function main(): Promise<void> {
         ...def,
         tracks,
         track_count: tracks.length,
+        ...(def.source.type === "recent" ? { fresh_days: def.source.days } : {}),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }),
     );
