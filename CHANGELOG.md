@@ -96,6 +96,17 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ### Changed
 
+- **Playlist covers show the first nasheed.** Moods, Trending, Top, Weekly
+  Mix and Favorites now use the artwork of their first nasheed as the cover
+  on the Nasheeds tab and in the playlist header, instead of the artist's
+  photo (or the mood's own image). A nasheed without artwork falls back to
+  its artist's photo.
+  Since that artwork is mostly a wide video thumbnail, these covers (and the
+  Collections and Through the Years tiles) are now shown whole instead of
+  cropped, with a blurred copy of the image filling the space around it. The
+  track thumbnails in nasheed lists (playlists, artist pages, your own
+  playlists) get the same treatment.
+
 - **The free tier's nasheed guards run from any tab.** Counting auto-advances
   against the daily limit and stopping a free user's nasheed in the
   background lived in the Nasheeds tab's layout, which only exists once that

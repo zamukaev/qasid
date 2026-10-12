@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import NoImage from "../assets/images/no_image.webp";
 import { Track } from "../context/AudioPlayerContext";
 import { QasidLiveEqualizer } from "./QasidLiveEqualizer";
+import FittedArtwork from "./FittedArtwork";
 
 export type QasidTrackRowProps = {
   title: string;
@@ -20,6 +21,8 @@ export type QasidTrackRowProps = {
   isPaused?: boolean;
   className?: string; // чтобы ты мог добавлять mt/mb и т.п.
   rightAction?: React.ReactNode;
+  /** Show the whole image instead of cropping it (nasheed artwork is mostly 16:9). */
+  fitWhole?: boolean;
 };
 
 // Memoized: a collection list mounts many of these, each ~8 native views (two
@@ -37,6 +40,7 @@ export const SharedCard = React.memo(function SharedCard({
   isPaused,
   className = "",
   rightAction,
+  fitWhole,
 }: QasidTrackRowProps) {
   const onPlayPress = (event: any) => {
     event.stopPropagation();
@@ -70,11 +74,17 @@ export const SharedCard = React.memo(function SharedCard({
         />
         <View className="absolute inset-0 rounded-2xl border border-white/10" />
         <View className="flex-row items-center px-3 py-3">
-          <Image
-            source={image ? { uri: image } : NoImage}
-            className="h-12 w-12 rounded-md"
-            resizeMode="cover"
-          />
+          {fitWhole ? (
+            <View className="h-12 w-12 rounded-md overflow-hidden">
+              <FittedArtwork source={image ? { uri: image } : NoImage} />
+            </View>
+          ) : (
+            <Image
+              source={image ? { uri: image } : NoImage}
+              className="h-12 w-12 rounded-md"
+              resizeMode="cover"
+            />
+          )}
 
           <View className="ml-3 flex-1">
             <View className="flex-row items-center">

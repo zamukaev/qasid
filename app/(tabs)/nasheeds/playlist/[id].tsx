@@ -421,6 +421,7 @@ export default function PlaylistScreen() {
                 return (
                   <SharedCard
                     className="mb-1"
+                    fitWhole
                     key={nasheed.id}
                     handlePlayTrack={() => handlePlayNasheed(nasheed)}
                     isPlaying={isPlaying && isActive}

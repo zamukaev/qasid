@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, SafeAreaView, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { GOLD } from "../../../constants/colors";
@@ -20,7 +20,6 @@ import {
   fetchNasheedArtists,
   fetchPopularArtists,
   fetchNewArtists,
-  fetchArtistImagePath,
 } from "../../../services/nasheeds-service";
 import { fetchRecentArtists } from "../../../services/recents-service";
 import { fetchPlaylists } from "../../../services/playlists-service";
@@ -28,7 +27,7 @@ import {
   ensureWeeklyMix,
   fetchGeneratedPlaylists,
 } from "../../../services/recommendations-service";
-import { fetchFavoriteCovers } from "../../../services/favorites-service";
+import { fetchFirstFavorite } from "../../../services/favorites-service";
 import { fetchCollections } from "../../../services/collections-service";
 import {
   CollectionDoc,
@@ -36,11 +35,15 @@ import {
   collectionCover,
   shelfCollections,
 } from "../../../utils/collections";
+import {
+  cachedFirstTrackCover,
+  firstTrackCovers,
+} from "../../../utils/nasheedTrack";
 
 // Generated playlists carry a `key` (not `id`); ArtistRailSection only reads
 // id/name_en/image_path, so a light projection is enough. `coverOverride`
-// lets trending/top playlists show the first track's artist photo instead
-// of the (currently always empty) playlist-level image_path.
+// is the first nasheed's artwork, shown instead of the playlist's own
+// image_path.
 const toRailItem = (p: GeneratedPlaylist, coverOverride?: string): Playlist =>
   ({
     id: p.key,
@@ -94,6 +97,10 @@ export default function Nasheeds() {
   const [isLoadingRecents, setIsLoadingRecents] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Covers upgrade in the background; a newer load must win over a slower,
+  // older one that resolves after it.
+  const generatedLoadRef = useRef(0);
+  const forYouLoadRef = useRef(0);
 
   const loadMain = useCallback(async () => {
     setIsLoadingMain(true);
@@ -148,32 +155,39 @@ export default function Nasheeds() {
   }, []);
 
   const loadGenerated = useCallback(async (force = false) => {
+    const loadId = ++generatedLoadRef.current;
     setIsLoadingGenerated(true);
     try {
       const data = await fetchGeneratedPlaylists({ force });
-      setGenerated(data);
+      if (loadId !== generatedLoadRef.current) return;
+      const lists = Object.fromEntries(data.map((p) => [p.key, p.tracks]));
 
-      // Trending/Top playlists show their first track's artist photo as the
-      // cover (moods keep their own image_path, unchanged).
-      const coverEntries = await Promise.all(
-        data
-          .filter((p) => p.type !== "mood")
-          .map(async (p) => {
-            const artistId = p.tracks?.[0]?.artist_id;
-            if (!artistId) return null;
-            const imagePath = await fetchArtistImagePath(artistId);
-            return imagePath ? ([p.key, imagePath] as const) : null;
-          }),
-      );
+      // Every generated playlist (trending, top, moods) shows its first
+      // nasheed's artwork as the cover. Paint with what is already at hand,
+      // then swap in the live artwork, read in one query, without blocking.
+      setGenerated(data);
       setGeneratedCovers(
         Object.fromEntries(
-          coverEntries.filter((e): e is readonly [string, string] => !!e),
+          data.flatMap((p) => {
+            const cover = cachedFirstTrackCover(p.tracks);
+            return cover ? [[p.key, cover]] : [];
+          }),
         ),
       );
+      setIsLoadingGenerated(false);
+
+      void firstTrackCovers(lists)
+        .then((covers) => {
+          if (loadId !== generatedLoadRef.current) return;
+          setGeneratedCovers((prev) => ({ ...prev, ...covers }));
+        })
+        .catch((error) => {
+          console.error("Error loading generated playlist covers:", error);
+        });
     } catch (error) {
       console.error("Error loading generated playlists:", error);
     } finally {
-      setIsLoadingGenerated(false);
+      if (loadId === generatedLoadRef.current) setIsLoadingGenerated(false);
     }
   }, []);
 
@@ -194,24 +208,40 @@ export default function Nasheeds() {
         return;
       }
 
+      const loadId = ++forYouLoadRef.current;
       setIsLoadingForYou(true);
       try {
         const [mix, favs] = await Promise.all([
           ensureWeeklyMix({ force }),
-          fetchFavoriteCovers(),
+          fetchFirstFavorite(),
         ]);
-        const firstArtistId = mix?.tracks?.[0]?.artist_id ?? null;
-        const mixArtistImage = firstArtistId
-          ? await fetchArtistImagePath(firstArtistId)
-          : null;
-        setMixCovers(mixArtistImage ? [mixArtistImage] : []);
-        setFavCovers(favs.cover ? [favs.cover] : []);
+        if (loadId !== forYouLoadRef.current) return;
+        const lists = {
+          mix: mix?.tracks,
+          favorites: favs.firstTrack ? [favs.firstTrack] : undefined,
+        };
+        const toCovers = (cover: string | undefined) => (cover ? [cover] : []);
+
+        // Same as the generated rails: paint now, upgrade in one query.
+        setMixCovers(toCovers(cachedFirstTrackCover(lists.mix)));
+        setFavCovers(toCovers(cachedFirstTrackCover(lists.favorites)));
         setHasWeeklyMix((mix?.tracks?.length ?? 0) > 0);
         setHasFavorites(favs.hasFavorites);
-      } catch (error) {
-        console.error("Error loading For You covers:", error);
-      } finally {
         setIsLoadingForYou(false);
+
+        void firstTrackCovers(lists)
+          .then((covers) => {
+            if (loadId !== forYouLoadRef.current) return;
+            if (covers.mix) setMixCovers([covers.mix]);
+            if (covers.favorites) setFavCovers([covers.favorites]);
+          })
+          .catch((error) => {
+            console.error("Error loading For You covers:", error);
+          });
+      } catch (error) {
+        console.error("Error loading For You:", error);
+      } finally {
+        if (loadId === forYouLoadRef.current) setIsLoadingForYou(false);
       }
     },
     [authLoading, user?.uid, isGuest],
@@ -299,8 +329,8 @@ export default function Nasheeds() {
     () =>
       generated
         .filter((p) => p.type === "mood" && p.tracks?.length > 0)
-        .map((p) => toRailItem(p)),
-    [generated],
+        .map((p) => toRailItem(p, generatedCovers[p.key])),
+    [generated, generatedCovers],
   );
 
   const collectionItems = useMemo(
@@ -364,6 +394,7 @@ export default function Nasheeds() {
         {(isLoadingForYou || forYouItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title={madeForTitle}
             artists={forYouItems}
             isLoading={isLoadingForYou}
@@ -383,10 +414,10 @@ export default function Nasheeds() {
           />
         )}
 
-
         {(isLoadingGenerated || trendingItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Trending"
             artists={trendingItems}
             isLoading={isLoadingGenerated}
@@ -396,6 +427,7 @@ export default function Nasheeds() {
         {(isLoadingGenerated || topItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Top Charts"
             artists={topItems}
             isLoading={isLoadingGenerated}
@@ -405,6 +437,7 @@ export default function Nasheeds() {
         {(isLoadingGenerated || moodItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Moods"
             artists={moodItems}
             isLoading={isLoadingGenerated}
@@ -414,6 +447,7 @@ export default function Nasheeds() {
         {(isLoadingCollections || collectionItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Collections"
             artists={collectionItems}
             isLoading={isLoadingCollections}
@@ -423,6 +457,7 @@ export default function Nasheeds() {
         {(isLoadingCollections || eraItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Through the Years"
             artists={eraItems}
             isLoading={isLoadingCollections}

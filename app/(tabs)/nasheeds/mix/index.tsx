@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CollectionTrack, TrackCollectionScreen } from "../../../../components";
 import { Mood, RecommendedTrack } from "../../../../types/nasheed";
 import { ensureWeeklyMix } from "../../../../services/recommendations-service";
-import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
 import {
   enrichWithLiveImageAndAudio,
   toNasheedTrackMeta,
+  trackCover,
 } from "../../../../utils/nasheedTrack";
 import { useIsGuest } from "../../../../stores/userStore";
 
@@ -61,13 +61,11 @@ export default function WeeklyMixScreen() {
       setError(null);
       setLoading(false);
 
-      // Phase 2 — extras, none of which gate the list.
-      const firstArtistId = raw[0]?.artist_id ?? null;
-      const artistImage = firstArtistId
-        ? await fetchArtistImagePath(firstArtistId)
-        : null;
+      // Phase 2 — header artwork from the first (already live) nasheed,
+      // which must not gate the list.
+      const cover = await trackCover(enriched[0]);
       if (!isMountedRef.current) return;
-      setHeaderImagePath(artistImage ?? undefined);
+      setHeaderImagePath(cover ?? undefined);
     } catch (e) {
       if (isMountedRef.current) {
         console.error("Error loading weekly mix:", e);

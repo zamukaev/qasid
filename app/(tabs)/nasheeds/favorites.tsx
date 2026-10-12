@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  CollectionTrack,
-  TrackCollectionScreen,
-} from "../../../components";
+import { CollectionTrack, TrackCollectionScreen } from "../../../components";
 import { Nasheed } from "../../../types/nasheed";
 import { fetchFavorites } from "../../../services/favorites-service";
-import { fetchArtistImagePath } from "../../../services/nasheeds-service";
 import { useFavoritesStore } from "../../../stores/favoritesStore";
-import { toNasheedTrackMeta } from "../../../utils/nasheedTrack";
+import { toNasheedTrackMeta, trackCover } from "../../../utils/nasheedTrack";
 import { useIsGuest } from "../../../stores/userStore";
 
 // Synchronous: storage paths stay raw so the list paints immediately.
@@ -58,13 +54,11 @@ export default function FavoritesScreen() {
         .hydrate(true)
         .catch(() => {});
 
-      // Phase 2 — header artwork, which must not gate the list.
-      const firstArtistId = favorites[0]?.artist_id ?? null;
-      const artistImage = firstArtistId
-        ? await fetchArtistImagePath(firstArtistId)
-        : null;
+      // Phase 2 — header artwork (the first nasheed's, already live from
+      // fetchFavorites), which must not gate the list.
+      const cover = await trackCover(favorites[0]);
       if (!isMountedRef.current) return;
-      setHeaderImagePath(artistImage ?? undefined);
+      setHeaderImagePath(cover ?? undefined);
     } catch (e) {
       if (isMountedRef.current) {
         console.error("Error loading favorites:", e);

@@ -109,6 +109,7 @@ const PlaylistRow = React.memo(function PlaylistRow({
   return (
     <SharedCard
       className="mb-1"
+      fitWhole
       title={track.title}
       subtitle={track.subtitle}
       image={imageUrl}

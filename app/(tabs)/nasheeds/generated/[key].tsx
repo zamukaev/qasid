@@ -7,8 +7,11 @@ import {
   RecommendedTrack,
 } from "../../../../types/nasheed";
 import { fetchGeneratedPlaylistByKey } from "../../../../services/recommendations-service";
-import { fetchArtistImagePath } from "../../../../services/nasheeds-service";
-import { toNasheedTrackMeta } from "../../../../utils/nasheedTrack";
+import {
+  cachedFirstTrackCover,
+  firstTrackCover,
+  toNasheedTrackMeta,
+} from "../../../../utils/nasheedTrack";
 
 // Synchronous by design: storage paths stay unresolved so the list can paint
 // on the single Firestore read instead of waiting on ~200 network round-trips.
@@ -61,21 +64,20 @@ export default function GeneratedPlaylistScreen() {
         // Phase 1 — paint. Nothing here touches the network: storage paths
         // stay raw, and artwork fills in progressively once the list is up.
         setPlaylist(data);
-        setCoverImagePath(data.image_path);
+        // Usually the live cover the home rail already cached, so the
+        // phase 2 read below is a no-op.
+        setCoverImagePath(
+          cachedFirstTrackCover(data.tracks) || data.image_path,
+        );
         setTracks((data.tracks ?? []).map(toCollectionTrack));
         setError(null);
         setLoading(false);
 
         // Phase 2 — extras, none of which gate the list.
-        // Trending/Top playlists show their first track's artist photo as
-        // the header cover (moods keep their own image_path, unchanged).
-        const artistId =
-          data.type !== "mood" ? data.tracks?.[0]?.artist_id : undefined;
-        const artistImagePath = artistId
-          ? await fetchArtistImagePath(artistId)
-          : null;
+        // The header cover is the first nasheed's live artwork.
+        const cover = await firstTrackCover(data.tracks);
         if (!isMountedRef.current) return;
-        if (artistImagePath) setCoverImagePath(artistImagePath);
+        if (cover) setCoverImagePath(cover);
       } catch (e) {
         if (isMountedRef.current) {
           console.error("Error loading generated playlist:", e);

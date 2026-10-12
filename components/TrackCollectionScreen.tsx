@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
   ListRenderItemInfo,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -29,6 +28,7 @@ import SharedCardSkeleton from "./SharedCardSkeleton";
 import ShowError from "./ShowError";
 import ReciterHeaderSkeleton from "./ReciterHeaderSkeleton";
 import ImageShimmerOverlay from "./ImageShimmerOverlay";
+import FittedArtwork from "./FittedArtwork";
 import { PremiumGateModal } from "./PremiumGateModal";
 import { AddToPlaylistButton } from "./AddToPlaylistButton";
 import { CollectionDownloadButton } from "./CollectionDownloadButton";
@@ -281,12 +281,13 @@ export function TrackCollectionScreen({
                   shadowRadius: 12,
                 }}
               >
-                <Image
-                  source={headerImageSource}
-                  onLoad={onHeaderImageLoad}
-                  onError={onHeaderImageError}
-                  className="h-40 w-40 rounded-xl border border-qasid-gold/20"
-                />
+                <View className="h-40 w-40 rounded-xl overflow-hidden border border-qasid-gold/20">
+                  <FittedArtwork
+                    source={headerImageSource}
+                    onLoad={onHeaderImageLoad}
+                    onError={onHeaderImageError}
+                  />
+                </View>
                 <ImageShimmerOverlay
                   visible={headerImageLoading}
                   rounded="xl"

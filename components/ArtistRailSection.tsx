@@ -12,6 +12,7 @@ import HorizontalRailSection from "./HorizontalRailSection";
 
 interface CompactArtistCardProps extends CardVariantProps {
   artist: NasheedArtist | Playlist;
+  fitWhole?: boolean;
   onPress?: (id: string) => void;
 }
 
@@ -20,6 +21,7 @@ function CompactArtistCard({
   circle,
   large,
   small,
+  fitWhole,
   onPress,
 }: CompactArtistCardProps) {
   const router = useRouter();
@@ -35,6 +37,7 @@ function CompactArtistCard({
       cardWidth={cardWidth}
       imageSize={imageSize}
       circle={circle}
+      fitWhole={fitWhole}
       labelClassName={large ? "text-sm" : "text-xs"}
       onPress={() =>
         onPress
@@ -55,6 +58,8 @@ interface ArtistRailSectionProps extends CardVariantProps {
   onPressSeeAll?: () => void;
   onPressItem?: (id: string) => void;
   skeletonCount?: number;
+  /** Covers are nasheed artwork (mostly 16:9): show them whole, uncropped. */
+  fitWhole?: boolean;
 }
 
 function ArtistRailSection({
@@ -67,6 +72,7 @@ function ArtistRailSection({
   circle,
   large,
   small,
+  fitWhole,
 }: ArtistRailSectionProps) {
   return (
     <HorizontalRailSection
@@ -82,6 +88,7 @@ function ArtistRailSection({
           circle={circle}
           large={large}
           small={small}
+          fitWhole={fitWhole}
           onPress={onPressItem}
         />
       )}
