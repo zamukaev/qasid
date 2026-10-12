@@ -127,6 +127,12 @@ Versions map to the `version` field in `app.json` / `package.json`, bumped via
 
 ### Fixed
 
+- **"Unknown Artist" no longer shows up as an artist.** It was added to
+  Recently Visited after opening its page, and could be found through artist
+  search. Recently Visited now also drops artists that were unlisted after
+  the visit, and Popular, New and Explore Artists exclude `unknown` by id,
+  not only by its `is_listed` flag.
+
 - **No "new artist" push for unlisted artists.** Creating the shared
   `unknown` artist or an artist with only a few nasheeds no longer notifies
   every user: `onArtistCreated` skips artists with `is_listed: false`.

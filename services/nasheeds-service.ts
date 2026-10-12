@@ -29,6 +29,7 @@ import {
   Nasheed,
   NasheedCursor,
 } from "../types/nasheed";
+import { UNKNOWN_ARTIST_ID } from "../utils/collections";
 
 const FIREBASE_PROJECT_ID = "qasid-fd80d";
 const SEARCH_ARTISTS_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunctions.net/searchArtists`;
@@ -66,9 +67,12 @@ const normalizeSearchText = (value: string) => value.trim().toLowerCase();
 // Unlisted artists (the shared `unknown` artist, artists with only a few
 // nasheeds) live in the "singles" collection rather than in artist rails.
 // Filtered client-side: a missing flag means listed, and is_listed != false
-// would need a composite index per query.
-const isListedArtist = (artist: NasheedArtist): boolean =>
-  artist.is_listed !== false;
+// would need a composite index per query. `unknown` is matched by id too, so
+// it stays hidden even if its flag is ever missing.
+export const isListedArtist = (artist: {
+  id: string;
+  is_listed?: boolean;
+}): boolean => artist.is_listed !== false && artist.id !== UNKNOWN_ARTIST_ID;
 
 export async function fetchNasheedArtists(
   pageSize: number = 20,
@@ -107,7 +111,9 @@ export async function fetchNasheedArtists(
     : undefined;
 
   return {
-    artists: options?.includeUnlisted ? artists : artists.filter(isListedArtist),
+    artists: options?.includeUnlisted
+      ? artists
+      : artists.filter(isListedArtist),
     nextCursor,
   };
 }
@@ -139,8 +145,12 @@ export async function fetchFilteredArtists(
 
     const payload = (await response.json()) as ResponseArtists;
 
+    // Search still finds artists that are unlisted for having few nasheeds,
+    // but never the shared `unknown` artist, which is no real artist.
     return {
-      artists: Array.isArray(payload.artists) ? payload.artists : [],
+      artists: Array.isArray(payload.artists)
+        ? payload.artists.filter((a) => a.id !== UNKNOWN_ARTIST_ID)
+        : [],
       nextCursor: payload.nextCursor,
     };
   } catch (e) {
@@ -216,6 +226,7 @@ async function fetchFilteredArtistsFallback(
     );
 
     const matching = response.artists.filter((artist) => {
+      if (artist.id === UNKNOWN_ARTIST_ID) return false;
       const nameEn = normalizeSearchText(artist.name_en ?? "");
       const nameAr = normalizeSearchText(artist.name_ar ?? "");
       return (
@@ -285,6 +296,40 @@ export async function fetchNasheedsByIds(
     }
   }
   return result;
+}
+
+/**
+ * The subset of `ids` whose artists are unlisted (or no longer exist), read
+ * live in one query per 30 ids. For lists stored before an artist was
+ * unlisted, such as recently visited artists.
+ */
+export async function fetchUnlistedArtistIds(
+  ids: string[],
+): Promise<Set<string>> {
+  const unlisted = new Set(ids);
+  if (ids.length === 0) return unlisted;
+
+  const db = getFirestore(getApp());
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += DOCUMENT_ID_IN_CHUNK_SIZE) {
+    chunks.push(ids.slice(i, i + DOCUMENT_ID_IN_CHUNK_SIZE));
+  }
+  const snapshots = await Promise.all(
+    chunks.map((chunk) =>
+      getDocs(
+        query(collection(db, "artists"), where(documentId(), "in", chunk)),
+      ),
+    ),
+  );
+  for (const snapshot of snapshots) {
+    for (const snap of snapshot.docs) {
+      const data = snap.data() as { is_listed?: boolean };
+      if (isListedArtist({ id: snap.id, is_listed: data.is_listed })) {
+        unlisted.delete(snap.id);
+      }
+    }
+  }
+  return unlisted;
 }
 
 // Artist photos do not change within a session, and the same artist is asked
