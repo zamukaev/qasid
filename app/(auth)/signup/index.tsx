@@ -11,16 +11,15 @@ import { AntDesign } from "@expo/vector-icons";
 import { Link, Stack } from "expo-router";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import {
-  getAuth,
   GoogleAuthProvider,
   AppleAuthProvider,
-  signInWithCredential,
 } from "@react-native-firebase/auth";
 import { useState } from "react";
 import appleAuth from "@invertase/react-native-apple-authentication";
 
 import { ErrorAlert } from "../../../components";
 import { getFirebaseErrorMessage } from "../../../utils/firebaseErrors";
+import { signInOrLink } from "../../../services/auth-service";
 
 GoogleSignin.configure({
   webClientId:
@@ -48,8 +47,7 @@ export default function SignUp() {
         nonce ?? undefined,
       );
 
-      const auth = getAuth();
-      await signInWithCredential(auth, appleCredential);
+      await signInOrLink(appleCredential);
     } catch (e: any) {
       if (e.code === appleAuth.Error.CANCELED) return;
       const errorMessage = e.code
@@ -69,9 +67,8 @@ export default function SignUp() {
       const idToken = signinresult?.data?.idToken;
       if (!idToken) throw new Error("No ID token from Google");
 
-      const auth = getAuth();
       const credential = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, credential);
+      await signInOrLink(credential);
     } catch (e: any) {
       const errorMessage = e.code
         ? getFirebaseErrorMessage(e.code)

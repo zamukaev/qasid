@@ -37,7 +37,9 @@ export const onArtistCreated = onDocumentCreated(
   "artists/{artistId}",
   async (event) => {
     const data = event.data?.data();
-    if (!data || data.is_active === false) {
+    // Unlisted artists (the shared `unknown` artist, artists with only a few
+    // nasheeds) are not news: they live in the singles collection.
+    if (!data || data.is_active === false || data.is_listed === false) {
       return;
     }
 

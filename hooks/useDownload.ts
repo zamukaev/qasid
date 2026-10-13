@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
-import { useIsPremium, useUserStore } from "../stores/userStore";
+import { useIsGuest, useIsPremium, useUserStore } from "../stores/userStore";
 import {
   getLocalPath,
   downloadTrack,
@@ -15,6 +15,7 @@ export function useDownload(track: Track) {
   const [status, setStatus] = useState<DownloadStatus>("idle");
   const [progress, setProgress] = useState(0);
   const isPremium = useIsPremium();
+  const isGuest = useIsGuest();
   useEffect(() => {
     let cancelled = false;
     getLocalPath(track.id).then((path) => {
@@ -27,8 +28,9 @@ export function useDownload(track: Track) {
 
   const download = useCallback(async () => {
     // The upgrade prompt is a sheet the caller owns — see PremiumRequiredSheet.
-    // These two only keep a mis-wired caller from downloading for free.
-    if (!planResolved || !isPremium) return;
+    // These guards only keep a mis-wired caller from downloading for free
+    // (or as a guest, whose prompt is the sign-in gate).
+    if (isGuest || !planResolved || !isPremium) return;
 
     if (status === "downloading" || status === "downloaded") return;
 
@@ -45,7 +47,7 @@ export function useDownload(track: Track) {
         "Could not download the track. Please check your connection and try again.",
       );
     }
-  }, [planResolved, isPremium, status, track]);
+  }, [isGuest, planResolved, isPremium, status, track]);
 
   const remove = useCallback(async () => {
     await deleteDownload(track.id);

@@ -41,10 +41,10 @@ const db = admin.firestore();
 // Track data — add audio filename (without path prefix) for each nasheed
 // ---------------------------------------------------------------------------
 
-const ARTIST_ID = "abu_abdulmalik";
-const NAME_EN = "Abu Abdul Malik";
-const BASE_PATH = "nasheeds/abu_abdulmalik";
-const DOC_PREFIX = "abu_abdulmalik";
+const ARTIST_ID = "abu-ali";
+const NAME_EN = "Abu Ali";
+const BASE_PATH = "nasheeds/abu_ali";
+const DOC_PREFIX = "abu_ali";
 
 // Mood taxonomy — must stay in sync with NasheedMood in types/nasheed.ts.
 type NasheedMood = "calm" | "motivational" | "sleep" | "focus";
@@ -59,144 +59,11 @@ interface NasheedInput {
 
 const tracks: NasheedInput[] = [
   {
-    title_en: "Abshiri Ya Taiba Mukarrara",
-    audio_filename: "abshiri_ya_taiba_mukarrara.mp3",
-    image_filename: "abshiri_ya_taiba_mukarrara.webp",
-    moods: [],
-    tags: ["nasheed", "madinah", "praise"],
-  },
-  {
-    title_en: "Amsat Maali An Nasri Min Kalimati",
-    audio_filename: "amsat_maali_an_nasri_min_kalimati.mp3",
-    image_filename: "amsat_maali_an_nasri_min_kalimati.webp",
-    moods: [],
-    tags: ["nasheed", "strength", "victory"],
-  },
-  {
-    title_en: "Amsat Maali An Nasri Min Kalimati Mukarrara",
-    audio_filename: "amsat_maali_an_nasri_min_kalimati_mukarrara.mp3",
-    image_filename: "amsat_maali_an_nasri_min_kalimati_mukarrara.webp",
-    moods: [],
-    tags: ["nasheed", "strength", "victory"],
-  },
-  {
-    title_en: "Ash Shawqu Narun Kawiya",
-    audio_filename: "ash_shawqu_narun_kawiya.mp3",
-    image_filename: "ash_shawqu_narun_kawiya.webp",
-    moods: [],
-    tags: ["nasheed", "longing", "heart"],
-  },
-  {
-    title_en: "Atashu Am Fuaduka Ghayru Sahi",
-    audio_filename: "atashu_am_fuaduka_ghayru_sahi.mp3",
-    image_filename: "atashu_am_fuaduka_ghayru_sahi.webp",
-    moods: [],
-    tags: ["nasheed", "heart", "reflection"],
-  },
-  {
-    title_en: "Atukhfi As Sua An Kulli Al Baraya",
-    audio_filename: "atukhfi_as_sua_an_kulli_al_baraya.mp3",
-    image_filename: "atukhfi_as_sua_an_kulli_al_baraya.webp",
-    moods: ["calm"],
-    tags: ["nasheed", "reflection", "faith"],
-  },
-  {
-    title_en: "Ayyu Jurhin Fi Fuad Al Majdi Ghair",
-    audio_filename: "ayyu_jurhin_fi_fuad_al_majdi_ghair.mp3",
-    image_filename: "ayyu_jurhin_fi_fuad_al_majdi_ghair.webp",
-    moods: [],
-    tags: ["nasheed", "heart", "strength"],
-  },
-  {
-    title_en: "Badaa Al Masiru Ila Al Hadaf",
-    audio_filename: "badaa_al_masiru_ila_al_hadaf.mp3",
-    image_filename: "badaa_al_masiru_ila_al_hadaf.webp",
-    moods: ["motivational"],
-    tags: ["nasheed", "journey", "purpose"],
-  },
-  {
-    title_en: "Ghurabaa Lakin Rabbuna Allah",
-    audio_filename: "ghurabaa_lakin_rabbuna_allah.mp3",
-    image_filename: "ghurabaa_lakin_rabbuna_allah.webp",
-    moods: [],
-    tags: ["nasheed", "faith", "allah", "strangers"],
-  },
-  {
-    title_en: "Hajara Al Ladhaidha Wanbara",
-    audio_filename: "hajara_al_ladhaidha_wanbara.mp3",
-    image_filename: "hajara_al_ladhaidha_wanbara.webp",
-    moods: [],
-    tags: ["nasheed", "faith", "sacrifice"],
-  },
-  {
-    title_en: "Kafa Ya Nafsu Ma Kan",
-    audio_filename: "kafa_ya_nafsu_ma_kan.mp3",
-    image_filename: "kafa_ya_nafsu_ma_kan.webp",
-    moods: [],
-    tags: ["nasheed", "soul", "reflection"],
-  },
-  {
-    title_en: "Nabaratu Shiri Suttirat",
-    audio_filename: "nabaratu_shiri_suttirat.mp3",
-    image_filename: "nabaratu_shiri_suttirat.webp",
-    moods: [],
-    tags: ["nasheed", "poetry", "reflection"],
-  },
-  {
-    title_en: "Nakmunu Jamia An Nas",
-    audio_filename: "nakmunu_jamia_an_nas.mp3",
-    image_filename: "nakmunu_jamia_an_nas.webp",
-    moods: [],
-    tags: ["nasheed", "strength", "unity"],
-  },
-  {
-    title_en: "Qul Bi Rabbi Al Kawn",
-    audio_filename: "qul_bi_rabbi_al_kawn.mp3",
-    image_filename: "qul_bi_rabbi_al_kawn.webp",
-    moods: [],
-    tags: ["nasheed", "faith", "allah", "praise"],
-  },
-  {
-    title_en: "Saati Shumukhan Saburan Anif",
-    audio_filename: "saati_shumukhan_saburan_anif.mp3",
-    image_filename: "saati_shumukhan_saburan_anif.webp",
-    moods: [],
-    tags: ["nasheed", "patience", "strength"],
-  },
-  {
-    title_en: "Sanakhudu Maarikana Maahum",
-    audio_filename: "sanakhudu_maarikana_maahum.mp3",
-    image_filename: "sanakhudu_maarikana_maahum.webp",
-    moods: [],
-    tags: ["nasheed", "courage", "strength"],
-  },
-  {
-    title_en: "Watanhal Kullu Humumi",
-    audio_filename: "watanhal_kullu_humumi.mp3",
-    image_filename: "watanhal_kullu_humumi.webp",
-    moods: [],
-    tags: ["nasheed", "hope", "relief"],
-  },
-  {
-    title_en: "Watani",
-    audio_filename: "watani.mp3",
-    image_filename: "watani.webp",
-    moods: ["calm"],
-    tags: ["nasheed", "homeland"],
-  },
-  {
-    title_en: "Who Is The One Exalted",
-    audio_filename: "who_is_the_one_exalted.mp3",
-    image_filename: "who_is_the_one_exalted.webp",
-    moods: ["calm"],
-    tags: ["nasheed", "faith", "praise"],
-  },
-  {
-    title_en: "Ya Ghurbati",
-    audio_filename: "ya_ghurbati.mp3",
-    image_filename: "ya_ghurbati.webp",
-    moods: [],
-    tags: ["nasheed", "longing", "strangers"],
+    title_en: "Awjiini Ya Jirahi",
+    audio_filename: "awjiini_ya_jirahi.mp3",
+    image_filename: "awjiini_ya_jirahi.webp",
+    moods: ["calm", "focus"],
+    tags: ["nasheed", "calm", "relax"],
   },
 ];
 // ---------------------------------------------------------------------------
@@ -212,7 +79,7 @@ async function seedNasheeds(): Promise<void> {
 
   for (let i = 0; i < tracks.length; i++) {
     const track = tracks[i];
-    const docId = `${DOC_PREFIX}_${String(i + 1).padStart(3, "0")}`;
+    const docId = `${DOC_PREFIX}_${String(i + 81).padStart(3, "0")}`;
 
     const docRef = nasheedsCol.doc(docId);
     const existing = await docRef.get();

@@ -1,21 +1,14 @@
 import { useEffect } from "react";
-import {
-  FirebaseAuthTypes,
-  getAuth,
-  onAuthStateChanged,
-} from "@react-native-firebase/auth";
+import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
 
-import * as RevenueCatService from "../services/revenuecat";
-import { fetchPremiumOverrideEmails } from "../services/config-service";
-import { hydrateAndSyncSubscription } from "../services/notifications-service";
-import { setAnalyticsPlan, setAnalyticsUser } from "../services/analytics";
-import { useFavoritesStore } from "../stores/favoritesStore";
-import { usePaywallStore } from "../stores/paywallStore";
+import { syncAuthUser } from "../services/auth-service";
+import { setAnalyticsPlan } from "../services/analytics";
 import { useUserStore } from "../stores/userStore";
 
 /**
- * Subscribes to Firebase auth and hydrates everything that hangs off a signed-in
- * user (RevenueCat, paywall config, push subscription, favorites, analytics).
+ * Subscribes to Firebase auth and hydrates everything that hangs off the user
+ * (RevenueCat, paywall config, push subscription, favorites, analytics) via
+ * `syncAuthUser`. Routing is separate: `hooks/useAuthGate.ts`.
  *
  * Mounted by the root layout, not by a screen. It used to live in
  * `app/index.tsx`, which meant it only ran when `/` happened to be on screen —
@@ -25,51 +18,11 @@ import { useUserStore } from "../stores/userStore";
  */
 export function useAuthBootstrap(): void {
   useEffect(() => {
-    const { setUser, setLoading, setPremiumOverrideEmails } =
-      useUserStore.getState();
-
-    const handleAuthStateChanged = async (
-      firebaseUser: FirebaseAuthTypes.User | null,
-    ) => {
-      setUser(firebaseUser);
-      void setAnalyticsUser(firebaseUser?.uid ?? null);
-
-      if (!firebaseUser) {
-        useFavoritesStore.getState().clear();
-        await RevenueCatService.logout();
-        return;
-      }
-
-      try {
-        await RevenueCatService.initialize(firebaseUser.uid);
-      } catch {
-        // RC initialization failure should not block the auth flow
-      }
-      try {
-        setPremiumOverrideEmails(await fetchPremiumOverrideEmails());
-      } catch {
-        // config fetch failure is non-fatal
-      }
-      try {
-        await usePaywallStore.getState().hydrate();
-      } catch {
-        // paywall config fetch failure is non-fatal — defaults apply
-      }
-      try {
-        await hydrateAndSyncSubscription();
-      } catch {
-        // notification subscription failure should not block the auth flow
-      }
-      // Prefetched here so the first list a user opens already knows which
-      // nasheeds are favorited; failure is non-fatal and retried by the tab.
-      void useFavoritesStore
-        .getState()
-        .hydrate(true)
-        .catch(() => {});
-    };
-
-    setLoading(true);
-    return onAuthStateChanged(getAuth(), handleAuthStateChanged);
+    useUserStore.getState().setLoading(true);
+    // Signed out → a guest session is started; see `syncAuthUser`.
+    return onAuthStateChanged(getAuth(), (firebaseUser) => {
+      void syncAuthUser(firebaseUser);
+    });
   }, []);
 
   // RevenueCat resolves the entitlement asynchronously, so the plan is mirrored

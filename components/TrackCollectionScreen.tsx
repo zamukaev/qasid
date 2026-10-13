@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
   ListRenderItemInfo,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -16,28 +15,46 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { GOLD } from "../constants/colors";
 import PlaceholderAvatar from "../assets/images/avatar.webp";
-import { Nasheed } from "../types/nasheed";
-import { NasheedTrackMeta } from "../utils/nasheedTrack";
+import { Mood, Nasheed, RecommendedTrack } from "../types/nasheed";
+import { NasheedTrackMeta, toNasheedTrackMeta } from "../utils/nasheedTrack";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useImageLoadState } from "../hooks/useImageLoadState";
 import { useProgressiveStorageUrls } from "../hooks/useProgressiveStorageUrls";
-import { resolveStorageUrlPrioritized } from "../services/storage";
+import { peekStorageUrl } from "../services/storage";
 import SharedCardSkeleton from "./SharedCardSkeleton";
 import ShowError from "./ShowError";
 import ReciterHeaderSkeleton from "./ReciterHeaderSkeleton";
 import ImageShimmerOverlay from "./ImageShimmerOverlay";
+import FittedArtwork from "./FittedArtwork";
 import { PremiumGateModal } from "./PremiumGateModal";
+import { AddToPlaylistButton } from "./AddToPlaylistButton";
 import { CollectionDownloadButton } from "./CollectionDownloadButton";
 import { PlaybackModeButton } from "./PlaybackModeButton";
 import { PlayButton, PlayButtonVariant } from "./PlayButton";
 import { TrackCollectionRow } from "./TrackCollectionRow";
-import { markManualPlay, useNasheedLimit } from "../hooks/useNasheedLimit";
-import { useIsPremium } from "../stores/userStore";
-import { pickRandom } from "../utils/random";
+import { useCollectionPlayback } from "../hooks/useCollectionPlayback";
+import { nasheedToPlaylistInput } from "../utils/user-playlists";
 
 export interface CollectionTrack extends NasheedTrackMeta {
   nasheed: Nasheed;
 }
+
+// Synchronous: storage paths stay raw so a list paints on its single
+// Firestore read.
+export const recommendedToCollectionTrack = (
+  track: RecommendedTrack,
+): CollectionTrack => ({
+  ...toNasheedTrackMeta(track),
+  nasheed: {
+    id: track.id,
+    name_en: track.name_en,
+    title_en: track.title_en,
+    audio_path: track.audio_path,
+    image_path: track.image_path,
+    artist_id: track.artist_id,
+    moods: track.moods as Mood[],
+  },
+});
 
 const SKELETON_ROW_COUNT = 8;
 const SCROLL_TO_TOP_THRESHOLD_PX = 400;
@@ -80,25 +97,13 @@ export function TrackCollectionScreen({
   showActions = true,
   onRefresh,
 }: Props) {
-  const isPremium = useIsPremium();
-  const { canPlay, increment, playsLeft } = useNasheedLimit();
-  const [gateVisible, setGateVisible] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const listRef = useRef<FlatList<CollectionTrack> | null>(null);
-  const pendingPlayIdRef = useRef(0);
   const showScrollToTopRef = useRef(false);
 
-  const {
-    playTrack,
-    setQueue,
-    currentTrack,
-    pause,
-    resume,
-    isPlaying,
-    viewMode,
-  } = useAudioPlayer();
+  const { currentTrack, isPlaying, viewMode } = useAudioPlayer();
 
   const {
     source: headerImageSource,
@@ -119,97 +124,15 @@ export function TrackCollectionScreen({
     (track.imagePath ? imageUrls.get(track.imagePath) : undefined) ??
     fallbackArt;
 
-  // Rebuilt per track list rather than per play tap.
-  const playableTracks = useMemo(
-    () => tracks.filter((item) => !!item.audioPath),
-    [tracks],
-  );
-
-  const handlePlay = async (track: CollectionTrack) => {
-    if (!track.audioPath) return;
-    const trackId = `${trackPrefix}-${track.id}`;
-
-    if (currentTrack?.id === trackId) {
-      isPlaying ? await pause() : await resume();
-      return;
-    }
-
-    if (!canPlay(isPremium)) {
-      setGateVisible(true);
-      return;
-    }
-
-    // Jumps the resolution queue so a play tap never waits behind the
-    // background artwork resolutions kicked off above.
-    const playId = ++pendingPlayIdRef.current;
-    let audioUrl: string;
-    try {
-      audioUrl = await resolveStorageUrlPrioritized(track.audioPath);
-    } catch {
-      return;
-    }
-    // A newer tap won while we were resolving.
-    if (playId !== pendingPlayIdRef.current) return;
-
-    // Only after a successful resolve — otherwise a network blip burns one of
-    // a free user's daily plays.
-    if (!isPremium) await increment();
-
-    const allQueueTracks = playableTracks.map((item) => ({
-      id: `${trackPrefix}-${item.id}`,
-      title: item.title,
-      artist: item.artist,
-      artworkUri: artworkFor(item),
-      isNasheed: true,
-      // Raw paths are fine here: playTrack resolves them lazily, and that path
-      // also honours locally downloaded files.
-      uri: { uri: item.audioPath as string },
-    }));
-
-    const selectedIndex = allQueueTracks.findIndex((t) => t.id === trackId);
-    const queueTracks = isPremium
-      ? allQueueTracks
-      : allQueueTracks.slice(
-          Math.max(0, selectedIndex),
-          Math.max(0, selectedIndex) + playsLeft,
-        );
-    setQueue(queueTracks);
-
-    markManualPlay();
-    await playTrack({
-      id: trackId,
-      title: track.title,
-      artist: track.artist,
-      artworkUri: artworkFor(track),
-      isNasheed: true,
-      uri: { uri: audioUrl },
-    });
-  };
-
-  // handlePlay closes over tracks, playsLeft, isPremium and playback state, so
-  // it cannot be a stable useCallback. Rows and the memoized header instead get
-  // stable wrappers that read the latest version through a ref.
-  const handlePlayRef = useRef(handlePlay);
-  const playableTracksRef = useRef(playableTracks);
-  useEffect(() => {
-    handlePlayRef.current = handlePlay;
-    playableTracksRef.current = playableTracks;
-  });
-
-  const onPlay = useCallback((nasheedId: string) => {
-    const track = playableTracksRef.current.find((t) => t.id === nasheedId);
-    if (track) void handlePlayRef.current(track);
-  }, []);
-
-  const handlePlayAll = useCallback(() => {
-    const first = playableTracksRef.current[0];
-    if (first) void handlePlayRef.current(first);
-  }, []);
-
-  const handlePlayShuffled = useCallback(() => {
-    const track = pickRandom(playableTracksRef.current);
-    if (track) void handlePlayRef.current(track);
-  }, []);
+  const {
+    playableTracks,
+    onPlay,
+    playAll: handlePlayAll,
+    playShuffled: handlePlayShuffled,
+    gateVisible,
+    closeGate,
+    playsLeft,
+  } = useCollectionPlayback({ tracks, trackPrefix, artworkFor });
 
   // Raw storage paths and the same ids the queue build uses — downloadTrack
   // needs the path, and playback looks the file up by that id.
@@ -223,6 +146,11 @@ export function TrackCollectionScreen({
         uri: item.audioPath,
       })),
     [playableTracks, trackPrefix],
+  );
+
+  const playlistItems = useMemo(
+    () => playableTracks.map((item) => nasheedToPlaylistInput(item.nasheed)),
+    [playableTracks],
   );
 
   const handleScroll = useCallback(
@@ -271,12 +199,13 @@ export function TrackCollectionScreen({
                   shadowRadius: 12,
                 }}
               >
-                <Image
-                  source={headerImageSource}
-                  onLoad={onHeaderImageLoad}
-                  onError={onHeaderImageError}
-                  className="h-40 w-40 rounded-xl border border-qasid-gold/20"
-                />
+                <View className="h-40 w-40 rounded-xl overflow-hidden border border-qasid-gold/20">
+                  <FittedArtwork
+                    source={headerImageSource}
+                    onLoad={onHeaderImageLoad}
+                    onError={onHeaderImageError}
+                  />
+                </View>
                 <ImageShimmerOverlay
                   visible={headerImageLoading}
                   rounded="xl"
@@ -309,6 +238,12 @@ export function TrackCollectionScreen({
                 tracks={downloadTracks}
                 itemNoun="nasheeds"
                 subtitle={title}
+              />
+              <AddToPlaylistButton
+                items={playlistItems}
+                title={`All nasheeds · ${title}`}
+                image={peekStorageUrl(headerImagePath)}
+                seed={{ title: title, imagePath: headerImagePath }}
               />
               <PlayButton
                 clasName="flex-1 ml-10"
@@ -343,6 +278,8 @@ export function TrackCollectionScreen({
       handlePlayAll,
       handlePlayShuffled,
       downloadTracks,
+      playlistItems,
+      headerImagePath,
     ],
   );
 
@@ -395,7 +332,7 @@ export function TrackCollectionScreen({
       <PremiumGateModal
         visible={gateVisible}
         playsLeft={playsLeft}
-        onClose={() => setGateVisible(false)}
+        onClose={closeGate}
       />
       <FlatList
         ref={listRef}

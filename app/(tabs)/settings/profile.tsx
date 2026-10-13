@@ -26,7 +26,7 @@ import { getFirebaseErrorMessage } from "../../../utils/firebaseErrors";
 import { ErrorAlert } from "../../../components";
 
 export default function ProfileSettings() {
-  const { user, updateUser, clearUser } = useUserStore();
+  const { user, updateUser } = useUserStore();
   const router = useRouter();
   const auth = getAuth();
 
@@ -187,8 +187,8 @@ export default function ProfileSettings() {
   const performDelete = async () => {
     try {
       await deleteAccount();
-      clearUser();
-      router.replace("/");
+      // The auth gate continues as a guest; the profile no longer applies.
+      router.back();
     } catch (err: any) {
       if (err.code === "auth/requires-recent-login") {
         showToast(

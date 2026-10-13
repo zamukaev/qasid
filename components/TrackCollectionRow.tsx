@@ -71,6 +71,7 @@ export const TrackCollectionRow = React.memo(function TrackCollectionRow({
   return (
     <SharedCard
       className="mb-1"
+      fitWhole
       handlePlayTrack={handlePlayTrack}
       isPlaying={isPlaying}
       isPaused={isActive}

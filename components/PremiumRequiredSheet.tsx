@@ -21,6 +21,8 @@ export const OFFLINE_PREMIUM_PITCH =
 export type PremiumRequiredSheetProps = {
   visible: boolean;
   onClose: () => void;
+  /** Sheet heading. Defaults to "Offline". */
+  title?: string;
   /** What is being gated — the track or collection name. */
   subtitle?: string;
   /** Defaults to the offline-listening pitch. */
@@ -36,6 +38,7 @@ export type PremiumRequiredSheetProps = {
 export function PremiumRequiredSheet({
   visible,
   onClose,
+  title = "Offline",
   subtitle,
   body = OFFLINE_PREMIUM_PITCH,
 }: PremiumRequiredSheetProps) {
@@ -92,7 +95,7 @@ export function PremiumRequiredSheet({
 
               <View className="px-5 pb-4">
                 <Text className="text-base font-semibold text-white">
-                  Offline
+                  {title}
                 </Text>
                 {!!subtitle && (
                   <Text

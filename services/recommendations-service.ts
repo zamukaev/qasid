@@ -20,6 +20,7 @@ import {
   WEEKLY_MIX_RETRY_MIN_MS,
   isWeeklyMixStale,
 } from "../utils/weekly-mix";
+import { accountUid } from "../utils/accountUid";
 
 const FIREBASE_PROJECT_ID = "qasid-fd80d";
 const GENERATE_WEEKLY_MIX_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.cloudfunctions.net/generateWeeklyMix`;
@@ -28,7 +29,7 @@ const GENERATE_WEEKLY_MIX_URL = `https://us-central1-${FIREBASE_PROJECT_ID}.clou
 // the fresh tracks. Authenticated via the Firebase ID token.
 export async function generateWeeklyMix(): Promise<RecommendedTrack[]> {
   const user = getAuth().currentUser;
-  if (!user) throw new Error("Sign in required");
+  if (!user || user.isAnonymous) throw new Error("Sign in required");
 
   const token = await user.getIdToken();
   const response = await fetch(GENERATE_WEEKLY_MIX_URL, {
@@ -45,7 +46,7 @@ export async function generateWeeklyMix(): Promise<RecommendedTrack[]> {
 
 // Reads the last-generated weekly mix from Firestore (no recompute).
 export async function fetchWeeklyMix(): Promise<WeeklyMix | null> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return null;
 
   const db = getFirestore(getApp());
@@ -98,7 +99,7 @@ let inFlightMix: Promise<WeeklyMix | null> | null = null;
 const resolveWeeklyMix = async (
   options?: FetchOptions,
 ): Promise<WeeklyMix | null> => {
-  const uid = getAuth().currentUser?.uid;
+  const uid = accountUid();
   if (!uid) return null;
 
   const cached = await fetchWeeklyMix();

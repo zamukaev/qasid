@@ -39,12 +39,6 @@ export default function SettingsLayout() {
           title: "Terms & Privacy",
         }}
       />
-      <Stack.Screen
-        name="downloads"
-        options={{
-          title: "Downloads",
-        }}
-      />
       <Stack.Screen name="premium" options={{ title: "Premium" }} />
     </Stack>
   );

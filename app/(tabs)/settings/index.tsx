@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { getAuth } from "@react-native-firebase/auth";
 import { useRouter } from "expo-router";
-import { useUserStore } from "../../../stores/userStore";
+import { useIsGuest, useUserStore } from "../../../stores/userStore";
 import TrackPlayer from "react-native-track-player";
 import { useNotificationPrefs } from "../../../services/notifications-service";
 import { GOLD } from "../../../constants/colors";
@@ -41,7 +41,8 @@ const PLAN_LABEL: Record<string, { name: string; description: string }> = {
 };
 
 export default function Settings() {
-  const { user, clearUser, currentPlan } = useUserStore();
+  const { user, currentPlan } = useUserStore();
+  const isGuest = useIsGuest();
   const router = useRouter();
   const auth = getAuth();
   const appVersion = Constants.expoConfig?.version ?? "unknown";
@@ -81,9 +82,8 @@ export default function Settings() {
         onPress: async () => {
           try {
             TrackPlayer.stop();
+            // The auth gate turns the signed-out user into a guest in place.
             await auth.signOut();
-            clearUser();
-            router.replace("/");
           } catch (error) {
             console.error("Error signing out:", error);
           }
@@ -125,84 +125,97 @@ export default function Settings() {
           </Text>
         </View>
 
-        {/* User Profile with Avatar */}
-        <View className="flex-row items-center mb-8">
-          {/* Avatar */}
-          <View className="w-16 h-16 rounded-full bg-qasid-gold/20 items-center justify-center border-2 border-qasid-gold/30">
-            {user?.photoURL ? (
-              <Image
-                source={{ uri: user.photoURL }}
-                className="w-16 h-16 rounded-full"
-              />
-            ) : (
-              <View className="w-16 h-16 rounded-full bg-qasid-gold/20 items-center justify-center border-2 border-qasid-gold/30">
-                <Text className="text-qasid-gold text-2xl font-bold">
-                  {user?.displayName?.charAt(0)?.toUpperCase() || "U"}
+        {isGuest ? (
+          <View className="relative overflow-hidden rounded-3xl mb-8">
+            <View className="absolute inset-0 bg-qasid-bg-2" />
+            <View className="absolute inset-0 rounded-3xl border border-qasid-gold/30" />
+            <View className="p-5">
+              <Text className="text-white text-xl font-semibold">
+                You're listening as a guest
+              </Text>
+              <Text className="text-white/60 text-sm mt-1 leading-5">
+                Create a free account to save favorites, get your Weekly Mix,
+                download for offline and subscribe to Premium.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => router.push("/signup")}
+                className="mt-4 rounded-2xl bg-qasid-gold py-3 items-center"
+              >
+                <Text className="text-qasid-black text-base font-semibold">
+                  Sign up for free
                 </Text>
-              </View>
-            )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push("/signin")}
+                className="mt-2 py-2 items-center"
+              >
+                <Text className="text-qasid-gold text-sm font-semibold">
+                  I already have an account
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
+        ) : (
+          <View className="flex-row items-center mb-8">
+            {/* Avatar */}
+            <View className="w-16 h-16 rounded-full bg-qasid-gold/20 items-center justify-center border-2 border-qasid-gold/30">
+              {user?.photoURL ? (
+                <Image
+                  source={{ uri: user.photoURL }}
+                  className="w-16 h-16 rounded-full"
+                />
+              ) : (
+                <View className="w-16 h-16 rounded-full bg-qasid-gold/20 items-center justify-center border-2 border-qasid-gold/30">
+                  <Text className="text-qasid-gold text-2xl font-bold">
+                    {user?.displayName?.charAt(0)?.toUpperCase() || "U"}
+                  </Text>
+                </View>
+              )}
+            </View>
 
-          {/* User Info */}
-          <View className="ml-4 flex-1">
-            <Text className="text-white text-xl font-semibold">
-              {user?.displayName || "User"}
-            </Text>
-            <Text className="text-white/60 text-sm mt-0.5">
-              {user?.email || "No email"}
-            </Text>
+            {/* User Info */}
+            <View className="ml-4 flex-1">
+              <Text className="text-white text-xl font-semibold">
+                {user?.displayName || "User"}
+              </Text>
+              <Text className="text-white/60 text-sm mt-0.5">
+                {user?.email || "No email"}
+              </Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Account Section */}
-        <View className="mb-6">
-          <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
-            Account
-          </Text>
+        {!isGuest && (
+          <View className="mb-6">
+            <Text className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-3">
+              Account
+            </Text>
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push("/(tabs)/settings/profile")}
-            className="mb-3"
-          >
-            <View className="relative overflow-hidden rounded-2xl">
-              <View className="absolute inset-0 bg-qasid-bg-2" />
-              <LinearGradient
-                colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ position: "absolute", inset: 0 }}
-              />
-              <View className="absolute inset-0 rounded-2xl border border-white/10" />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push("/(tabs)/settings/profile")}
+            >
+              <View className="relative overflow-hidden rounded-2xl">
+                <View className="absolute inset-0 bg-qasid-bg-2" />
+                <LinearGradient
+                  colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ position: "absolute", inset: 0 }}
+                />
+                <View className="absolute inset-0 rounded-2xl border border-white/10" />
 
-              <View className="px-4 py-4 flex-row items-center justify-between">
-                <Text className="text-white text-base">Profile Settings</Text>
-                <Text className="text-white/40 text-base">→</Text>
+                <View className="px-4 py-4 flex-row items-center justify-between">
+                  <Text className="text-white text-base">Profile Settings</Text>
+                  <Text className="text-white/40 text-base">→</Text>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push("/(tabs)/settings/downloads")}
-          >
-            <View className="relative overflow-hidden rounded-2xl">
-              <View className="absolute inset-0 bg-qasid-bg-2" />
-              <LinearGradient
-                colors={["rgba(201,168,76,0.05)", "rgba(0,0,0,0.00)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ position: "absolute", inset: 0 }}
-              />
-              <View className="absolute inset-0 rounded-2xl border border-white/10" />
-
-              <View className="px-4 py-4 flex-row items-center justify-between">
-                <Text className="text-white text-base">Downloads</Text>
-                <Text className="text-white/40 text-base">→</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Subscription Section */}
         <View className="mb-6">
@@ -415,20 +428,23 @@ export default function Settings() {
           </View>
         </View>
 
-        {/* Log Out Button */}
+        {/* Log Out Button — a guest has no account to leave; signing out
+            would only discard the anonymous session. */}
         <View className="mb-24">
-          <TouchableOpacity onPress={handleLogout} activeOpacity={0.8}>
-            <View className="relative overflow-hidden rounded-2xl">
-              <View className="absolute inset-0 bg-red-600/10" />
-              <View className="absolute inset-0 rounded-2xl border border-red-500/30" />
+          {!isGuest && (
+            <TouchableOpacity onPress={handleLogout} activeOpacity={0.8}>
+              <View className="relative overflow-hidden rounded-2xl">
+                <View className="absolute inset-0 bg-red-600/10" />
+                <View className="absolute inset-0 rounded-2xl border border-red-500/30" />
 
-              <View className="px-4 py-4 items-center">
-                <Text className="text-red-500 text-base font-semibold">
-                  Log Out
-                </Text>
+                <View className="px-4 py-4 items-center">
+                  <Text className="text-red-500 text-base font-semibold">
+                    Log Out
+                  </Text>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

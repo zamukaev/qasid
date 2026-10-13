@@ -1,17 +1,13 @@
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import { GOLD } from "../../constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  FirebaseAuthTypes,
-  getAuth,
-  onAuthStateChanged,
-} from "@react-native-firebase/auth";
 import { NowPlayingBar, FullScreenPlayer } from "../../components";
 import { useAudioPlayer } from "../../context/AudioPlayerContext";
 import { useReviewPrompt } from "../../hooks/useReviewPrompt";
+import { useNasheedPlaybackGuards } from "../../hooks/useNasheedPlaybackGuards";
 
 function AnimatedTabIcon({
   name,
@@ -51,22 +47,11 @@ function AnimatedTabIcon({
 }
 
 export default function TabsLayout() {
-  const router = useRouter();
   const { viewMode } = useAudioPlayer();
 
-  // Mounted once here so both tabs are covered, and only for signed-in users.
+  // Mounted once here so every tab is covered.
   useReviewPrompt(viewMode);
-
-  const handleAuthStateChanged = (user: FirebaseAuthTypes.User | null) => {
-    if (!user) {
-      router.replace("/");
-    }
-  };
-
-  useEffect(() => {
-    const subscribe = onAuthStateChanged(getAuth(), handleAuthStateChanged);
-    return subscribe;
-  }, []);
+  useNasheedPlaybackGuards();
 
   return (
     <>
@@ -101,10 +86,7 @@ export default function TabsLayout() {
           tabBarInactiveTintColor: "rgba(255, 255, 255, 0.58)",
           tabBarBackground: () => (
             <LinearGradient
-              colors={[
-                "rgba(20, 20, 22, 0.92)",
-                "rgba(11, 11, 12, 0.96)",
-              ]}
+              colors={["rgba(20, 20, 22, 0.92)", "rgba(11, 11, 12, 0.96)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={{ flex: 1 }}
@@ -134,6 +116,20 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, size, focused }) => (
               <AnimatedTabIcon
                 name="musical-notes-outline"
+                color={color}
+                size={size}
+                focused={focused}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="library"
+          options={{
+            title: "Your Library",
+            tabBarIcon: ({ color, size, focused }) => (
+              <AnimatedTabIcon
+                name="library-outline"
                 color={color}
                 size={size}
                 focused={focused}

@@ -4,6 +4,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { GOLD } from "../constants/colors";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { useRequireAccount } from "../hooks/useRequireAccount";
 import { PlaybackModeSheet, PlaybackModeSheetProps } from "./PlaybackModeSheet";
 
 type Props = Omit<PlaybackModeSheetProps, "visible" | "onClose">;
@@ -21,8 +22,12 @@ export const PlaybackModeButton = React.memo(function PlaybackModeButton(
 ) {
   const [open, setOpen] = useState(false);
   const { repeatMode } = useAudioPlayer();
+  const { requireAccount } = useRequireAccount();
 
-  const handleOpen = useCallback(() => setOpen(true), []);
+  // Guests get the sign-in gate instead of the sheet.
+  const handleOpen = useCallback(() => {
+    if (requireAccount("shuffle and pick the playback mode")) setOpen(true);
+  }, [requireAccount]);
   const handleClose = useCallback(() => setOpen(false), []);
 
   return (

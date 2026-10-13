@@ -20,9 +20,11 @@ import {
   fetchReciters,
 } from "../../../services/quran-service";
 import { fetchRecentReciters } from "../../../services/recents-service";
+import { useIsGuest } from "../../../stores/userStore";
 
 export default function Quran() {
   const router = useRouter();
+  const isGuest = useIsGuest();
   const [allReciters, setAllReciters] = useState<FirebaseReciter[]>([]);
   const [popularReciters, setPopularReciters] = useState<FirebaseReciter[]>([]);
   const [newReciters, setNewReciters] = useState<FirebaseReciter[]>([]);
@@ -94,13 +96,17 @@ export default function Quran() {
   }, [router]);
 
   const loadRecents = useCallback(async () => {
+    if (isGuest) {
+      setRecentReciters([]);
+      return;
+    }
     try {
       const reciters = await fetchRecentReciters();
       setRecentReciters(reciters);
     } catch (error) {
       console.error("Error loading recent reciters:", error);
     }
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     void loadMainReciters();
@@ -149,11 +155,13 @@ export default function Quran() {
           isLoading={isLoadingFeaturedCollections}
           title="Featured Collections"
         />
-        <ReciterRailSection
-          large
-          title="Recently Visited"
-          reciters={recentReciters}
-        />
+        {!isGuest && (
+          <ReciterRailSection
+            large
+            title="Recently Visited"
+            reciters={recentReciters}
+          />
+        )}
         <ReciterRailSection
           title="Popular Reciters"
           large

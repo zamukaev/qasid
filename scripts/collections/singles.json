@@ -1,0 +1,58 @@
+[
+  {
+    "title_en": "Satarto Shiaran",
+    "audio": "satarto_shiaran.mp3",
+    "image": "satarto_shiaran.webp",
+    "tags": ["nasheed"],
+    "moods": ["motivational", "focus"]
+  },
+  {
+    "title_en": "Kabbiru Allahu Akbar",
+    "audio": "kabbiru_allahu_akbar.mp3",
+    "image": "kabbiru_allahu_akbar.webp",
+    "tags": ["nasheed"],
+    "moods": ["motivational", "focus"]
+  },
+  {
+    "title_en": "Idha Kana Amru Allah",
+    "audio": "idha_kana_amru_allah.mp3",
+    "image": "idha_kana_amru_allah.webp",
+    "tags": ["nasheed"],
+    "moods": ["calm", "focus"]
+  },
+  {
+    "title_en": "Ghibtu Dahran Fil Maasi Remix",
+    "audio": "ghibtu_dahran_fil_maasi_remix.mp3",
+    "image": "ghibtu_dahran_fil_maasi_remix.webp",
+    "tags": ["nasheed"],
+    "moods": ["calm", "focus"]
+  },
+  {
+    "title_en": "Darbuna Darbun",
+    "audio": "darbuna_darbun.mp3",
+    "image": "darbuna_darbun.webp",
+    "tags": ["nasheed"],
+    "moods": ["motivational", "focus"]
+  },
+  {
+    "title_en": "Ghuraba",
+    "audio": "ghuraba.mp3",
+    "image": "ghuraba.webp",
+    "tags": ["nasheed"],
+    "moods": ["calm", "sleep"]
+  },
+  {
+    "title_en": "Salul Ahzab",
+    "audio": "salul_ahzab.mp3",
+    "image": "salul_ahzab.webp",
+    "tags": ["nasheed"],
+    "moods": ["motivational", "focus"]
+  },
+  {
+    "title_en": "La Yazal Al Khayr",
+    "audio": "la_yazal_al_khayr.mp3",
+    "image": "la_yazal_al_khayr.webp",
+    "tags": ["nasheed"],
+    "moods": ["calm", "focus"]
+  }
+]

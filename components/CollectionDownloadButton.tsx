@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { GOLD } from "../constants/colors";
 import { Track } from "../context/AudioPlayerContext";
 import { useCollectionDownload } from "../hooks/useCollectionDownload";
+import { useRequireAccount } from "../hooks/useRequireAccount";
 import { CollectionDownloadSheet } from "./CollectionDownloadSheet";
 
 const PERCENT_SCALE = 100;
@@ -39,7 +40,12 @@ export const CollectionDownloadButton = React.memo(
     const [open, setOpen] = useState(false);
     const download = useCollectionDownload(tracks);
 
-    const handleOpen = useCallback(() => setOpen(true), []);
+    const { requireAccount } = useRequireAccount();
+
+    // Guests get the sign-in gate instead of the paywall/confirmation sheet.
+    const handleOpen = useCallback(() => {
+      if (requireAccount("download for offline listening")) setOpen(true);
+    }, [requireAccount]);
     const handleClose = useCallback(() => setOpen(false), []);
 
     if (tracks.length === 0) return null;

@@ -49,6 +49,13 @@ interface ArtistInput {
   name_en: string;
   name_ar: string;
   language: string;
+  /**
+   * false for the shared `unknown` artist and artists with only a few
+   * nasheeds. Such artists get no publishedAt, which keeps them out of the
+   * 1.1.0 app's "New artists" rail (it orders by publishedAt without
+   * filtering). `npm run collections:build` keeps the flag up to date.
+   */
+  is_listed?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,8 +109,10 @@ async function seedArtists(): Promise<void> {
       play_count: 0,
       qualified_play_count: 0,
       completed_play_count: 0,
-      publishedAt: admin.firestore.Timestamp.now(),
       createdAt: admin.firestore.Timestamp.now(),
+      ...(artist.is_listed === false
+        ? { is_listed: false }
+        : { publishedAt: admin.firestore.Timestamp.now() }),
     };
 
     await artistRef.set(artistData);

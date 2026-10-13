@@ -5,12 +5,14 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  EmailAuthProvider,
   FirebaseAuthTypes,
 } from "@react-native-firebase/auth";
 import { Stack } from "expo-router";
 
 import { ErrorAlert } from "../../../components";
 import { getFirebaseErrorMessage } from "../../../utils/firebaseErrors";
+import { signInOrLink } from "../../../services/auth-service";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -48,11 +50,10 @@ export default function EmailSignUpScreen() {
     setLoading(true);
     try {
       const auth = getAuth();
-      const { user } = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
+      // A guest is upgraded in place (same uid) instead of getting a new account.
+      const { user } = auth.currentUser?.isAnonymous
+        ? await signInOrLink(EmailAuthProvider.credential(email, password))
+        : await createUserWithEmailAndPassword(auth, email, password);
       // Non-blocking: if this fails the user can resend from the verify screen
       sendEmailVerification(user).catch((err) => {
         console.error(

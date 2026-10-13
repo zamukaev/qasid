@@ -19,6 +19,8 @@ import { GOLD } from "../constants/colors";
 import { buildNasheedShareUrl } from "../constants/links";
 import { Track } from "../context/AudioPlayerContext";
 import { Nasheed } from "../types/nasheed";
+import { UserPlaylistTrackInput } from "../types/userPlaylist";
+import { nasheedToPlaylistInput } from "../utils/user-playlists";
 import { useBottomSheet } from "../hooks/useBottomSheet";
 import { useDownload } from "../hooks/useDownload";
 // TEMP admin curation hotfix — remove with PlaylistPickerModal.
@@ -27,6 +29,8 @@ import { useFavoritesStore, useIsFavorite } from "../stores/favoritesStore";
 import { shareTrack } from "../services/share-service";
 
 const INACTIVE_ICON = "rgba(255,255,255,0.35)";
+// Same red as ActionListSheet's destructive rows.
+const DESTRUCTIVE = "#FF4444";
 
 type SheetAction = {
   key: string;
@@ -36,6 +40,8 @@ type SheetAction = {
   disabled?: boolean;
   /** Gold, for a state that is already on (favorited, downloaded). */
   tinted?: boolean;
+  /** Red, for an action that takes something away. */
+  destructive?: boolean;
 };
 
 export type TrackActionsSheetProps = {
@@ -58,8 +64,24 @@ export type TrackActionsSheetProps = {
   shareUrl?: string;
   /** Hidden when the sheet is opened from that artist's own screen. */
   showGoToArtist?: boolean;
+  /** Shows "Go to reciter" for a surah opened outside its reciter's screen. */
+  reciterId?: string;
+  /** False inside the user's own playlist, where adding elsewhere is not offered. */
+  showAddToPlaylist?: boolean;
+  /** Shows "Remove from this playlist", for rows of the user's own playlist. */
+  onRemoveFromPlaylist?: () => void;
   /** Admin curation, supplied only by screens that own a PlaylistPickerModal. */
   onAddToPlaylist?: (nasheed: Nasheed) => void;
+  /**
+   * What "Add to playlist" stores. Derived from `nasheed` when omitted; Quran
+   * rows pass their own, since a surah is addressed by reciter and surah.
+   */
+  playlistItem?: UserPlaylistTrackInput;
+  /**
+   * Raised by the "Add to playlist" row once this sheet is gone. The parent
+   * owns the picker, as it does the upgrade sheet.
+   */
+  onAddToUserPlaylist?: (item: UserPlaylistTrackInput) => void;
   /**
    * Raised instead of downloading when the user is not premium. The parent owns
    * the upgrade sheet, because this one is gone by the time it opens.
@@ -77,7 +99,12 @@ export function TrackActionsSheet({
   track,
   shareUrl,
   showGoToArtist = false,
+  reciterId,
+  showAddToPlaylist = true,
+  onRemoveFromPlaylist,
   onAddToPlaylist,
+  playlistItem,
+  onAddToUserPlaylist,
   onRequirePremium,
 }: TrackActionsSheetProps) {
   const insets = useSafeAreaInsets();
@@ -170,6 +197,33 @@ export function TrackActionsSheet({
     );
   }, [nasheed?.artist_id, closeThen, router]);
 
+  const handleGoToReciter = useCallback(() => {
+    if (!reciterId) return;
+    closeThen(() =>
+      router.push({
+        pathname: "/(tabs)/quran/reciter/[id]",
+        params: { id: reciterId },
+      }),
+    );
+  }, [reciterId, closeThen, router]);
+
+  const handleRemoveFromPlaylist = useCallback(() => {
+    if (!onRemoveFromPlaylist) return;
+    onRemoveFromPlaylist();
+    animateClose();
+  }, [onRemoveFromPlaylist, animateClose]);
+
+  const userPlaylistItem = useMemo(
+    () =>
+      playlistItem ?? (nasheed ? nasheedToPlaylistInput(nasheed) : undefined),
+    [playlistItem, nasheed],
+  );
+
+  const handleAddToUserPlaylist = useCallback(() => {
+    if (!userPlaylistItem || !onAddToUserPlaylist) return;
+    closeThen(() => onAddToUserPlaylist(userPlaylistItem));
+  }, [userPlaylistItem, onAddToUserPlaylist, closeThen]);
+
   const handleAddToPlaylist = useCallback(() => {
     if (!nasheed || !onAddToPlaylist) return;
     closeThen(() => onAddToPlaylist(nasheed));
@@ -193,6 +247,19 @@ export function TrackActionsSheet({
         label: favorited ? "Remove from Favorites" : "Add to Favorites",
         onPress: handleFavorite,
         tinted: favorited,
+      });
+    }
+
+    if (
+      showAddToPlaylist &&
+      userPlaylistItem?.audio_path &&
+      onAddToUserPlaylist
+    ) {
+      list.push({
+        key: "user-playlist",
+        icon: "add-circle-outline",
+        label: "Add to playlist",
+        onPress: handleAddToUserPlaylist,
       });
     }
 
@@ -226,14 +293,34 @@ export function TrackActionsSheet({
       });
     }
 
+    if (reciterId) {
+      list.push({
+        key: "reciter",
+        icon: "person-outline",
+        label: "Go to reciter",
+        onPress: handleGoToReciter,
+      });
+    }
+
     // TEMP admin curation hotfix — remove with PlaylistPickerModal.
     if (nasheed && onAddToPlaylist && isAdmin) {
       list.push({
         key: "playlist",
-        icon: nasheed.playlist_id ? "add-circle" : "add-circle-outline",
-        label: "Add to playlist",
+        icon: nasheed.playlist_id ? "albums" : "albums-outline",
+        label: "Curate playlist (admin)",
         onPress: handleAddToPlaylist,
         tinted: !!nasheed.playlist_id,
+      });
+    }
+
+    // Last, so the one row that takes something away is never hit by accident.
+    if (onRemoveFromPlaylist) {
+      list.push({
+        key: "remove-from-playlist",
+        icon: "remove-circle-outline",
+        label: "Remove from this playlist",
+        onPress: handleRemoveFromPlaylist,
+        destructive: true,
       });
     }
 
@@ -243,15 +330,23 @@ export function TrackActionsSheet({
     nasheed,
     favorited,
     handleFavorite,
+    showAddToPlaylist,
+    userPlaylistItem?.audio_path,
+    onAddToUserPlaylist,
+    handleAddToUserPlaylist,
     track?.uri,
     status,
     progress,
     handleDownload,
     showGoToArtist,
     handleGoToArtist,
+    reciterId,
+    handleGoToReciter,
     onAddToPlaylist,
     isAdmin,
     handleAddToPlaylist,
+    onRemoveFromPlaylist,
+    handleRemoveFromPlaylist,
   ]);
 
   return (
@@ -329,11 +424,21 @@ export function TrackActionsSheet({
                   <Ionicons
                     name={action.icon}
                     size={22}
-                    color={action.tinted ? GOLD : INACTIVE_ICON}
+                    color={
+                      action.destructive
+                        ? DESTRUCTIVE
+                        : action.tinted
+                          ? GOLD
+                          : INACTIVE_ICON
+                    }
                   />
                   <Text
                     className={`ml-4 text-base ${
-                      action.tinted ? "text-qasid-gold" : "text-white"
+                      action.destructive
+                        ? "text-qasid-red"
+                        : action.tinted
+                          ? "text-qasid-gold"
+                          : "text-white"
                     } ${action.disabled ? "opacity-60" : ""}`}
                   >
                     {action.label}

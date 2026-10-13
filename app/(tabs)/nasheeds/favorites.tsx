@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  CollectionTrack,
-  TrackCollectionScreen,
-} from "../../../components";
+import { CollectionTrack, TrackCollectionScreen } from "../../../components";
 import { Nasheed } from "../../../types/nasheed";
 import { fetchFavorites } from "../../../services/favorites-service";
-import { fetchArtistImagePath } from "../../../services/nasheeds-service";
 import { useFavoritesStore } from "../../../stores/favoritesStore";
-import { toNasheedTrackMeta } from "../../../utils/nasheedTrack";
+import { toNasheedTrackMeta, trackCover } from "../../../utils/nasheedTrack";
+import { useIsGuest } from "../../../stores/userStore";
 
 // Synchronous: storage paths stay raw so the list paints immediately.
 const toCollectionTrack = (nasheed: Nasheed): CollectionTrack => ({
@@ -16,6 +13,7 @@ const toCollectionTrack = (nasheed: Nasheed): CollectionTrack => ({
 });
 
 export default function FavoritesScreen() {
+  const isGuest = useIsGuest();
   const [tracks, setTracks] = useState<CollectionTrack[]>([]);
   const [headerImagePath, setHeaderImagePath] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
@@ -31,6 +29,13 @@ export default function FavoritesScreen() {
   }, []);
 
   const load = useCallback(async () => {
+    // Per-account data: a guest (e.g. arriving via a deep link) gets the
+    // sign-in hint from the empty state instead of a failed request.
+    if (isGuest) {
+      setTracks([]);
+      setLoading(false);
+      return;
+    }
     if (!hasLoadedRef.current) setLoading(true);
     try {
       const favorites = await fetchFavorites();
@@ -49,13 +54,11 @@ export default function FavoritesScreen() {
         .hydrate(true)
         .catch(() => {});
 
-      // Phase 2 — header artwork, which must not gate the list.
-      const firstArtistId = favorites[0]?.artist_id ?? null;
-      const artistImage = firstArtistId
-        ? await fetchArtistImagePath(firstArtistId)
-        : null;
+      // Phase 2 — header artwork (the first nasheed's, already live from
+      // fetchFavorites), which must not gate the list.
+      const cover = await trackCover(favorites[0]);
       if (!isMountedRef.current) return;
-      setHeaderImagePath(artistImage ?? undefined);
+      setHeaderImagePath(cover ?? undefined);
     } catch (e) {
       if (isMountedRef.current) {
         console.error("Error loading favorites:", e);
@@ -67,7 +70,7 @@ export default function FavoritesScreen() {
       hasLoadedRef.current = true;
       if (isMountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     void load();
@@ -82,7 +85,11 @@ export default function FavoritesScreen() {
       tracks={tracks}
       loading={loading}
       error={error}
-      emptyMessage="You haven't favorited any nasheeds yet."
+      emptyMessage={
+        isGuest
+          ? "Sign in to save and see your favorite nasheeds."
+          : "You haven't favorited any nasheeds yet."
+      }
       onRefresh={load}
     />
   );

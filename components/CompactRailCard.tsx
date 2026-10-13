@@ -4,6 +4,7 @@ import { GOLD, GOLD_RIPPLE_20 } from "../constants/colors";
 import { useImageLoadState } from "../hooks/useImageLoadState";
 import { usePulseAnimation } from "../hooks/usePulseAnimation";
 import ImageShimmerOverlay from "./ImageShimmerOverlay";
+import FittedArtwork from "./FittedArtwork";
 
 export interface CardVariantProps {
   circle?: boolean;
@@ -63,6 +64,8 @@ interface CompactRailCardProps {
   cardWidth: number;
   imageSize: number;
   circle?: boolean;
+  /** Show the whole image instead of cropping it (non-square artwork). */
+  fitWhole?: boolean;
   labelClassName?: string;
   onPress: () => void;
 }
@@ -74,10 +77,12 @@ export function CompactRailCard({
   cardWidth,
   imageSize,
   circle,
+  fitWhole,
   labelClassName = "text-xs",
   onPress,
 }: CompactRailCardProps) {
-  const { source, showSkeleton, onLoad, onError } = useImageLoadState(imagePath);
+  const { source, showSkeleton, onLoad, onError } =
+    useImageLoadState(imagePath);
 
   return (
     <Pressable
@@ -90,13 +95,17 @@ export function CompactRailCard({
         className={`${circle ? "rounded-full" : "rounded-xl"} overflow-hidden border border-qasid-gold/20 mb-2`}
         style={frameStyle(circle, imageSize)}
       >
-        <Image
-          source={source}
-          onLoad={onLoad}
-          onError={onError}
-          className="w-full h-full"
-          resizeMode="cover"
-        />
+        {fitWhole ? (
+          <FittedArtwork source={source} onLoad={onLoad} onError={onError} />
+        ) : (
+          <Image
+            source={source}
+            onLoad={onLoad}
+            onError={onError}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        )}
         <ImageShimmerOverlay
           visible={showSkeleton}
           rounded={circle ? "full" : "xl"}

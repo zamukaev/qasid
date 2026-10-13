@@ -1,5 +1,4 @@
 import { getApp } from "@react-native-firebase/app";
-import { getAuth } from "@react-native-firebase/auth";
 import {
   getFirestore,
   collection,
@@ -14,12 +13,15 @@ import {
 } from "@react-native-firebase/firestore";
 import { NasheedArtist } from "../types/nasheed";
 import { FirebaseReciter } from "../types/quran";
+import { accountUid } from "../utils/accountUid";
+import { fetchUnlistedArtistIds, isListedArtist } from "./nasheeds-service";
 
 const RECENTS_LIMIT = 10;
 
 export async function addRecentArtist(artist: NasheedArtist): Promise<void> {
-  const userId = getAuth().currentUser?.uid;
-  if (!userId) return;
+  const userId = accountUid();
+  // Unlisted artists (e.g. `unknown`) have no place in Recently Visited.
+  if (!userId || !isListedArtist(artist)) return;
 
   const db = getFirestore(getApp());
   const docRef = doc(db, "user_recents", userId, "artists", artist.id);
@@ -34,8 +36,10 @@ export async function addRecentArtist(artist: NasheedArtist): Promise<void> {
   });
 }
 
-export async function addRecentReciter(reciter: FirebaseReciter): Promise<void> {
-  const userId = getAuth().currentUser?.uid;
+export async function addRecentReciter(
+  reciter: FirebaseReciter,
+): Promise<void> {
+  const userId = accountUid();
   if (!userId) return;
 
   const db = getFirestore(getApp());
@@ -52,7 +56,7 @@ export async function addRecentReciter(reciter: FirebaseReciter): Promise<void> 
 }
 
 export async function fetchRecentReciters(): Promise<FirebaseReciter[]> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return [];
 
   const db = getFirestore(getApp());
@@ -63,22 +67,24 @@ export async function fetchRecentReciters(): Promise<FirebaseReciter[]> {
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      name_en: data.name_en ?? "",
-      name_ar: data.name_ar ?? "",
-      image_path: data.image_path ?? "",
-      surah_count: data.surah_count ?? 0,
-      is_active: true,
-      desc: "",
-    } as FirebaseReciter;
-  });
+  return snapshot.docs.map(
+    (d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name_en: data.name_en ?? "",
+        name_ar: data.name_ar ?? "",
+        image_path: data.image_path ?? "",
+        surah_count: data.surah_count ?? 0,
+        is_active: true,
+        desc: "",
+      } as FirebaseReciter;
+    },
+  );
 }
 
 export async function fetchRecentArtists(): Promise<NasheedArtist[]> {
-  const userId = getAuth().currentUser?.uid;
+  const userId = accountUid();
   if (!userId) return [];
 
   const db = getFirestore(getApp());
@@ -89,7 +95,19 @@ export async function fetchRecentArtists(): Promise<NasheedArtist[]> {
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
+  // Visits recorded before an artist was unlisted are still stored, so the
+  // live flag is checked on read too; if that read fails, the rail still
+  // shows, minus `unknown`.
+  const ids = snapshot.docs.map(
+    (d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => d.id,
+  );
+  const unlisted = await fetchUnlistedArtistIds(ids).catch(
+    () => new Set(ids.filter((id: string) => !isListedArtist({ id }))),
+  );
+  const listedDocs = snapshot.docs.filter(
+    (d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => !unlisted.has(d.id),
+  );
+  return listedDocs.map((d: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
     const data = d.data();
     return {
       id: d.id,

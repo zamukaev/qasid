@@ -6,6 +6,7 @@ import {
 } from "../context/AudioPlayerContext";
 import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { ErrorAlert } from "../components";
+import { SignInGateModal } from "../components/SignInGateModal";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -19,8 +20,10 @@ import { getApp } from "@react-native-firebase/app";
 import { getMessaging, onMessage } from "@react-native-firebase/messaging";
 import { hydrateStorageUrlCache } from "../services/storage";
 import { initReviewTracking } from "../services/review-service";
+import { initGuestNudge } from "../services/guest-nudge-service";
 import { hydrateAnalyticsConsent } from "../services/analytics";
 import { useAuthBootstrap } from "../hooks/useAuthBootstrap";
+import { useAuthGate } from "../hooks/useAuthGate";
 
 import "../global.css";
 
@@ -50,6 +53,7 @@ export default function RootLayout() {
   // Here rather than in a screen: a cold start into a deep link mounts no
   // screen that would otherwise subscribe, and the target route waits on auth.
   useAuthBootstrap();
+  useAuthGate();
 
   // RevenueCat aborts the app (fatalError in checkForSimulatedStoreAPIKeyInRelease)
   // if a Test/Simulated-Store key (test_…) is used in a Release build. Select the
@@ -68,6 +72,7 @@ export default function RootLayout() {
     // Device-scoped, so it runs before auth: records first launch and this
     // session's day for the store-review eligibility check.
     void initReviewTracking();
+    void initGuestNudge();
     // Restores the analytics opt-out before any screen can log an event.
     void hydrateAnalyticsConsent();
   }, []);
@@ -111,6 +116,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="t/index" options={{ headerShown: false }} />
         </Stack>
+        <SignInGateModal />
         <ErrorAlert
           visible={foregroundMessage !== null}
           message={foregroundMessage ?? ""}

@@ -120,7 +120,11 @@ export default function DownloadsScreen() {
 
         {downloads.length === 0 ? (
           <View className="flex-1 items-center justify-center mt-24">
-            <Feather name="download-cloud" size={48} color="rgba(255,255,255,0.2)" />
+            <Feather
+              name="download-cloud"
+              size={48}
+              color="rgba(255,255,255,0.2)"
+            />
             <Text className="text-white/40 text-base mt-4 text-center">
               No downloaded tracks yet.{"\n"}Tap the download icon on any track
               to save it for offline listening.
@@ -185,7 +189,11 @@ export default function DownloadsScreen() {
                           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           style={{ padding: 6 }}
                         >
-                          <Feather name="trash-2" size={18} color="rgba(255,100,100,0.7)" />
+                          <Feather
+                            name="trash-2"
+                            size={18}
+                            color="rgba(255,100,100,0.7)"
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>

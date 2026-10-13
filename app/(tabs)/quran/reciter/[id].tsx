@@ -8,7 +8,10 @@ import {
   useState,
 } from "react";
 import { GOLD } from "../../../../constants/colors";
-import { resolveStorageUrlPrioritized } from "../../../../services/storage";
+import {
+  peekStorageUrl,
+  resolveStorageUrlPrioritized,
+} from "../../../../services/storage";
 import {
   Image,
   RefreshControl,
@@ -61,6 +64,9 @@ import {
 } from "../../../../services/quran-service";
 import { addRecentReciter } from "../../../../services/recents-service";
 import { pickRandom } from "../../../../utils/random";
+import { surahToPlaylistInput } from "../../../../utils/user-playlists";
+import { AddToPlaylistButton } from "../../../../components/AddToPlaylistButton";
+import { SurahPlaylistTrackInput } from "../../../../types/userPlaylist";
 
 interface SurahListItem {
   id: string;
@@ -103,6 +109,22 @@ const normalizeSurahItems = (
         imageUrl: surah.image_path ?? null,
       };
     });
+
+const surahPlaylistItem = (
+  reciter: { id: string; name_en: string; image_path?: string },
+  surah: SurahListItem,
+) =>
+  surah.audioUrl
+    ? surahToPlaylistInput({
+        reciterId: reciter.id,
+        surahId: surah.id,
+        surahNumber: surah.surahNumber,
+        title: surah.englishName,
+        reciterName: surah.reciterName || reciter.name_en,
+        audioPath: surah.audioUrl,
+        imagePath: surah.imageUrl ?? reciter.image_path,
+      })
+    : undefined;
 
 /**
  * Isolated so the ~4x/s `listenedMillis` progress ticks only re-render this
@@ -178,7 +200,10 @@ function ReciterPlaybackTracker({
 type SurahListRowProps = {
   surah: SurahListItem;
   trackKey: string;
+  reciterId?: string;
   reciterNameEn?: string;
+  /** Cover for "Add to playlist" when the surah has no artwork of its own. */
+  reciterImagePath?: string;
   isRegularReciter: boolean;
   isCollection: boolean;
   isActive: boolean;
@@ -202,7 +227,9 @@ type SurahListRowProps = {
 const SurahListRow = memo(function SurahListRow({
   surah,
   trackKey,
+  reciterId,
   reciterNameEn,
+  reciterImagePath,
   isRegularReciter,
   isCollection,
   isActive,
@@ -211,6 +238,21 @@ const SurahListRow = memo(function SurahListRow({
   shareUrl,
   onPlay,
 }: SurahListRowProps) {
+  const playlistItem = useMemo(
+    () =>
+      reciterId
+        ? surahPlaylistItem(
+            {
+              id: reciterId,
+              name_en: reciterNameEn ?? "",
+              image_path: reciterImagePath,
+            },
+            surah,
+          )
+        : undefined,
+    [reciterId, surah, reciterNameEn, reciterImagePath],
+  );
+
   return (
     <SharedCard
       className="mb-1"
@@ -243,6 +285,7 @@ const SurahListRow = memo(function SurahListRow({
             subtitle={surah.reciterName ?? surah.arabicName}
             image={surah.imageUrl ?? undefined}
             shareUrl={shareUrl}
+            playlistItem={playlistItem}
             track={{
               id: trackKey,
               surahNumber: surah.surahNumber,
@@ -757,6 +800,16 @@ export default function ReciterDetailsScreen() {
     [filteredSurahItems, reciter],
   );
 
+  const playlistItems = useMemo(
+    () =>
+      !reciter
+        ? []
+        : filteredSurahItems
+            .map((item) => surahPlaylistItem(reciter, item))
+            .filter((item): item is SurahPlaylistTrackInput => !!item),
+    [filteredSurahItems, reciter],
+  );
+
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset?.y ?? 0;
     setShowScrollToTop(offsetY > 600);
@@ -938,6 +991,15 @@ export default function ReciterDetailsScreen() {
                 itemNoun="surahs"
                 subtitle={reciter?.name_en}
               />
+              <AddToPlaylistButton
+                items={playlistItems}
+                title={`All surahs · ${reciter?.name_en ?? ""}`}
+                image={peekStorageUrl(reciter?.image_path)}
+                seed={{
+                  title: reciter?.name_en,
+                  imagePath: reciter?.image_path,
+                }}
+              />
               <PlayButton
                 clasName="flex-1 ml-10"
                 handlePlayAll={handlePlayAll}
@@ -984,7 +1046,9 @@ export default function ReciterDetailsScreen() {
                     key={trackKey}
                     surah={surah}
                     trackKey={trackKey}
+                    reciterId={reciter?.id}
                     reciterNameEn={reciter?.name_en}
+                    reciterImagePath={reciter?.image_path}
                     isRegularReciter={!content_type}
                     isCollection={content_type === "collection"}
                     isActive={isActive}

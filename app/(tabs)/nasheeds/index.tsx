@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, SafeAreaView, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { GOLD } from "../../../constants/colors";
@@ -7,9 +7,11 @@ import {
   ArtistRailSection,
   BrowseAllArtistsPreview,
   ContinueListeningBlock,
+  NewNasheedsSection,
   PromoHomeBanner,
 } from "../../../components";
 import { useAuth } from "../../../hooks/useAuth";
+import { useRequireAccount } from "../../../hooks/useRequireAccount";
 import {
   GeneratedPlaylist,
   NasheedArtist,
@@ -19,7 +21,6 @@ import {
   fetchNasheedArtists,
   fetchPopularArtists,
   fetchNewArtists,
-  fetchArtistImagePath,
 } from "../../../services/nasheeds-service";
 import { fetchRecentArtists } from "../../../services/recents-service";
 import { fetchPlaylists } from "../../../services/playlists-service";
@@ -27,12 +28,23 @@ import {
   ensureWeeklyMix,
   fetchGeneratedPlaylists,
 } from "../../../services/recommendations-service";
-import { fetchFavoriteCovers } from "../../../services/favorites-service";
+import { fetchFirstFavorite } from "../../../services/favorites-service";
+import { fetchCollections } from "../../../services/collections-service";
+import {
+  CollectionDoc,
+  CollectionShelf,
+  collectionCover,
+  shelfCollections,
+} from "../../../utils/collections";
+import {
+  cachedFirstTrackCover,
+  firstTrackCovers,
+} from "../../../utils/nasheedTrack";
 
 // Generated playlists carry a `key` (not `id`); ArtistRailSection only reads
 // id/name_en/image_path, so a light projection is enough. `coverOverride`
-// lets trending/top playlists show the first track's artist photo instead
-// of the (currently always empty) playlist-level image_path.
+// is the first nasheed's artwork, shown instead of the playlist's own
+// image_path.
 const toRailItem = (p: GeneratedPlaylist, coverOverride?: string): Playlist =>
   ({
     id: p.key,
@@ -43,15 +55,33 @@ const toRailItem = (p: GeneratedPlaylist, coverOverride?: string): Playlist =>
     is_active: p.is_active,
   }) as unknown as Playlist;
 
+const toCollectionRailItems = (
+  collections: readonly CollectionDoc[],
+  shelf: CollectionShelf,
+): Playlist[] =>
+  shelfCollections(collections, shelf).map(
+    (c) =>
+      ({
+        id: c.id,
+        name_en: c.name_en,
+        name_ar: c.name_ar,
+        desc: c.desc,
+        image_path: collectionCover(c),
+        is_active: c.is_active,
+      }) as unknown as Playlist,
+  );
+
 export default function Nasheeds() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { isGuest, requireAccount } = useRequireAccount();
   const [popularArtists, setPopularArtists] = useState<NasheedArtist[]>([]);
   const [newArtists, setNewArtists] = useState<NasheedArtist[]>([]);
   const [allArtists, setAllArtists] = useState<NasheedArtist[]>([]);
   const [recentArtists, setRecentArtists] = useState<NasheedArtist[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [generated, setGenerated] = useState<GeneratedPlaylist[]>([]);
+  const [collections, setCollections] = useState<CollectionDoc[]>([]);
   const [generatedCovers, setGeneratedCovers] = useState<
     Record<string, string>
   >({});
@@ -62,11 +92,16 @@ export default function Nasheeds() {
   const [isLoadingForYou, setIsLoadingForYou] = useState(true);
   const [isLoadingGenerated, setIsLoadingGenerated] = useState(true);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(true);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [isLoadingMain, setIsLoadingMain] = useState(true);
   const [isLoadingNew, setIsLoadingNew] = useState(true);
   const [isLoadingRecents, setIsLoadingRecents] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Covers upgrade in the background; a newer load must win over a slower,
+  // older one that resolves after it.
+  const generatedLoadRef = useRef(0);
+  const forYouLoadRef = useRef(0);
 
   const loadMain = useCallback(async () => {
     setIsLoadingMain(true);
@@ -109,33 +144,51 @@ export default function Nasheeds() {
     }
   }, []);
 
+  const loadCollections = useCallback(async (force = false) => {
+    setIsLoadingCollections(true);
+    try {
+      setCollections(await fetchCollections({ force }));
+    } catch (error) {
+      console.error("Error loading collections:", error);
+    } finally {
+      setIsLoadingCollections(false);
+    }
+  }, []);
+
   const loadGenerated = useCallback(async (force = false) => {
+    const loadId = ++generatedLoadRef.current;
     setIsLoadingGenerated(true);
     try {
       const data = await fetchGeneratedPlaylists({ force });
-      setGenerated(data);
+      if (loadId !== generatedLoadRef.current) return;
+      const lists = Object.fromEntries(data.map((p) => [p.key, p.tracks]));
 
-      // Trending/Top playlists show their first track's artist photo as the
-      // cover (moods keep their own image_path, unchanged).
-      const coverEntries = await Promise.all(
-        data
-          .filter((p) => p.type !== "mood")
-          .map(async (p) => {
-            const artistId = p.tracks?.[0]?.artist_id;
-            if (!artistId) return null;
-            const imagePath = await fetchArtistImagePath(artistId);
-            return imagePath ? ([p.key, imagePath] as const) : null;
-          }),
-      );
+      // Every generated playlist (trending, top, moods) shows its first
+      // nasheed's artwork as the cover. Paint with what is already at hand,
+      // then swap in the live artwork, read in one query, without blocking.
+      setGenerated(data);
       setGeneratedCovers(
         Object.fromEntries(
-          coverEntries.filter((e): e is readonly [string, string] => !!e),
+          data.flatMap((p) => {
+            const cover = cachedFirstTrackCover(p.tracks);
+            return cover ? [[p.key, cover]] : [];
+          }),
         ),
       );
+      setIsLoadingGenerated(false);
+
+      void firstTrackCovers(lists)
+        .then((covers) => {
+          if (loadId !== generatedLoadRef.current) return;
+          setGeneratedCovers((prev) => ({ ...prev, ...covers }));
+        })
+        .catch((error) => {
+          console.error("Error loading generated playlist covers:", error);
+        });
     } catch (error) {
       console.error("Error loading generated playlists:", error);
     } finally {
-      setIsLoadingGenerated(false);
+      if (loadId === generatedLoadRef.current) setIsLoadingGenerated(false);
     }
   }, []);
 
@@ -148,37 +201,59 @@ export default function Nasheeds() {
       // Firebase restores the session asynchronously; running before that reads
       // a null uid and would silently leave the rail empty until a manual pull.
       if (authLoading) return;
-      if (!user?.uid) {
+      // Both sources are per-account, so guests skip the reads entirely.
+      if (!user?.uid || isGuest) {
         setHasWeeklyMix(false);
         setHasFavorites(false);
         setIsLoadingForYou(false);
         return;
       }
 
+      const loadId = ++forYouLoadRef.current;
       setIsLoadingForYou(true);
       try {
         const [mix, favs] = await Promise.all([
           ensureWeeklyMix({ force }),
-          fetchFavoriteCovers(),
+          fetchFirstFavorite(),
         ]);
-        const firstArtistId = mix?.tracks?.[0]?.artist_id ?? null;
-        const mixArtistImage = firstArtistId
-          ? await fetchArtistImagePath(firstArtistId)
-          : null;
-        setMixCovers(mixArtistImage ? [mixArtistImage] : []);
-        setFavCovers(favs.cover ? [favs.cover] : []);
+        if (loadId !== forYouLoadRef.current) return;
+        const lists = {
+          mix: mix?.tracks,
+          favorites: favs.firstTrack ? [favs.firstTrack] : undefined,
+        };
+        const toCovers = (cover: string | undefined) => (cover ? [cover] : []);
+
+        // Same as the generated rails: paint now, upgrade in one query.
+        setMixCovers(toCovers(cachedFirstTrackCover(lists.mix)));
+        setFavCovers(toCovers(cachedFirstTrackCover(lists.favorites)));
         setHasWeeklyMix((mix?.tracks?.length ?? 0) > 0);
         setHasFavorites(favs.hasFavorites);
-      } catch (error) {
-        console.error("Error loading For You covers:", error);
-      } finally {
         setIsLoadingForYou(false);
+
+        void firstTrackCovers(lists)
+          .then((covers) => {
+            if (loadId !== forYouLoadRef.current) return;
+            if (covers.mix) setMixCovers([covers.mix]);
+            if (covers.favorites) setFavCovers([covers.favorites]);
+          })
+          .catch((error) => {
+            console.error("Error loading For You covers:", error);
+          });
+      } catch (error) {
+        console.error("Error loading For You:", error);
+      } finally {
+        if (loadId === forYouLoadRef.current) setIsLoadingForYou(false);
       }
     },
-    [authLoading, user?.uid],
+    [authLoading, user?.uid, isGuest],
   );
 
   const loadRecents = useCallback(async () => {
+    if (isGuest) {
+      setRecentArtists([]);
+      setIsLoadingRecents(false);
+      return;
+    }
     setIsLoadingRecents(true);
     try {
       const artists = await fetchRecentArtists();
@@ -188,7 +263,7 @@ export default function Nasheeds() {
     } finally {
       setIsLoadingRecents(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     void loadMain();
@@ -196,7 +271,15 @@ export default function Nasheeds() {
     void loadRecents();
     void loadPlaylists();
     void loadGenerated();
-  }, [loadMain, loadNew, loadRecents, loadPlaylists, loadGenerated]);
+    void loadCollections();
+  }, [
+    loadMain,
+    loadNew,
+    loadRecents,
+    loadPlaylists,
+    loadGenerated,
+    loadCollections,
+  ]);
 
   // Own effect: this is the only loader whose identity changes (it depends on
   // the restored session), and the rails above must not refetch when it does.
@@ -213,6 +296,7 @@ export default function Nasheeds() {
         loadRecents(),
         loadPlaylists(),
         loadGenerated(true),
+        loadCollections(true),
         loadForYouCovers(true),
       ]);
     } finally {
@@ -224,6 +308,7 @@ export default function Nasheeds() {
     loadRecents,
     loadPlaylists,
     loadGenerated,
+    loadCollections,
     loadForYouCovers,
   ]);
 
@@ -245,9 +330,28 @@ export default function Nasheeds() {
     () =>
       generated
         .filter((p) => p.type === "mood" && p.tracks?.length > 0)
-        .map((p) => toRailItem(p)),
-    [generated],
+        .map((p) => toRailItem(p, generatedCovers[p.key])),
+    [generated, generatedCovers],
   );
+
+  const collectionItems = useMemo(
+    () => toCollectionRailItems(collections, "collections"),
+    [collections],
+  );
+  const eraItems = useMemo(
+    () => toCollectionRailItems(collections, "eras"),
+    [collections],
+  );
+  const newCollection = useMemo(
+    () => shelfCollections(collections, "new")[0],
+    [collections],
+  );
+
+  const openCollection = (id: string) =>
+    router.push({
+      pathname: "/(tabs)/nasheeds/collection/[id]",
+      params: { id },
+    });
 
   const openGenerated = (id: string) =>
     router.push({
@@ -257,13 +361,14 @@ export default function Nasheeds() {
 
   const firstName = user?.displayName?.trim().split(/\s+/)[0];
   const madeForTitle = firstName ? `Made for ${firstName}` : "Made for You";
+  // Guests see both tiles as a teaser; tapping one opens the sign-in gate.
   const forYouItems = [
-    hasWeeklyMix && {
+    (isGuest || hasWeeklyMix) && {
       id: "weekly-mix",
       name_en: "Weekly Mix",
       image_path: mixCovers[0],
     },
-    hasFavorites && {
+    (isGuest || hasFavorites) && {
       id: "favorites",
       name_en: "Favorites",
       image_path: favCovers[0],
@@ -290,26 +395,39 @@ export default function Nasheeds() {
       >
         <PromoHomeBanner />
         <ContinueListeningBlock variant="nasheeds" />
+        <NewNasheedsSection
+          collection={newCollection}
+          isLoading={isLoadingCollections}
+          onPressSeeAll={openCollection}
+        />
 
         {(isLoadingForYou || forYouItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title={madeForTitle}
             artists={forYouItems}
             isLoading={isLoadingForYou}
-            onPressItem={(id) =>
+            onPressItem={(id) => {
+              const isMix = id === "weekly-mix";
+              if (
+                !requireAccount(
+                  isMix ? "get your Weekly Mix" : "save favorites",
+                )
+              ) {
+                return;
+              }
               router.push(
-                id === "weekly-mix"
-                  ? "/(tabs)/nasheeds/mix"
-                  : "/(tabs)/nasheeds/favorites",
-              )
-            }
+                isMix ? "/(tabs)/nasheeds/mix" : "/(tabs)/nasheeds/favorites",
+              );
+            }}
           />
         )}
 
         {(isLoadingGenerated || trendingItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Trending"
             artists={trendingItems}
             isLoading={isLoadingGenerated}
@@ -319,6 +437,7 @@ export default function Nasheeds() {
         {(isLoadingGenerated || topItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Top Charts"
             artists={topItems}
             isLoading={isLoadingGenerated}
@@ -328,10 +447,31 @@ export default function Nasheeds() {
         {(isLoadingGenerated || moodItems.length > 0) && (
           <ArtistRailSection
             large
+            fitWhole
             title="Moods"
             artists={moodItems}
             isLoading={isLoadingGenerated}
             onPressItem={openGenerated}
+          />
+        )}
+        {(isLoadingCollections || collectionItems.length > 0) && (
+          <ArtistRailSection
+            large
+            fitWhole
+            title="Collections"
+            artists={collectionItems}
+            isLoading={isLoadingCollections}
+            onPressItem={openCollection}
+          />
+        )}
+        {(isLoadingCollections || eraItems.length > 0) && (
+          <ArtistRailSection
+            large
+            fitWhole
+            title="Through the Years"
+            artists={eraItems}
+            isLoading={isLoadingCollections}
+            onPressItem={openCollection}
           />
         )}
 
@@ -347,11 +487,13 @@ export default function Nasheeds() {
             })
           }
         />
-        <ArtistRailSection
-          title="Recently Visited"
-          artists={recentArtists}
-          isLoading={isLoadingRecents}
-        />
+        {!isGuest && (
+          <ArtistRailSection
+            title="Recently Visited"
+            artists={recentArtists}
+            isLoading={isLoadingRecents}
+          />
+        )}
         <ArtistRailSection
           title="Popular Artists"
           artists={popularArtists}

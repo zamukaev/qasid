@@ -2,7 +2,7 @@
  * A share link that arrived before the user could be sent to it.
  *
  * Module-level rather than React state (the same pattern as
- * `hooks/useNasheedLimit`): the auth gate in `app/index.tsx` and the share
+ * `hooks/useNasheedLimit`): the auth gate in `hooks/useAuthGate.ts` and the share
  * route in `app/t/index.tsx` run in different trees, and the value has to
  * survive the sign-in and email-verification screens in between.
  */

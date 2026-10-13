@@ -139,8 +139,9 @@ export default function ShareTargetScreen() {
     }
 
     // Signed out, or still behind the verification wall: stash the link and let
-    // the gate in app/index.tsx replay it once the user is through.
-    if (!user || !emailVerified) {
+    // the gate in hooks/useAuthGate.ts replay it once the user is through.
+    // Guests may open shared tracks like anyone else.
+    if (!user || (!user.isAnonymous && !emailVerified)) {
       setPendingShare(
         hasNasheed
           ? `/t?${SHARE_PARAM_NASHEED}=${encodeURIComponent(nasheedId)}`

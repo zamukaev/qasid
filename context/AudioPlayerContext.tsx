@@ -31,6 +31,7 @@ import {
   noteQualifiedListen,
   QUALIFIED_LISTEN_MS,
 } from "../services/review-service";
+import { noteGuestListen } from "../services/guest-nudge-service";
 
 type PlayerViewMode = "hidden" | "mini" | "full";
 
@@ -421,7 +422,7 @@ export function AudioPlayerProvider({
         listenedMillisRef.current += Math.min(delta, 2000);
         if (isActive) setListenedMillis(listenedMillisRef.current);
 
-        // Feed the store-review engagement counter. Covers quran and nasheeds,
+        // Feed the store-review and guest-nudge engagement counters. Covers quran and nasheeds,
         // manual plays and auto-advance alike; noteQualifiedListen dedupes per
         // track, so calling it on every subsequent tick is a no-op.
         if (
@@ -429,6 +430,7 @@ export function AudioPlayerProvider({
           currentTrackRef.current
         ) {
           noteQualifiedListen(currentTrackRef.current.id);
+          noteGuestListen(currentTrackRef.current.id);
         }
       }
     }
